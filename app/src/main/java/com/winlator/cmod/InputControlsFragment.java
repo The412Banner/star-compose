@@ -107,30 +107,7 @@ public class InputControlsFragment extends Fragment {
 
         loadProfileSpinner(sProfile);
 
-        final TextView tvCursorSpeed = view.findViewById(R.id.TVCursorSpeed);
-        final SeekBar sbCursorSpeed = view.findViewById(R.id.SBCursorSpeed);
-        sbCursorSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvCursorSpeed.setText(progress+"%");
-                if (currentProfile != null) {
-                    currentProfile.setCursorSpeed(progress / 100.0f);
-                    currentProfile.save();
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
         updateLayout = () -> {
-            if (currentProfile != null) {
-                sbCursorSpeed.setProgress((int)(currentProfile.getCursorSpeed() * 100));
-            }
-            else sbCursorSpeed.setProgress(100);
             loadExternalControllers(view);
         };
 
