@@ -1478,7 +1478,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
 
         String presentMode = graphicsDriverConfig.get("presentMode");
-        envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
+        envVars.put("WRAPPER_PRESENT_MODE", presentMode);
 
         String syncFrame = graphicsDriverConfig.get("syncFrame");
         if (syncFrame.equals("1"))
