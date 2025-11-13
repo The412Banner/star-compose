@@ -36,21 +36,19 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     private Spinner sMaxDeviceMemory;
     private Spinner sPresentMode;
     private Spinner sResourceType;
-    private CheckBox cbAdrenotoolsTurnip;
+
     private CheckBox cbSyncFrame;
     private CheckBox cbDisablePresentWait;
-    private CheckBox cbEnableBlit;
+
     private static String selectedVulkanVersion;
     private static String selectedVersion;
     private static String blacklistedExtensions = "";
     private static String selectedDeviceMemory;
-    private static String isAdrenotoolsTurnip;
+
     private static String isSyncFrame;
     private static String isDisablePresentWait;
     private static String selectedPresentMode;
     private static String selectedResourceType;
-
-    private static String enableBlit;
 
 
     public static HashMap<String, String> parseGraphicsDriverConfig(String graphicsDriverConfig) {
@@ -93,12 +91,10 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
                 "version=" + selectedVersion + ";" +
                 "blacklistedExtensions=" + blacklistedExtensions + ";" +
                 "maxDeviceMemory=" + StringUtils.parseNumber(selectedDeviceMemory) + ";" +
-                "adrenotoolsTurnip=" + isAdrenotoolsTurnip + ";" +
                 "presentMode=" + selectedPresentMode + ";" +
                 "syncFrame=" + isSyncFrame + ";" +
                 "disablePresentWait=" + isDisablePresentWait + ";" +
-                "resourceType=" + selectedResourceType + ";" +
-                "blit=" + enableBlit;
+                "resourceType=" + selectedResourceType;
         Log.i(TAG, "Written config " + graphicsDriverConfig);
         return graphicsDriverConfig;
     }
@@ -130,10 +126,8 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         sPresentMode = findViewById(R.id.SGraphicsDriverPresentMode);
         sMaxDeviceMemory = findViewById(R.id.SGraphicsDriverMaxDeviceMemory);
         sResourceType = findViewById(R.id.SGraphicsDriverResourceType);
-        cbAdrenotoolsTurnip = findViewById(R.id.CBAdrenotoolsTurnip);
         cbSyncFrame = findViewById(R.id.CBSyncFrame);
         cbDisablePresentWait = findViewById(R.id.CBDisablePresentWait);
-        cbEnableBlit = findViewById(R.id.CBEnableBlit);
 
         HashMap<String, String> config = parseGraphicsDriverConfig(graphicsDriverConfig);
 
@@ -141,11 +135,9 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         String initialVersion = config.get("version");
         String blExtensions = config.get("blacklistedExtensions");
         String maxDeviceMemory = config.get("maxDeviceMemory");
-        String adrenotoolsTurnip = config.get("adrenotoolsTurnip");
         String syncFrame = config.get("syncFrame");
         String disablePresentWait = config.get("disablePresentWait");
         String presentMode = config.get("presentMode");
-        String blit = config.get("blit");
         String resourceType = config.get("resourceType");
 
         // Update the selectedVersion whenever the user selects a different version
@@ -224,12 +216,6 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             }
         });
 
-        isAdrenotoolsTurnip = adrenotoolsTurnip;
-        cbAdrenotoolsTurnip.setChecked(isAdrenotoolsTurnip.equals("1") ? true : false);
-        cbAdrenotoolsTurnip.setOnCheckedChangeListener((buttonView, isChecked) ->  {
-            isAdrenotoolsTurnip = isChecked ? "1" : "0";
-        });
-
         isSyncFrame = syncFrame;
         cbSyncFrame.setChecked(isSyncFrame.equals("1") ? true : false);
         cbSyncFrame.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -240,12 +226,6 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         cbDisablePresentWait.setChecked(isDisablePresentWait.equals("1") ? true : false);
         cbDisablePresentWait.setOnCheckedChangeListener((buttonView, isChecked) -> {
             isDisablePresentWait = isChecked ? "1" : "0";
-        });
-
-        enableBlit = blit;
-        cbEnableBlit.setChecked(enableBlit.equals("1") ? true : false);
-        cbEnableBlit.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            enableBlit = isChecked ? "1" : "0";
         });
 
         // Ensure ContentsManager syncContents is called
