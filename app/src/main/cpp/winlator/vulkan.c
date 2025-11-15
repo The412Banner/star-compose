@@ -116,11 +116,20 @@ static VkResult create_instance(jstring driverName, JNIEnv *env, jobject context
 
     PFN_vkGetInstanceProcAddr gip = (PFN_vkGetInstanceProcAddr)dlsym(vulkan_handle, "vkGetInstanceProcAddr");
     PFN_vkCreateInstance createInstance = (PFN_vkCreateInstance)dlsym(vulkan_handle, "vkCreateInstance");
+    PFN_vkEnumerateInstanceVersion enumerateInstanceVersion = (PFN_vkEnumerateInstanceVersion)dlsym(vulkan_handle, "vkEnumerateInstanceVersion");
+
+    VkApplicationInfo app_info = {};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "Winlator";
+    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.pEngineName = "Winlator";
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    enumerateInstanceVersion(&app_info.apiVersion);
 
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pNext = NULL;
     create_info.flags = 0;
-    create_info.pApplicationInfo = NULL;
+    create_info.pApplicationInfo = &app_info;
     create_info.enabledLayerCount = 0;
     create_info.enabledExtensionCount = 0;
 
