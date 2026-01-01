@@ -317,15 +317,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
         envVars.put("WINE_NEW_NDIS", "1");
-        
+
         String ld_preload = "";
-        
+
         // Check for specific shared memory libraries
         if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
             ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         }
 
-        // Copy libfakeinput.so 
+        // Copy libfakeinput.so
         File fakeinputDest = new File(imageFs.getLibDir(), "libfakeinput.so");
         String nativeLibDir = environment.getContext().getApplicationInfo().nativeLibraryDir;
         File fakeinputSrc = new File(nativeLibDir, "libfakeinput.so");
@@ -333,7 +333,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         Log.d("GuestLauncher", "nativeLibDir: " + nativeLibDir);
         Log.d("GuestLauncher", "fakeinputSrc exists: " + fakeinputSrc.exists());
         Log.d("GuestLauncher", "fakeinputDest: " + fakeinputDest.getAbsolutePath());
-        
+
         if (!fakeinputDest.exists()) {
             try {
                 if (fakeinputSrc.exists()) {
@@ -353,17 +353,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             if (!ld_preload.isEmpty()) ld_preload += ":";
             ld_preload += fakeinputDest.getAbsolutePath();
         }
-        
-            File devInputDir = new File(imageFs.getRootDir(), "dev/input");
-            devInputDir.mkdirs();
-            File event0 = new File(devInputDir, "event0");
-            if (!event0.exists()) {
+
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        devInputDir.mkdirs();
+        File event0 = new File(devInputDir, "event0");
+        if (!event0.exists()) {
                 try { event0.createNewFile(); } catch (Exception e) {}
-            }
-            
-            envVars.put("FAKEINPUT_PATH", devInputDir.getAbsolutePath());
-            envVars.put("SDL_JOYSTICK_DEVICE", event0.getAbsolutePath()); //idk if needed, better to put it then not
-        
+        }
+
+        envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
 
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);
@@ -372,10 +370,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             this.envVars.remove("MANGOHUD");
         }
 
-        if (this.envVars.has("MANGOHUD_CONFIG")) { 
+        if (this.envVars.has("MANGOHUD_CONFIG")) {
             this.envVars.remove("MANGOHUD_CONFIG");
         }
-        
+
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
@@ -401,8 +399,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     envVars.put("HODLL", "libwow64fex.dll");
                 else
                     envVars.put("HODLL", "wowbox64.dll");
-            }
-            else
+            } else
                 command = imageFs.getBinDir() + "/box64 " + guestExecutable;
         }
 

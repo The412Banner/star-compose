@@ -14,27 +14,27 @@ public class FakeInputWriter {
     private static final int EVENT_SIZE = 24;
     private static final int MAX_EVENTS_PER_UPDATE = 20; // Buttons + axes + sync
     private static final int BUFFER_SIZE = EVENT_SIZE * MAX_EVENTS_PER_UPDATE;
-    
+
     // Event types
     public static final short EV_SYN = 0x00;
     public static final short EV_KEY = 0x01;
     public static final short EV_ABS = 0x03;
-    
+
     // Sync codes
     public static final short SYN_REPORT = 0x00;
-    
+
     // Xbox 360 controller button codes
     public static final short BTN_A = 0x130;
     public static final short BTN_B = 0x131;
     public static final short BTN_X = 0x133;
     public static final short BTN_Y = 0x134;
-    public static final short BTN_TL = 0x136;  
-    public static final short BTN_TR = 0x137; 
+    public static final short BTN_TL = 0x136;
+    public static final short BTN_TR = 0x137;
     public static final short BTN_SELECT = 0x13A;
     public static final short BTN_START = 0x13B;
-    public static final short BTN_THUMBL = 0x13D;  
-    public static final short BTN_THUMBR = 0x13E;  
-    
+    public static final short BTN_THUMBL = 0x13D;
+    public static final short BTN_THUMBR = 0x13E;
+
     // Absolute axis codes
     public static final short ABS_X = 0x00;
     public static final short ABS_Y = 0x01;
@@ -44,40 +44,41 @@ public class FakeInputWriter {
     public static final short ABS_HAT0Y = 0x11;
     public static final short ABS_GAS = 0x09;
     public static final short ABS_BRAKE = 0x0A;
-    
-    // Button mapping 
+
+    // Button mapping
     private static final short[] BUTTON_MAP = {
-        BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR,
-        BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR
+            BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR,
+            BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR
     };
-    
+
     private final File eventFile;
     private RandomAccessFile raf;
     private FileChannel channel;
     private final ByteBuffer buffer;
     private boolean isOpen = false;
-    
+
     private final boolean[] prevButtonStates = new boolean[12];
     private int prevThumbLX, prevThumbLY, prevThumbRX, prevThumbRY;
     private int prevTriggerL, prevTriggerR;
     private int prevHatX, prevHatY;
     private boolean hasChanges = false;
-    
+
     public FakeInputWriter(String fakeInputPath) {
         this.eventFile = new File(fakeInputPath, "event0");
         this.buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
-    
+
     public synchronized boolean open() {
-        if (isOpen) return true;
-        
+        if (isOpen)
+            return true;
+
         try {
             eventFile.getParentFile().mkdirs();
             if (!eventFile.exists()) {
                 eventFile.createNewFile();
             }
-            
+
             raf = new RandomAccessFile(eventFile, "rw");
             channel = raf.getChannel();
             isOpen = true;
@@ -88,76 +89,110 @@ public class FakeInputWriter {
             return false;
         }
     }
-    
+
     public synchronized void close() {
         if (channel != null) {
-            try { channel.close(); } catch (IOException e) {}
+            try {
+                channel.close();
+            } catch (IOException e) {
+            }
             channel = null;
         }
         if (raf != null) {
-            try { raf.close(); } catch (IOException e) {}
+            try {
+                raf.close();
+            } catch (IOException e) {
+            }
             raf = null;
         }
         isOpen = false;
     }
-    
+
     private void writeEvent(short type, short code, int value) {
         long timeMs = System.currentTimeMillis();
-        buffer.putLong(timeMs / 1000);           
-        buffer.putLong((timeMs % 1000) * 1000);  
+        buffer.putLong(timeMs / 1000);
+        buffer.putLong((timeMs % 1000) * 1000);
         buffer.putShort(type);
         buffer.putShort(code);
         buffer.putInt(value);
         hasChanges = true;
     }
-    
+
     private void writeButton(int idx, boolean pressed) {
-        if (idx < 0 || idx >= BUTTON_MAP.length) return;
-        if (prevButtonStates[idx] == pressed) return;
+        if (idx < 0 || idx >= BUTTON_MAP.length)
+            return;
+        if (prevButtonStates[idx] == pressed)
+            return;
         prevButtonStates[idx] = pressed;
         writeEvent(EV_KEY, BUTTON_MAP[idx], pressed ? 1 : 0);
     }
-    
+
     private void writeAxis(short code, int value, int[] prevRef, int index) {
-        if (prevRef[index] == value) return;
+        if (prevRef[index] == value)
+            return;
         prevRef[index] = value;
         writeEvent(EV_ABS, code, value);
     }
-    
+
     public void writeGamepadState(GamepadState state) {
-        if (!isOpen && !open()) return;
-        
+        if (!isOpen && !open())
+            return;
+
         buffer.clear();
         hasChanges = false;
-        
-        // Buttons 
+
+        // Buttons
         for (int i = 0; i < 10; i++) {
-            writeButton(i, state.isPressed((byte)i));
+            writeButton(i, state.isPressed((byte) i));
         }
-        
-        // Sticks 
-        int lx = (int)(state.thumbLX * 32767);
-        int ly = (int)(state.thumbLY * 32767);
-        int rx = (int)(state.thumbRX * 32767);
-        int ry = (int)(state.thumbRY * 32767);
-        
-        if (lx != prevThumbLX) { prevThumbLX = lx; writeEvent(EV_ABS, ABS_X, lx); }
-        if (ly != prevThumbLY) { prevThumbLY = ly; writeEvent(EV_ABS, ABS_Y, ly); }
-        if (rx != prevThumbRX) { prevThumbRX = rx; writeEvent(EV_ABS, ABS_RX, rx); }
-        if (ry != prevThumbRY) { prevThumbRY = ry; writeEvent(EV_ABS, ABS_RY, ry); }
-        
+
+        // Sticks
+        int lx = (int) (state.thumbLX * 32767);
+        int ly = (int) (state.thumbLY * 32767);
+        int rx = (int) (state.thumbRX * 32767);
+        int ry = (int) (state.thumbRY * 32767);
+
+        if (lx != prevThumbLX) {
+            prevThumbLX = lx;
+            writeEvent(EV_ABS, ABS_X, lx);
+        }
+        if (ly != prevThumbLY) {
+            prevThumbLY = ly;
+            writeEvent(EV_ABS, ABS_Y, ly);
+        }
+        if (rx != prevThumbRX) {
+            prevThumbRX = rx;
+            writeEvent(EV_ABS, ABS_RX, rx);
+        }
+        if (ry != prevThumbRY) {
+            prevThumbRY = ry;
+            writeEvent(EV_ABS, ABS_RY, ry);
+        }
+
         // Triggers
-        int tl = (int)(state.triggerL * 255);
-        int tr = (int)(state.triggerR * 255);
-        if (tl != prevTriggerL) { prevTriggerL = tl; writeEvent(EV_ABS, ABS_BRAKE, tl); }
-        if (tr != prevTriggerR) { prevTriggerR = tr; writeEvent(EV_ABS, ABS_GAS, tr); }
-        
+        int tl = (int) (state.triggerL * 255);
+        int tr = (int) (state.triggerR * 255);
+        if (tl != prevTriggerL) {
+            prevTriggerL = tl;
+            writeEvent(EV_ABS, ABS_BRAKE, tl);
+        }
+        if (tr != prevTriggerR) {
+            prevTriggerR = tr;
+            writeEvent(EV_ABS, ABS_GAS, tr);
+        }
+
         // D-pad
         int hatX = state.dpad[3] ? -1 : (state.dpad[1] ? 1 : 0);
         int hatY = state.dpad[0] ? -1 : (state.dpad[2] ? 1 : 0);
-        if (hatX != prevHatX) { prevHatX = hatX; writeEvent(EV_ABS, ABS_HAT0X, hatX); }
-        if (hatY != prevHatY) { prevHatY = hatY; writeEvent(EV_ABS, ABS_HAT0Y, hatY); }
-        
+        if (hatX != prevHatX) {
+            prevHatX = hatX;
+            writeEvent(EV_ABS, ABS_HAT0X, hatX);
+        }
+        if (hatY != prevHatY) {
+            prevHatY = hatY;
+            writeEvent(EV_ABS, ABS_HAT0Y, hatY);
+        }
+
         // Detect Change else no need to write
         if (hasChanges) {
             writeEvent(EV_SYN, SYN_REPORT, 0);
@@ -169,7 +204,8 @@ public class FakeInputWriter {
             }
         }
     }
-    
-    public boolean isOpen() { return isOpen; }
-}
 
+    public boolean isOpen() {
+        return isOpen;
+    }
+}
