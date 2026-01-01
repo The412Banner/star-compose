@@ -1135,10 +1135,21 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Add the launcher to our environment
         environment.addComponent(guestProgramLauncherComponent);
 
-        // Start all environment components (XServer, Audio, etc.)
+        // Initialize fake input for controller emulation - MUST be before Wine starts!
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        if (devInputDir.exists() || devInputDir.mkdirs()) {
+            // Delete old event0 to ensure clean session (no ghost inputs)
+            File event0 = new File(devInputDir, "event0");
+            if (event0.exists()) event0.delete();
+            try { event0.createNewFile(); } catch (Exception e) {}
+            
+            winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
+        }
+
+        // Start all environment components (XServer, Audio, Wine, etc.)
         environment.startEnvironmentComponents();
 
-        // Start the WinHandler
+        // Start the WinHandler (writes events to the file)
         winHandler.start();
 
         if (wineRequestHandler != null) wineRequestHandler.start();

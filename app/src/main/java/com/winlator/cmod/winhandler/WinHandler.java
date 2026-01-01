@@ -13,6 +13,7 @@ import com.winlator.cmod.XServerDisplayActivity;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
 import com.winlator.cmod.inputcontrols.ExternalController;
+import com.winlator.cmod.inputcontrols.FakeInputWriter;
 import com.winlator.cmod.inputcontrols.GamepadState;
 import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.xserver.XServer;
@@ -56,6 +57,7 @@ public class WinHandler {
     private final List<Integer> gamepadClients = new CopyOnWriteArrayList<>();
     private SharedPreferences preferences;
     private byte triggerType;
+    private FakeInputWriter fakeInputWriter;
 
     private boolean xinputDisabled; // Used for exclusive mouse controllegacy
     private boolean xinputDisabledInitialized = false;
@@ -365,6 +367,7 @@ public class WinHandler {
 
     public void stop() {
         running = false;
+        closeFakeInputWriter();
 
         if (socket != null) {
             socket.close();
@@ -567,37 +570,47 @@ public class WinHandler {
     }
 
     public void sendGamepadState() {
-        if (!initReceived || gamepadClients.isEmpty() || xinputDisabled ) return; // Add this check
+        if (xinputDisabled) return;
+        
         final ControlsProfile profile = activity.getInputControlsView().getProfile();
         final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
         final boolean enabled = currentController != null || useVirtualGamepad;
-
-        for (final int port : gamepadClients) {
-            addAction(() -> {
-                sendData.rewind();
-                sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                sendData.put((byte)(enabled ? 1 : 0));
-
-                if (enabled) {
-                    sendData.putInt(!useVirtualGamepad ? currentController.getDeviceId() : profile.id);
-                    GamepadState state = useVirtualGamepad ? profile.getGamepadState() : currentController.state;
-
-                    // Combine gyro input with thumbstick input
-                    state.thumbRX = Mathf.clamp(state.thumbRX + gyroX, -1.0f, 1.0f); // Apply clamping
-                    state.thumbRY = Mathf.clamp(state.thumbRY + gyroY, -1.0f, 1.0f); // Apply clamping
-
-                    state.writeTo(sendData);
-                }
-
-                sendPacket(port);
-            });
+        
+        if (!enabled) return;
+        
+        GamepadState state = useVirtualGamepad ? profile.getGamepadState() : currentController.state;
+        state.thumbRX = Mathf.clamp(state.thumbRX + gyroX, -1.0f, 1.0f);
+        state.thumbRY = Mathf.clamp(state.thumbRY + gyroY, -1.0f, 1.0f);
+        if (fakeInputWriter != null) {
+            fakeInputWriter.writeGamepadState(state);
         }
     }
 
     public void setXInputDisabled(boolean disabled) {
         this.xinputDisabled = disabled;
-        this.xinputDisabledInitialized = true; // Mark as initialized
+        this.xinputDisabledInitialized = true; 
         Log.d("WinHandler", "XInput Disabled set to: " + xinputDisabled);
+    }
+
+    /**
+     * @param fakeInputPath Path to the fake-input directory (e.g., /home/xuser/fake-input)
+     */
+    public void setFakeInputPath(String fakeInputPath) {
+        if (fakeInputPath != null && !fakeInputPath.isEmpty()) {
+            if (fakeInputWriter != null) {
+                fakeInputWriter.close();
+            }
+            fakeInputWriter = new FakeInputWriter(fakeInputPath);
+            fakeInputWriter.open();
+            Log.d("WinHandler", "FakeInputWriter initialized with path: " + fakeInputPath);
+        }
+    }
+
+    public void closeFakeInputWriter() {
+        if (fakeInputWriter != null) {
+            fakeInputWriter.close();
+            fakeInputWriter = null;
+        }
     }
 
 
