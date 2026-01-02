@@ -19,8 +19,10 @@ public class FakeInputWriter {
     public static final short EV_SYN = 0x00;
     public static final short EV_KEY = 0x01;
     public static final short EV_ABS = 0x03;
+    public static final short EV_MSC = 0x04;
 
-    // Sync codes
+    // Event codes
+    public static final short MSC_SCAN = 0x04;
     public static final short SYN_REPORT = 0x00;
 
     // Xbox 360 controller button codes
@@ -42,8 +44,8 @@ public class FakeInputWriter {
     public static final short ABS_RY = 0x04;
     public static final short ABS_HAT0X = 0x10;
     public static final short ABS_HAT0Y = 0x11;
-    public static final short ABS_GAS = 0x09;
-    public static final short ABS_BRAKE = 0x0A;
+    public static final short ABS_GAS = 0x0A;
+    public static final short ABS_BRAKE = 0x09;
 
     // Button mapping
     private static final short[] BUTTON_MAP = {
@@ -80,6 +82,7 @@ public class FakeInputWriter {
             }
 
             raf = new RandomAccessFile(eventFile, "rw");
+            raf.seek(raf.length());
             channel = raf.getChannel();
             isOpen = true;
             Log.i(TAG, "Opened fake input: " + eventFile.getAbsolutePath());
@@ -124,6 +127,7 @@ public class FakeInputWriter {
         if (prevButtonStates[idx] == pressed)
             return;
         prevButtonStates[idx] = pressed;
+        writeEvent(EV_MSC, MSC_SCAN, BUTTON_MAP[idx]);
         writeEvent(EV_KEY, BUTTON_MAP[idx], pressed ? 1 : 0);
     }
 
@@ -169,7 +173,7 @@ public class FakeInputWriter {
             writeEvent(EV_ABS, ABS_RY, ry);
         }
 
-        // Triggers
+        // L2 and R2 (Triggers)
         int tl = (int) (state.triggerL * 255);
         int tr = (int) (state.triggerR * 255);
         if (tl != prevTriggerL) {
