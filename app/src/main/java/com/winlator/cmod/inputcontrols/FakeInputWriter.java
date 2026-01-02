@@ -44,8 +44,8 @@ public class FakeInputWriter {
     public static final short ABS_RY = 0x04;
     public static final short ABS_HAT0X = 0x10;
     public static final short ABS_HAT0Y = 0x11;
-    public static final short ABS_GAS = 0x0A;
-    public static final short ABS_BRAKE = 0x09;
+    public static final short ABS_GAS = 0x09;
+    public static final short ABS_BRAKE = 0x0A;
 
     // Button mapping
     private static final short[] BUTTON_MAP = {
