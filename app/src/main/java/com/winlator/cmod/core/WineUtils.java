@@ -14,6 +14,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -206,8 +208,8 @@ public abstract class WineUtils {
     }
 
     public static void changeServicesStatus(Container container, String startupSelection) {
-        final String[] services = {"BITS:3", "Eventlog:2", "HTTP:3", "LanmanServer:3", "NDIS:2", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "Spooler:3", "StiSvc:3", "TermService:3", "winebus:3", "winehid:3", "Winmgmt:3", "wuauserv:3"};
-        final String[] aggressiveServices = { "BITS:3", "Eventlog:2", "FontCache:3", "FontCache3.0.0.0:3", "HTTP:3", "LanmanServer:3", "MountMgr:2", "MSIServer:3", "NDIS:2", "nsiproxy:3", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "SharedGpuResources:2", "Spooler:3", "StiSvc:3", "TermService:3", "TrkWks:3", "W32Time:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
+        final String[] services = {"BITS:3", "Eventlog:2", "HTTP:3", "LanmanServer:3", "NDIS:2", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "Spooler:3", "StiSvc:3", "TermService:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
+        final String[] aggressiveServices = { "BITS:3", "Eventlog:2", "FontCache:3", "FontCache3.0.0.0:3", "HTTP:3", "LanmanServer:3", "MSIServer:3", "NDIS:2", "nsiproxy:3", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "SharedGpuResources:2", "Spooler:3", "StiSvc:3", "TermService:3", "TrkWks:3", "W32Time:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
         File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
 
         byte selection = Container.STARTUP_SELECTION_NORMAL;
@@ -218,29 +220,25 @@ public abstract class WineUtils {
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
             registryEditor.setCreateKeyIfNotExist(false);
+            List<String> servicesList = Arrays.asList(services);
 
-            for (String service : services) {
+            for (String service : aggressiveServices) {
                 String name = service.substring(0, service.indexOf(":"));
-                int value = Character.getNumericValue(service.charAt(service.length()-1));
+                int value = Character.getNumericValue(service.charAt(service.length() - 1));
 
                 if (selection == Container.STARTUP_SELECTION_ESSENTIAL) {
+                    if (servicesList.contains(service)) {
+                        if (!name.equals("winebus") && !name.equals("winehid")) {
+                            value = 4;
+                        }
+                    }
+                } else if (selection == Container.STARTUP_SELECTION_AGGRESSIVE) {
                     if (!name.equals("winebus") && !name.equals("winehid")) {
                         value = 4;
                     }
                 }
-                registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\"+name, "Start", value);
-            }
-
-            for (String service : aggressiveServices){
-                String name = service.substring(0, service.indexOf(":"));
-                int value = Character.getNumericValue(service.charAt(service.length()-1));
-
-                if (selection == Container.STARTUP_SELECTION_AGGRESSIVE) {
-                    if (!name.equals("winebus") && !name.equals("winehid")) {
-                        value = 4;
-                    }
-                }
-                registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\"+name, "Start", value);
+                registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\" + name, "Start", value);
+                registryEditor.setDwordValue("System\\ControlSet001\\Services\\" + name, "Start", value);
             }
         }
     }
