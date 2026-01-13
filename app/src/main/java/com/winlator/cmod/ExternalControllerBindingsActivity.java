@@ -3,6 +3,7 @@ package com.winlator.cmod;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -23,6 +24,7 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -43,7 +45,6 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
     private ExternalController controller;
     private RecyclerView recyclerView;
     private ControllerBindingsAdapter adapter;
-    private boolean mixWarningShown = false;
 
     // Track trigger state to only register on rising edge
     private boolean l2WasPressed = false;
@@ -357,7 +358,6 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
                     if (binding != item.getBinding()) {
                         item.setBinding(binding);
                         profile.save();
-                        checkForMixedBindings();
                     }
                 }
 
@@ -367,6 +367,7 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             });
 
             update.run();
+
         }
     }
 
@@ -391,27 +392,4 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         }
     }
 
-    private void checkForMixedBindings() {
-        if (mixWarningShown)
-            return;
-
-        boolean hasGamepad = false;
-        boolean hasMouse = false;
-
-        int count = controller.getControllerBindingCount();
-        for (int i = 0; i < count; i++) {
-            ExternalControllerBinding binding = controller.getControllerBindingAt(i);
-            if (binding != null && binding.getBinding() != Binding.NONE) {
-                if (binding.getBinding().isGamepad())
-                    hasGamepad = true;
-                if (binding.getBinding().isMouse())
-                    hasMouse = true;
-            }
-        }
-
-        if (hasGamepad && hasMouse) {
-            mixWarningShown = true;
-            ContentDialog.alert(this, R.string.warning_gamepad_mouse_mix, null);
-        }
-    }
 }
