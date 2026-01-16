@@ -262,6 +262,7 @@ public abstract class WineUtils {
             // Configure all 4 possible gamepad slots
             for (int i = 0; i < 4; i++) {
                 registryEditor.setStringValue(joysticksKey, "Generic HID Gamepad " + i, value);
+                registryEditor.setStringValue(joysticksKey, "ric HID Gamepad " + i, value);
             }
         }
     }
