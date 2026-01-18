@@ -421,18 +421,7 @@ public class WinHandler {
             releaseSlot(OSC_DEVICE_ID);
         }
 
-        // Also send gamepad state for external controllers with custom bindings
-        // This handles remapped button inputs from external controllers
-        ArrayList<ExternalController> controllers = profile.loadControllers();
-        for (ExternalController controller : controllers) {
-            if (controller.getControllerBindingCount() > 0) {
-                int slot = assignSlot(controller.getDeviceId());
-                if (slot >= 0 && writers[slot] != null) {
-                    // Use the profile's gamepad state which contains the remapped buttons
-                    writers[slot].writeGamepadState(gamepadState);
-                }
-            }
-        }
+
     }
 
     public void sendGamepadState(ExternalController controller) {
@@ -446,7 +435,14 @@ public class WinHandler {
         if (profile != null) {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
-                return; // Suppress raw state sending
+                // If bindings are present, use the remappedState from the controller
+                // This reverts the single-slot consolidation where the no-arg sendGamepadState()
+                // was solely responsible for sending remapped states.
+                int slot = assignSlot(controller.getDeviceId());
+                if (slot >= 0 && writers[slot] != null) {
+                    writers[slot].writeGamepadState(controller.remappedState);
+                }
+                return; // Suppress raw state sending if remapped state was sent
             }
         }
 

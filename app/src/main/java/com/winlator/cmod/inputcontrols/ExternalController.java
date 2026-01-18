@@ -37,6 +37,7 @@ public class ExternalController {
     private int deviceId = -1;
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
+    public final GamepadState remappedState = new GamepadState();
     private XServerDisplayActivity activity;
 
 
