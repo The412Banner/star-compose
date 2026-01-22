@@ -250,8 +250,9 @@ public abstract class WineUtils {
      * 
      * @param container The container to configure
      * @param dinputEnabled Whether DInput is enabled for this container
+     * @param exclusiveXInput Whether Exclusive XInput is enabled (if false, keys are removed)
      */
-    public static void setJoystickRegistryKeys(Container container, boolean dinputEnabled) {
+    public static void setJoystickRegistryKeys(Container container, boolean dinputEnabled, boolean exclusiveXInput) {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         final String joysticksKey = "Software\\Wine\\DirectInput\\Joysticks";
         
@@ -261,8 +262,14 @@ public abstract class WineUtils {
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             // Configure all 4 possible gamepad slots
             for (int i = 0; i < 4; i++) {
-                registryEditor.setStringValue(joysticksKey, "Generic HID Gamepad " + i, value);
-                registryEditor.setStringValue(joysticksKey, "ric HID Gamepad " + i, value);
+                if (exclusiveXInput) {
+                    registryEditor.setStringValue(joysticksKey, "Generic HID Gamepad " + i, value);
+                    registryEditor.setStringValue(joysticksKey, "ric HID Gamepad " + i, value);
+                }
+                else {
+                    registryEditor.removeValue(joysticksKey, "Generic HID Gamepad " + i);
+                    registryEditor.removeValue(joysticksKey, "ric HID Gamepad " + i);
+                }
             }
         }
     }

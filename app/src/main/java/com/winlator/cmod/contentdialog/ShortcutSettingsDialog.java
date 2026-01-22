@@ -207,25 +207,58 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final Runnable showInputWarning = () -> ContentDialog.alert(context, R.string.enable_xinput_and_dinput_same_time, null);
         final CheckBox cbEnableXInput = findViewById(R.id.CBEnableXInput);
         final CheckBox cbEnableDInput = findViewById(R.id.CBEnableDInput);
+        final CheckBox cbExclusiveXInput = findViewById(R.id.CBExclusiveXInput);
         final View btHelpXInput = findViewById(R.id.BTXInputHelp);
         final View btHelpDInput = findViewById(R.id.BTDInputHelp);
+        final View btHelpExclusiveXInput = findViewById(R.id.BTExclusiveXInputHelp);
         int inputType = Integer.parseInt(shortcut.getExtra("inputType", String.valueOf(shortcut.container.getInputType())));
 
 
         cbEnableXInput.setChecked((inputType & WinHandler.FLAG_INPUT_TYPE_XINPUT) == WinHandler.FLAG_INPUT_TYPE_XINPUT);
         cbEnableDInput.setChecked((inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT);
+        
+        String exclusiveXInputExtra = shortcut.getExtra("exclusiveXInput");
+        boolean exclusiveXInput = exclusiveXInputExtra.isEmpty() ? shortcut.container.isExclusiveXInput() : exclusiveXInputExtra.equals("1");
+        cbExclusiveXInput.setChecked(exclusiveXInput);
+
         cbEnableDInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && cbEnableXInput.isChecked()) {
-                cbEnableXInput.setChecked(false);
+            if (cbExclusiveXInput.isChecked()) {
+                if (isChecked && cbEnableXInput.isChecked()) {
+                    cbEnableXInput.setChecked(false);
+                }
             }
         });
         cbEnableXInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && cbEnableDInput.isChecked()) {
-                cbEnableDInput.setChecked(false);
+            if (cbExclusiveXInput.isChecked()) {
+                if (isChecked && cbEnableDInput.isChecked()) {
+                    cbEnableDInput.setChecked(false);
+                }
             }
         });
+
+        cbExclusiveXInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!isChecked) {
+                cbEnableXInput.setChecked(true);
+                cbEnableDInput.setChecked(true);
+                cbEnableXInput.setEnabled(false);
+                cbEnableDInput.setEnabled(false);
+            } else {
+                cbEnableXInput.setEnabled(true);
+                cbEnableDInput.setEnabled(true);
+                if (cbEnableXInput.isChecked() && cbEnableDInput.isChecked()) cbEnableDInput.setChecked(false);
+            }
+        });
+
+        // Trigger initial state logic
+        if (!cbExclusiveXInput.isChecked()) {
+            cbEnableXInput.setChecked(true);
+            cbEnableDInput.setChecked(true);
+            cbEnableXInput.setEnabled(false);
+            cbEnableDInput.setEnabled(false);
+        }
         btHelpXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_xinput));
         btHelpDInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_dinput));
+        btHelpExclusiveXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_exclusive_xinput));
 
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
         Box64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
@@ -361,6 +394,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
 
                 shortcut.putExtra("inputType", String.valueOf(finalInputType));
+                
+                shortcut.putExtra("exclusiveXInput", cbExclusiveXInput.isChecked() ? "1" : "0");
 
                 boolean disabledXInput = cbDisabledXInput.isChecked();
                 shortcut.putExtra("disableXinput", disabledXInput ? "1" : null);

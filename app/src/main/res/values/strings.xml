@@ -409,6 +409,7 @@
         If your game utilizes the <i><b>DInput API</b></i> for game controller support, please enable this option.<br/><br/>
         This option will affect both <i><b>virtual</b></i> (provided by Input Controls) and <i><b>physical</b></i> game controllers.
     ]]></string>
+    <string name="help_exclusive_xinput">Certain games like Rayman Origins and Need for Speed: Most Wanted 2005 when using DInput require this to be disabled.</string>
     <string name="enable_xinput_and_dinput_same_time">Some games may support both APIs. Enabling both XInput and DInput simultaneously in such games may cause control issues, as seen in titles like The Binding of Isaac and the Resident Evil series.</string>
     <string name="warning_gamepad_mouse_mix">Warning: Mixing gamepad and mouse bindings on the same controller may cause unexpected behavior in games. It is recommended to use only gamepad bindings or only mouse/keyboard bindings.</string>
     <string name="startup_normal">Normal (Load all services)</string>
