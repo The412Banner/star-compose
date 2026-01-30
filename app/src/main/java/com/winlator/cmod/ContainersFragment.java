@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ContainersFragment extends Fragment {
+    private static final int REQUEST_CODE_IMPORT_CONTAINER = 1070;
     private RecyclerView recyclerView;
     private TextView emptyTextView;
     private ContainerManager manager;
@@ -385,6 +386,7 @@ public class ContainersFragment extends Fragment {
 
 
 }
+
 
 
 
