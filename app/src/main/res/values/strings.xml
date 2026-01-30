@@ -464,6 +464,7 @@
     <string name="fullscreen_stretched">Enable Fullscreen (Stretched)</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
+    <string name="importing_container">Importing Container...</string>
 
     <string name="brightness">Brightness</string>
     <string name="contrast">Contrast</string>
@@ -635,4 +636,5 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="vkbasalt_sharpness_level">Sharpness Level</string>
     <string name="vkbasalt_sharpness_denoise">Sharpeness Denoise</string>
     <string name="shutdown">Shutdown</string>
+
 </resources>
