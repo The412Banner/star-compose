@@ -808,7 +808,7 @@ public class ContainerDetailFragment extends Fragment {
         }
     }
 
-    public static void setupDDrawSpinner(final Spinner sDDrawspinner, String selectedDDrawrapper) {
+    public static void setupDDrawSpinner(final Spinner sDDrawspinner, String selectedDDrawrapper, boolean isARM64EC) {
         final Context context = sDDrawspinner.getContext();
         ArrayList<String> items = new ArrayList<>();
         for (String value : context.getResources().getStringArray(R.array.ddrawrapper_entries)) {
@@ -1103,6 +1103,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
