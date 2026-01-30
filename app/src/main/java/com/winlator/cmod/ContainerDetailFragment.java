@@ -595,6 +595,8 @@ public class ContainerDetailFragment extends Fragment {
                             saveWineRegistryKeys(view);
                         }
                         preloaderDialog.close();
+
+                        AppUtils.showToast(getContext(), "Container created!");
                         getActivity().onBackPressed();
                     });
                 }
@@ -1082,5 +1084,6 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
