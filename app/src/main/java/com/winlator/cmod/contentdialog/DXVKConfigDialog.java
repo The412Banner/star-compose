@@ -83,7 +83,6 @@ public class DXVKConfigDialog extends ContentDialog {
         final Spinner sVKD3DVersion = findViewById(R.id.SVKD3DVersion);
         final Spinner sFramerate = findViewById(R.id.SFramerate);
         final Spinner sVKD3DFeatureLevel = findViewById(R.id.SVKD3DFeatureLevel);
-        final Spinner sDDRAWrapper = findViewById(R.id.SDDRAWrapper);
         swAsync = findViewById(R.id.SWAsync);
         swAsyncCache = findViewById(R.id.SWAsyncCache);
         llAsync = findViewById(R.id.LLAsync);
@@ -170,7 +169,6 @@ public class DXVKConfigDialog extends ContentDialog {
             VKD3DVersionItem selectedItem = (VKD3DVersionItem) sVKD3DVersion.getSelectedItem();
             config.put("vkd3dVersion", selectedItem.getIdentifier());
             config.put("vkd3dLevel", sVKD3DFeatureLevel.getSelectedItem().toString());
-            config.put("ddrawrapper", StringUtils.parseIdentifier(sDDRAWrapper.getSelectedItem().toString()));
             anchor.setTag(config.toString());
         });
     }
@@ -297,3 +295,4 @@ public class DXVKConfigDialog extends ContentDialog {
         spinner.setAdapter(adapter);
     }
 }
+
