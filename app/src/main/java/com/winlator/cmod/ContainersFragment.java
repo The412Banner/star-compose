@@ -164,6 +164,93 @@ public class ContainersFragment extends Fragment {
         builder.show();
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_IMPORT_CONTAINER && resultCode == Activity.RESULT_OK) {
+            if (data != null) {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    // Get the directory path directly from the Uri using FileUtils
+                    File importDir = FileUtils.getFileFromUri(getContext(), uri);
+                    if (importDir == null || !importDir.isDirectory()) {
+                        AppUtils.showToast(getContext(), "Invalid container directory.");
+                        return;
+                    }
+                    // Show confirmation dialog before importing
+                    showImportConfirmationDialog(uri, importDir);
+                }
+            }
+        }
+    }
+
+
+    private void openFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivityForResult(intent, REQUEST_CODE_IMPORT_CONTAINER);
+    }
+
+
+    private void importContainer(Uri uri) {
+        if (uri == null) return;
+
+        // Get the directory path directly from the Uri using FileUtils
+        File importDir = FileUtils.getFileFromUri(getContext(), uri);
+        if (importDir == null || !importDir.isDirectory()) {
+            AppUtils.showToast(getContext(), "Invalid container directory.");
+            return;
+        }
+
+        preloaderDialog.show(R.string.importing_container);
+
+        // Run the import operation on a background thread
+        new Thread(() -> {
+            try {
+                // Now use the import directory directly for importing the container
+                manager.importContainer(importDir, () -> {
+                    // This callback runs when the import operation completes
+                    getActivity().runOnUiThread(() -> {
+                        // Load containers and close preloader dialog on the UI thread
+                        loadContainersList();
+                        AppUtils.showToast(getContext(), "Container imported successfully.");
+                        preloaderDialog.close(); // Move this inside the callback
+                    });
+                });
+            } catch (Exception e) {
+                getActivity().runOnUiThread(() -> {
+                    preloaderDialog.close(); // Ensure dialog closes on error
+                    AppUtils.showToast(getContext(), "Error importing container: " + e.getMessage());
+                });
+            }
+        }).start();
+    }
+
+
+    private boolean copyDocumentFileToDirectory(DocumentFile sourceDir, File targetDir) {
+        if (!sourceDir.isDirectory()) return false;
+
+        for (DocumentFile file : sourceDir.listFiles()) {
+            File targetFile = new File(targetDir, file.getName());
+            if (file.isDirectory()) {
+                if (!targetFile.mkdirs()) return false;
+                if (!copyDocumentFileToDirectory(file, targetFile)) return false;
+            } else {
+                try (InputStream in = getContext().getContentResolver().openInputStream(file.getUri());
+                     OutputStream out = new FileOutputStream(targetFile)) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = in.read(buffer)) > 0) {
+                        out.write(buffer, 0, len);
+                    }
+                } catch (IOException e) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 
     private class ContainersAdapter extends RecyclerView.Adapter<ContainersAdapter.ViewHolder> {
         private final List<Container> data;
@@ -298,5 +385,6 @@ public class ContainersFragment extends Fragment {
 
 
 }
+
 
 
