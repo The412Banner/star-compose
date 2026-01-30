@@ -488,7 +488,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             };
         }
 
-        preloaderDialog.show(R.string.starting_up);
+        if (shortcut == null)
+            preloaderDialog.show(container.name, null);
+        else {
+            preloaderDialog.show(shortcut.name, shortcut.icon);
+        }
 
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(new ScreenInfo(screenSize));
@@ -1948,6 +1952,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 }
+
 
 
 
