@@ -489,7 +489,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         if (shortcut == null)
-            preloaderDialog.show(container.name, null);
+            preloaderDialog.show(container.getName(), null);
         else {
             preloaderDialog.show(shortcut.name, shortcut.icon);
         }
@@ -1952,6 +1952,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 }
+
 
 
 
