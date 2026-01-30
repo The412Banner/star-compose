@@ -122,6 +122,10 @@ public class ContainersFragment extends Fragment {
                 toggleBigPictureMode();
                 return true;
 
+            case R.id.containers_menu_import:
+                showImportInfoDialog();
+                return true;
+
             default:
                 return super.onOptionsItemSelected(menuItem);
         }
@@ -132,6 +136,32 @@ public class ContainersFragment extends Fragment {
         Intent intent = new Intent(getContext(), BigPictureActivity.class);
         startActivity(intent);
         getActivity().overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+    }
+
+    // Show dialog to inform user about the import process
+    private void showImportInfoDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Import Container");
+        builder.setMessage("This option will allow you to restore an exported container. To proceed, click OK and select your 'xuser-' directory. " +
+                "The container's settings will need to be configured after a successful import, but all files and shortcuts should be restored if you are restoring a real container. " +
+                "Beware, the directory you select will be copied into the app's storage directory, so be sure you have enough space. You can delete your copy afterward.");
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            openFilePicker(); // Proceed to file picker
+        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    // Show confirmation dialog before importing the selected container
+    private void showImportConfirmationDialog(Uri uri, File importDir) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Confirm Import");
+        builder.setMessage("You selected: " + importDir.getPath() + ". Proceed to import the container?");
+        builder.setPositiveButton("Import", (dialog, which) -> {
+            importContainer(uri); // Proceed with the import
+        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.show();
     }
 
 
@@ -268,4 +298,5 @@ public class ContainersFragment extends Fragment {
 
 
 }
+
 
