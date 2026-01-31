@@ -311,8 +311,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ((TextView) dialog.findViewById(R.id.TVAppVersion)).setText(getString(R.string.version) + " " + pInfo.versionName);
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
-                    "Modified by Star Windows Emulator Team"
-                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a> and <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating winlator bionic"
+                    "Modified by Star Windows Emulator Team",
+                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a> and <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating winlator bionic",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",
@@ -377,4 +377,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 }
+
 
