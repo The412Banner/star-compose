@@ -778,37 +778,27 @@ public class ContainerDetailFragment extends Fragment {
         update.run();
     }
 
-    public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
-        AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
+    public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig) {
+        sDXWrapper.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                if (dxwrapper.contains("dxvk")) {
-                    vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig, isARM64EC)).show());
-                } else {
-                    vDXWrapperConfig.setOnClickListener((v) -> (new WineD3DConfigDialog(vDXWrapperConfig)).show());
-                }
-                vDXWrapperConfig.setVisibility(View.VISIBLE);
+                if (dxwrapper.equals("dxvk")) {
+                    vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig)).show());
+                    vDXWrapperConfig.setVisibility(View.VISIBLE);
+                } else if (dxwrapper.equals("vkd3d")) {
+                    vDXWrapperConfig.setOnClickListener((v) -> (new VKD3DConfigDialog(vDXWrapperConfig)).show());
+                    vDXWrapperConfig.setVisibility(View.VISIBLE);
+                } else vDXWrapperConfig.setVisibility(View.GONE);
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        };
-
-        sDXWrapper.setOnItemSelectedListener(listener);
-
-        int selectedPosition = sDXWrapper.getSelectedItemPosition();
-        if (selectedPosition >= 0) {
-            listener.onItemSelected(
-                    sDXWrapper,
-                    sDXWrapper.getSelectedView(),
-                    selectedPosition,
-                    sDXWrapper.getSelectedItemId()
-            );
-        }
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
     }
 
-    public static void setupDDrawSpinner(final Spinner sDDrawspinner, String selectedDDrawrapper, boolean isARM64EC) {
+    public static void setupDDrawSpinner(final Spinner sDDrawspinner, String selectedDDrawrapper) {
         final Context context = sDDrawspinner.getContext();
         ArrayList<String> items = new ArrayList<>();
         for (String value : context.getResources().getStringArray(R.array.ddrawrapper_entries)) {
@@ -1103,6 +1093,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
