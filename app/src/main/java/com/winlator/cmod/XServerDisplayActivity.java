@@ -1682,6 +1682,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             else {
                 if (ddrawrapper.equals("cnc-ddraw"))
                     envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
+            }
+            ​// Implementation for dgvoodoo
+            else if (ddrawrapper.equals("dgvoodoo")) {
+                 Log.d(TAG, "Applying dgvoodoo ddrawrapper");
+                 // Ensure the path matches your asset folder structure (e.g., ddrawrapper/dgvoodoo.tzst)
+                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/dgvoodoo.tzst", windowsDir, onExtractFileListener);
+            } 
 
                 Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
@@ -1952,6 +1959,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 }
+
 
 
 
