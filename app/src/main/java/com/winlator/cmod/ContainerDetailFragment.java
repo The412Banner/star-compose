@@ -778,7 +778,7 @@ public class ContainerDetailFragment extends Fragment {
         update.run();
     }
 
-    public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig) {
+    public static void setupDXWrapperSpinner(Spinner spinner, View configView, boolean isArm64EC) {
         sDXWrapper.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -1093,6 +1093,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
