@@ -784,7 +784,7 @@ public class ContainerDetailFragment extends Fragment {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
                 if (dxwrapper.equals("dxvk")) {
-                    vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig)).show());
+                    vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig, wineInfo.isArm64EC())).show());
                     vDXWrapperConfig.setVisibility(View.VISIBLE);
                 } else if (dxwrapper.equals("vkd3d")) {
                     vDXWrapperConfig.setOnClickListener((v) -> (new VKD3DConfigDialog(vDXWrapperConfig)).show());
@@ -1093,6 +1093,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
