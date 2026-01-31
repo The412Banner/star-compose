@@ -1673,31 +1673,33 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
             Log.d(TAG, "Extracting nglide wrapper");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
+TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
 
-            if (ddrawrapper.contains("None")) {
-                Log.d(TAG, "No DDRaw wrapper has been selected, restoring original ddraw files");
-                restoreOriginalDllFiles(new String[]{ "ddraw.dll", "d3dimm.dll" });
-            }
-            else {
-                if (ddrawrapper.equals("cnc-ddraw"))
-                    envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
-            }
-            ​// Implementation for dgvoodoo
-            else if (ddrawrapper.equals("dgvoodoo")) {
-                 Log.d(TAG, "Applying dgvoodoo ddrawrapper");
-                 // Ensure the path matches your asset folder structure (e.g., ddrawrapper/dgvoodoo.tzst)
-                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/dgvoodoo.tzst", windowsDir, onExtractFileListener);
-            } 
+if (ddrawrapper.contains("None")) {
+    Log.d(TAG, "No DDRaw wrapper has been selected, restoring original ddraw files");
+    restoreOriginalDllFiles(new String[]{ "ddraw.dll", "d3dimm.dll" });
+}
+else {
+    if (ddrawrapper.equals("cnc-ddraw")) {
+        envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
+    }
+    // Fixed: Ensure no hidden characters (\u200b) exist before 'else if'
+    else if (ddrawrapper.equals("dgvoodoo")) {
+        Log.d(TAG, "Applying dgvoodoo ddrawrapper");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/dgvoodoo.tzst", windowsDir, onExtractFileListener);
+    }
 
-                Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
-            }
+    Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
+    // Only extract if it wasn't already handled specifically above
+    if (!ddrawrapper.equals("dgvoodoo")) {
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
+    }
+}
 
-            Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
-        } else if (dxwrapper.contains("wined3d")) {
-            Log.d(TAG, "Restoring original DLL files for wined3d.");
-            restoreOriginalDllFiles(dlls);
+Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
+} else if (dxwrapper.contains("wined3d")) {
+    Log.d(TAG, "Restoring original DLL files for wined3d.");
+    restoreOriginalDllFiles(dlls);
         }
     }
 
@@ -1959,6 +1961,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 }
+
 
 
 
