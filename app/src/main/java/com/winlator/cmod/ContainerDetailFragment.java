@@ -550,6 +550,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setControllerMapping(controllerMapping);
                     container.saveData();
                     saveWineRegistryKeys(view);
+                    AppUtils.showToast(getContext(), "Settings saved!");
                     getActivity().onBackPressed();
                 } else {
                     // Create new container with specified properties
@@ -1082,5 +1083,6 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
