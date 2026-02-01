@@ -347,6 +347,8 @@ public class SettingsFragment extends Fragment {
                         .replace(R.id.FLFragmentContainer, new ContainersFragment())
                         .commit();
             }
+
+			AppUtils.showToast(context, "Settings saved!");
         });
 
 
@@ -786,3 +788,4 @@ public class SettingsFragment extends Fragment {
         FileUtils.clear(sourceDir);
     }
 }
+
