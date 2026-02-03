@@ -345,7 +345,7 @@
     <string name="unable_to_remove_content_since_container_using">Unable to remove this content, because a container is currently using this Wine.</string>
     <string name="get_more_contents_form_github">You can access https://github.com/longjunyu2/winlator/releases to get more contents.</string>
     <string name="setup_failed">Setup failed</string>
-    <string name="graphics_driver_configuration">Graphics Driver Configuration</string>
+    <string name="graphics_driver_configuration">Turnip/Wrapper Driver Configuration</string>
     <string name="select_graphics_driver_version">Select Graphics Driver Version:</string>
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="graphics_driver_available_extensions">Available Extensions</string>
@@ -644,4 +644,5 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="shutdown">Shutdown</string>
 
 </resources>
+
 
