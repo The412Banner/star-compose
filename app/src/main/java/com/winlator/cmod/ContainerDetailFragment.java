@@ -740,7 +740,7 @@ public class ContainerDetailFragment extends Fragment {
     Runnable update = () -> {
         String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
 
-        // Logic from Modified: Filter DXWrapper options based on driver type
+        // Logic to filter DXWrapper options based on driver type
         boolean isVulkanBased = graphicsDriver.startsWith("turnip") || 
                                 graphicsDriver.startsWith("vortek") || 
                                 graphicsDriver.startsWith("llvmpipe");
@@ -755,14 +755,14 @@ public class ContainerDetailFragment extends Fragment {
         sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
         AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
-        // --- Integrated Config Dialog Logic ---
-        vGraphicsDriverConfig.setVisibility(View.VISIBLE); [span_3](start_span)// Always visible as per original[span_3](end_span)
+        // Configuration Dialog Logic
+        vGraphicsDriverConfig.setVisibility(View.VISIBLE);
         
         if (graphicsDriver.startsWith("virgl")) {
-            [span_4](start_span)// Use the specific dialog for VirGL[span_4](end_span)
+            // Use specific dialog for VirGL
             vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
         } else {
-            [span_5](start_span)[span_6](start_span)// Fallback to the original Wrapper/Graphics dialog for ALL other drivers[span_5](end_span)[span_6](end_span)
+            // Restore original behavior: use GraphicsDriverConfigDialog for all other drivers (Vortek, Turnip, etc.)
             vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
         }
     };
@@ -777,7 +777,7 @@ public class ContainerDetailFragment extends Fragment {
         public void onNothingSelected(AdapterView<?> parent) {}
     });
 
-    // Set initial selection
+    // Set initial selection and run update
     AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
     update.run();
 }
@@ -1097,6 +1097,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
