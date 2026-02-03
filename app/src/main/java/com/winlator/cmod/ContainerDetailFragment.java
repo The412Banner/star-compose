@@ -42,6 +42,7 @@ import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
+import com.winlator.cmod.contentdialog.VirGLConfigDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
@@ -756,13 +757,13 @@ public class ContainerDetailFragment extends Fragment {
 
         // --- Config Dialog Logic ---
         if (graphicsDriver.startsWith("virgl")) {
-            // Specific Dialog for VirGL
-            vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-            vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
-        } else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
-            // Keep original behavior for Vortek/Turnip
-            vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-            vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
+    vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+    // This will now work because of the cmod import above
+    vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
+} else {
+    // Original behavior for Vortek/other drivers
+    vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+    vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
         } else {
             // Hide for simple drivers (like llvmpipe) if they don't need config
             vGraphicsDriverConfig.setVisibility(View.GONE);
@@ -1100,6 +1101,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
