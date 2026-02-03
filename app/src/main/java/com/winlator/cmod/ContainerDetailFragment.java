@@ -758,16 +758,16 @@ public class ContainerDetailFragment extends Fragment {
         // --- Config Dialog Logic ---
         if (graphicsDriver.startsWith("virgl")) {
     vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-    // This will now work because of the cmod import above
     vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
-} else {
-    // Original behavior for Vortek/other drivers
+} 
+else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
     vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+    // Use the generic config dialog for other drivers as originally intended
     vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
-        } else {
-            // Hide for simple drivers (like llvmpipe) if they don't need config
-            vGraphicsDriverConfig.setVisibility(View.GONE);
-        }
+} 
+else {
+    vGraphicsDriverConfig.setVisibility(View.GONE);
+}
     };
 
     sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1101,6 +1101,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
