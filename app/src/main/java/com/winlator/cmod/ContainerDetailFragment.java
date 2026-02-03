@@ -740,7 +740,7 @@ public class ContainerDetailFragment extends Fragment {
     Runnable update = () -> {
         String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
 
-        // Logic from Modified: Filter DXWrapper options
+        // Logic from Modified: Filter DXWrapper options based on driver type
         boolean isVulkanBased = graphicsDriver.startsWith("turnip") || 
                                 graphicsDriver.startsWith("vortek") || 
                                 graphicsDriver.startsWith("llvmpipe");
@@ -755,19 +755,16 @@ public class ContainerDetailFragment extends Fragment {
         sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
         AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
-        // --- Config Dialog Logic ---
+        // --- Integrated Config Dialog Logic ---
+        vGraphicsDriverConfig.setVisibility(View.VISIBLE); [span_3](start_span)// Always visible as per original[span_3](end_span)
+        
         if (graphicsDriver.startsWith("virgl")) {
-    vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-    vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
-} 
-else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
-    vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-    // Use the generic config dialog for other drivers as originally intended
-    vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
-} 
-else {
-    vGraphicsDriverConfig.setVisibility(View.GONE);
-}
+            [span_4](start_span)// Use the specific dialog for VirGL[span_4](end_span)
+            vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
+        } else {
+            [span_5](start_span)[span_6](start_span)// Fallback to the original Wrapper/Graphics dialog for ALL other drivers[span_5](end_span)[span_6](end_span)
+            vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
+        }
     };
 
     sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -784,7 +781,6 @@ else {
     AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
     update.run();
 }
-
 
     public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
         AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
@@ -1101,6 +1097,7 @@ else {
     }
 
 }
+
 
 
 
