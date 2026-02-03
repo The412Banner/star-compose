@@ -738,16 +738,18 @@ public class ContainerDetailFragment extends Fragment {
     updateGraphicsDriverSpinner(context, sGraphicsDriver);
 
     Runnable update = () -> {
-        String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
+        // Normalize the identifier to lowercase for consistent matching
+        String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem()).toLowerCase();
 
-        // FIX 1: Refine Vulkan support logic. 
-        // VirGL and llvmpipe are OpenGL/Software based and should NOT show DXVK/VKD3D.
-        boolean supportsVulkan = graphicsDriver.startsWith("turnip") || 
-                                 graphicsDriver.startsWith("vortek");
+        // FIX 1: Strict Vulkan Check
+        // Only Turnip and Vortek are considered Vulkan-capable here.
+        // VirGL and llvmpipe are explicitly excluded.
+        boolean supportsVulkan = (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) 
+                                 && !graphicsDriver.contains("virgl");
 
         ArrayList<String> items = new ArrayList<>();
         for (String value : dxwrapperEntries) {
-            // Only add DXVK/VKD3D if the driver supports Vulkan
+            // Only add DXVK and VKD3D if the driver explicitly supports Vulkan
             if (supportsVulkan || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
                 items.add(value);
             }
@@ -758,16 +760,17 @@ public class ContainerDetailFragment extends Fragment {
 
         // FIX 2: Configuration Dialog Logic
         if (graphicsDriver.startsWith("virgl")) {
-            // VirGL uses its own specific dialog
+            // Case 1: VirGL mode gets its specific dialog
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
             vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
         } else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
-            // Turnip and Vortek use the generic GraphicsDriverConfigDialog
+            // Case 2: Standard wrappers get the generic Wrapper/Graphics settings dialog
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
             vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
         } else {
-            // llvmpipe and any other drivers do not need a configuration dialog
+            // Case 3: Llvmpipe and any other software drivers have NO configuration dialog
             vGraphicsDriverConfig.setVisibility(View.GONE);
+            vGraphicsDriverConfig.setOnClickListener(null);
         }
     };
 
@@ -1101,6 +1104,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
