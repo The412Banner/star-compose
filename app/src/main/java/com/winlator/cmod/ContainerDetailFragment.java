@@ -729,44 +729,61 @@ public class ContainerDetailFragment extends Fragment {
         }
     }
 
-    // New method: Adds support for the GraphicsDriverConfigDialog
     public void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vGraphicsDriverConfig, String selectedGraphicsDriver, String selectedDXWrapper) {
-        final Context context = sGraphicsDriver.getContext();
+    final Context context = sGraphicsDriver.getContext();
+    final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
 
-        // Update the spinner with the available graphics driver options
-        updateGraphicsDriverSpinner(context, sGraphicsDriver);
+    // Update the spinner with the available graphics driver options
+    updateGraphicsDriverSpinner(context, sGraphicsDriver);
 
-        Runnable update = () -> {
-            String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
+    Runnable update = () -> {
+        String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
 
-            // Update the DXWrapper spinner
-            ArrayList<String> items = new ArrayList<>();
-            for (String value : context.getResources().getStringArray(R.array.dxwrapper_entries)) {
+        // Logic from Modified: Filter DXWrapper options
+        boolean isVulkanBased = graphicsDriver.startsWith("turnip") || 
+                                graphicsDriver.startsWith("vortek") || 
+                                graphicsDriver.startsWith("llvmpipe");
+
+        ArrayList<String> items = new ArrayList<>();
+        for (String value : dxwrapperEntries) {
+            if (isVulkanBased || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
                 items.add(value);
             }
-            sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray()));
-            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
+        }
+        
+        sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
+        AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
-            vGraphicsDriverConfig.setOnClickListener((v) -> {
-                new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show();
-            });
+        // --- Config Dialog Logic ---
+        if (graphicsDriver.startsWith("virgl")) {
+            // Specific Dialog for VirGL
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-        };
+            vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
+        } else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
+            // Keep original behavior for Vortek/Turnip
+            vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+            vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
+        } else {
+            // Hide for simple drivers (like llvmpipe) if they don't need config
+            vGraphicsDriverConfig.setVisibility(View.GONE);
+        }
+    };
 
-        sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                update.run();
-            }
+    sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            update.run();
+        }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {}
+    });
 
-        // Set the spinner's initial selection
-        AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
-        update.run();
-    }
+    // Set initial selection
+    AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
+    update.run();
+}
+
 
     public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
         AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
@@ -1083,6 +1100,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
