@@ -1,4 +1,4 @@
-package com.winlator.contentdialog;
+package com.winlator.cmod.contentdialog;
 
 /* Decompiled from Winlator 10 Final
  * https://github.com/brunodev85/winlator/releases/tag/v10.0.0
@@ -9,10 +9,10 @@ import android.view.View;
 import android.widget.CheckBox;
 import android.widget.Spinner;
 
-import com.winlator.R;
-import com.winlator.core.AppUtils;
-import com.winlator.core.EnvVars;
-import com.winlator.core.KeyValueSet;
+import com.winlator.cmod.R;
+import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.core.EnvVars;
+import com.winlator.cmod.core.KeyValueSet;
 
 import java.util.ArrayList;
 
