@@ -1502,7 +1502,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     
     // FIX: Removed 'this' and 'new KeyValueSet'. 
     // Pass the raw HashMap (graphicsDriverConfig) directly.
-    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(new com.winlator.cmod.core.KeyValueSet(this.graphicsDriverConfig), this.envVars);
+    com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();kvSet.putAll(this.graphicsDriverConfig);
+    
+    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(kvSet, this.envVars);
     
     if (changed) {
         // Use the contentsManager logic you mentioned
@@ -1988,6 +1990,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
