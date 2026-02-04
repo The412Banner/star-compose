@@ -738,37 +738,43 @@ public class ContainerDetailFragment extends Fragment {
     updateGraphicsDriverSpinner(context, sGraphicsDriver);
 
     Runnable update = () -> {
-        // Normalize the identifier to lowercase for consistent matching
-        String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem()).toLowerCase();
+        // Use the raw selected item string to ensure we match what's actually in the adapter
+        Object selectedItem = sGraphicsDriver.getSelectedItem();
+        String graphicsDriver = StringUtils.parseIdentifier(selectedItem).toLowerCase();
 
-        // FIX 1: Strict Vulkan Check
-        // Only Turnip and Vortek are considered Vulkan-capable here.
-        // VirGL and llvmpipe are explicitly excluded.
-        boolean supportsVulkan = (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) 
-                                 && !graphicsDriver.contains("virgl");
+        // FIX 1: DXWrapper Filtering Logic
+        // We only allow DXVK/VKD3D for Turnip or Vortek. 
+        // VirGL and LLVMPIPE are explicitly restricted to WineD3D.
+        boolean isVulkanDriver = graphicsDriver.contains("turnip") || graphicsDriver.contains("vortek");
+        boolean isVirGL = graphicsDriver.contains("virgl");
+        
+        // Final check: Must be a Vulkan driver AND definitely NOT VirGL
+        boolean supportsVulkan = isVulkanDriver && !isVirGL;
 
         ArrayList<String> items = new ArrayList<>();
         for (String value : dxwrapperEntries) {
-            // Only add DXVK and VKD3D if the driver explicitly supports Vulkan
             if (supportsVulkan || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
                 items.add(value);
             }
         }
         
+        // Refresh the DXWrapper spinner adapter with filtered items
         sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
+        
+        // Force reset selection if the current selectedDXWrapper is no longer in the list (e.g. switching to VirGL)
         AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
         // FIX 2: Configuration Dialog Logic
-        if (graphicsDriver.startsWith("virgl")) {
-            // Case 1: VirGL mode gets its specific dialog
+        if (isVirGL) {
+            // Case 1: VirGL specific dialog
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
             vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
-        } else if (graphicsDriver.startsWith("turnip") || graphicsDriver.startsWith("vortek")) {
-            // Case 2: Standard wrappers get the generic Wrapper/Graphics settings dialog
+        } else if (graphicsDriver.contains("turnip") || graphicsDriver.contains("vortek") || graphicsDriver.contains("wrapper")) {
+            // Case 2: Broaden "Wrapper" check so names like "wrapper" or "custom" work
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
             vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
         } else {
-            // Case 3: Llvmpipe and any other software drivers have NO configuration dialog
+            // Case 3: LLVMPIPE and others - No dialog gear shown
             vGraphicsDriverConfig.setVisibility(View.GONE);
             vGraphicsDriverConfig.setOnClickListener(null);
         }
@@ -784,10 +790,11 @@ public class ContainerDetailFragment extends Fragment {
         public void onNothingSelected(AdapterView<?> parent) {}
     });
 
-    // Set initial selection and run update
+    // Set initial selection
     AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
     update.run();
-    }
+}
+
 
     public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
         AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
@@ -1104,6 +1111,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
