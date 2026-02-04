@@ -1495,19 +1495,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     // --- 3. VirGL & LLVMpipe (Modified Integration) ---
     if (graphicsDriver != null && graphicsDriver.startsWith("virgl")) {
-        envVars.put("GALLIUM_DRIVER", "virpipe");
-        envVars.put("VIRGL_NO_READBACK", "true");
-        envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
-        envVars.put("vblank_mode", "0");
+    envVars.put("GALLIUM_DRIVER", "virpipe");
+    envVars.put("VIRGL_NO_READBACK", "true");
+    envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
+    envVars.put("vblank_mode", "0");
     
-        // Ensure both 'this' (Context) and 'KeyValueSet' are passed
-        // And verify the KeyValueSet import path: com.winlator.cmod.core.KeyValueSet
-        VirGLConfigDialog.setEnvVars(this, new com.winlator.cmod.core.KeyValueSet(this.graphicsDriverConfig), this.envVars);
+    // Fully qualify the Dialog and the KeyValueSet to bypass import issues
+    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(
+        this, 
+        new com.winlator.cmod.core.KeyValueSet(this.graphicsDriverConfig), 
+        this.envVars
+    );
     
-        if (changed) {
-            String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + DefaultVersion.VIRGL + ".tzst", rootDir);
-        }
+    if (changed) {
+        String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + com.winlator.cmod.core.DefaultVersion.VIRGL + ".tzst", rootDir);
+    }
     }
     else if (graphicsDriver != null && graphicsDriver.startsWith("llvmpipe")) {
         if (changed) {
@@ -1981,6 +1984,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
