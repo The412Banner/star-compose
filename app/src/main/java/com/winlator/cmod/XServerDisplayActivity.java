@@ -1500,18 +1500,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
     envVars.put("vblank_mode", "0");
     
-    // Fully qualify the Dialog and the KeyValueSet to bypass import issues
-    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(
-        this, 
-        new com.winlator.cmod.core.KeyValueSet(this.graphicsDriverConfig), 
-        this.envVars
-    );
+    // MATCHING YOUR MODIFIED METHOD EXACTLY:
+    // No 'this', no 'new KeyValueSet'. Just the config and envVars.
+    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(this.graphicsDriverConfig, this.envVars);
     
     if (changed) {
-        String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + com.winlator.cmod.core.DefaultVersion.VIRGL + ".tzst", rootDir);
+        // Checking for ContentProfile like in your modified snippet
+        com.winlator.cmod.contents.ContentProfile profile = contentsManager.getProfileByEntryName(graphicsDriver);
+        if (profile != null) {
+            contentsManager.applyContent(profile);
+        } else {
+            String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + com.winlator.cmod.core.DefaultVersion.VIRGL + ".tzst", rootDir);
+        }
     }
-    }
+}
+
     else if (graphicsDriver != null && graphicsDriver.startsWith("llvmpipe")) {
         if (changed) {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/llvmpipe-" + DefaultVersion.LLVMPIPE + ".tzst", rootDir);
@@ -1984,6 +1988,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
