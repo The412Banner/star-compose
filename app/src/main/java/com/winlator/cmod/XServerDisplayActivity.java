@@ -1993,7 +1993,35 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 
+    public static void startVirGLTestServer(Context context) {
+        Thread t = new Thread(new Runnable(){
+            @Override
+            public void run() {
+                // Taken from
+                // https://stackoverflow.com/questions/25879994/where-should-i-add-binary-executables-in-an-android-project
+                try {
+                    // creating exec process
+                    Log.v("THREAD", "virgl_test_server starting...");
+                    Process process =
+                            Runtime.getRuntime().exec(context.getApplicationInfo().nativeLibraryDir +
+                                    "/libvirgl_test_server.so");
+                    // reading and printing executable outcome
+                    byte[] buffer = new byte[2048];
+                    process.waitFor();
+                    process.getInputStream().read(buffer, 0 , buffer.length);
+                    System.out.println(new String(buffer));
+
+                } catch (IOException | InterruptedException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 }
+
+
 
 
 
