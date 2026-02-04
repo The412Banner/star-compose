@@ -1500,14 +1500,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
     envVars.put("vblank_mode", "0");
     
-    // FIX: Removed 'this' and 'new KeyValueSet'. 
-    // Pass the raw HashMap (graphicsDriverConfig) directly.
-    com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();kvSet.putAll(this.graphicsDriverConfig);
+    // Manually populate KeyValueSet since putAll is missing
+    com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();
+    for (java.util.Map.Entry<String, String> entry : this.graphicsDriverConfig.entrySet()) {
+        kvSet.put(entry.getKey(), entry.getValue());
+    }
     
+    // Pass the populated kvSet to the dialog
     com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(kvSet, this.envVars);
     
     if (changed) {
-        // Use the contentsManager logic you mentioned
         com.winlator.cmod.contents.ContentProfile profile = contentsManager.getProfileByEntryName(graphicsDriver);
         if (profile != null) {
             contentsManager.applyContent(profile);
@@ -1990,6 +1992,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
