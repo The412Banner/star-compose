@@ -1499,15 +1499,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("VIRGL_NO_READBACK", "true");
         envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
         envVars.put("vblank_mode", "0");
-        
-        // FIX: Added 'this' context and used correct KeyValueSet path
-        VirGLConfigDialog.setEnvVars(this, new KeyValueSet(this.graphicsDriverConfig), this.envVars);
-        
+    
+        // Ensure both 'this' (Context) and 'KeyValueSet' are passed
+        // And verify the KeyValueSet import path: com.winlator.cmod.core.KeyValueSet
+        VirGLConfigDialog.setEnvVars(this, new com.winlator.cmod.core.KeyValueSet(this.graphicsDriverConfig), this.envVars);
+    
         if (changed) {
-            String path = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, path + DefaultVersion.VIRGL + ".tzst", rootDir);
+            String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + DefaultVersion.VIRGL + ".tzst", rootDir);
         }
-    } 
+    }
     else if (graphicsDriver != null && graphicsDriver.startsWith("llvmpipe")) {
         if (changed) {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/llvmpipe-" + DefaultVersion.LLVMPIPE + ".tzst", rootDir);
@@ -1953,7 +1954,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 
-    public static void startVirGLTestServer(Context context) {
+    public static void startVirGLTestServer(android.content.Context context) {
         Thread t = new Thread(new Runnable(){
             @Override
             public void run() {
@@ -1980,6 +1981,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
