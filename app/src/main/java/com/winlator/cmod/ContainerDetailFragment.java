@@ -787,7 +787,7 @@ public class ContainerDetailFragment extends Fragment {
     // Set initial selection and run update
     AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
     update.run();
-}
+    }
 
     public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
         AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
@@ -1104,6 +1104,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
