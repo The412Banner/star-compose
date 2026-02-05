@@ -1476,80 +1476,70 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     String adrenoToolsDriverId = graphicsDriverConfig.get("version");
     File rootDir = imageFs.getRootDir();
     
-    // Safety check for useOldVirGL (retrieved from container extras)
     boolean useOldVirGL = Boolean.parseBoolean(container.getExtra("useOldVirGL", "false"));
-
     int cacheContainerId = preferences.getInt("cache_container_id", 0);
     String cacheDriverId = container.getExtra("graphicsDriver", "");
-    boolean changed = (!cacheDriverId.equals(graphicsDriver)) || (cacheContainerId != container.id) || firstTimeBoot;
+    
+    // Check if the actual driver file is missing to force re-extraction if needed
+    File virglLib = new File(rootDir, "usr/lib/libGL.so.1"); // Common path check
+    boolean filesMissing = (graphicsDriver.startsWith("virgl") && !virglLib.exists());
+
+    boolean changed = (!cacheDriverId.equals(graphicsDriver)) || (cacheContainerId != container.id) || firstTimeBoot || filesMissing;
 
     // --- 2. DX Wrapper (Original) ---
     if (dxwrapper.contains("dxvk")) {
         DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        if ("1.11.1-sarek".equals(dxwrapperConfig.get("version"))) {
-            envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
-        }
     } else {
         WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
     }
 
-    // --- 3. VirGL & LLVMpipe (Modified Integration) ---
+    // --- 3. VirGL & LLVMpipe ---
     if (graphicsDriver != null && graphicsDriver.startsWith("virgl")) {
-    envVars.put("GALLIUM_DRIVER", "virpipe");
-    envVars.put("VIRGL_NO_READBACK", "true");
-    envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
-    envVars.put("vblank_mode", "0");
-    
-    // Manually populate KeyValueSet since putAll is missing
-    com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();
-    for (java.util.Map.Entry<String, String> entry : this.graphicsDriverConfig.entrySet()) {
-        kvSet.put(entry.getKey(), entry.getValue());
-    }
-    
-    // Pass the populated kvSet to the dialog
-    com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(kvSet, this.envVars);
-    
-    if (changed) {
-        com.winlator.cmod.contents.ContentProfile profile = contentsManager.getProfileByEntryName(graphicsDriver);
-        if (profile != null) {
-            contentsManager.applyContent(profile);
-        } else {
-            String virglPath = useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-";
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, virglPath + com.winlator.cmod.core.DefaultVersion.VIRGL + ".tzst", rootDir);
+        envVars.put("GALLIUM_DRIVER", "virpipe");
+        envVars.put("VIRGL_NO_READBACK", "true");
+        envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
+        envVars.put("vblank_mode", "0");
+        
+        com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();
+        for (java.util.Map.Entry<String, String> entry : this.graphicsDriverConfig.entrySet()) {
+            kvSet.put(entry.getKey(), entry.getValue());
         }
-    }
-}
-
+        com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(kvSet, this.envVars);
+        
+        if (changed) {
+            com.winlator.cmod.contents.ContentProfile profile = contentsManager.getProfileByEntryName(graphicsDriver);
+            // Fix: Only use profile if it's explicitly found; otherwise, always extract the assets
+            if (profile != null) {
+                contentsManager.applyContent(profile);
+            } else {
+                String version = com.winlator.cmod.core.DefaultVersion.VIRGL;
+                String fileName = (useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-") + version + ".tzst";
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, fileName, rootDir);
+            }
+        }
+    } 
     else if (graphicsDriver != null && graphicsDriver.startsWith("llvmpipe")) {
         if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/llvmpipe-" + DefaultVersion.LLVMPIPE + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/llvmpipe-" + com.winlator.cmod.core.DefaultVersion.LLVMPIPE + ".tzst", rootDir);
         }
     }
-    // --- 4. Fallback to Wrapper/Adrenotools (Original) ---
+    // --- 4. Fallback Logic ---
     else {
         envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
         envVars.put("GALLIUM_DRIVER", "zink");
-
         if (changed) {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper.tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers.tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
-            
-            if (wineInfo.isArm64EC() && !GPUInformation.getRenderer(null,null).contains("Mali"))
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
         }
     }
 
-    // --- 5. Adrenotools Support (Original) ---
+    // --- 5. Adrenotools & Extensions ---
     if (adrenoToolsDriverId != null && !adrenoToolsDriverId.equals("System")) {
         new AdrenotoolsManager(this).setDriverById(envVars, imageFs, adrenoToolsDriverId);
     }
 
-    // --- 6. Mandatory Extensions & BCN (Fixed Null-Safety) ---
-    boolean useDRI3 = preferences.getBoolean("use_dri3", true);
-    if (!useDRI3) envVars.put("MESA_VK_WSI_DEBUG", "sw");
-
-    // BCN Emulation Safety Fix
+    // BCN Emulation Fix
     String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
     if (bcnEmulation == null) bcnEmulation = "default";
     String bcnType = graphicsDriverConfig.get("bcnEmulationType");
@@ -1566,13 +1556,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
     }
 
-    // vkBasalt (Always applied if config exists)
     if (vkbasaltConfig != null && !vkbasaltConfig.isEmpty()) {
         envVars.put("ENABLE_VKBASALT", "1");
         envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
     }
 
-    // --- 7. Save State ---
+    // --- 7. Save State (Update cache so 'changed' works correctly next time) ---
     if (changed) {
         container.putExtra("graphicsDriver", graphicsDriver);
         container.saveData();
@@ -1992,6 +1981,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         t.start();
     }
 }
+
 
 
 
