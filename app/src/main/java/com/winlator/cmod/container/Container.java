@@ -540,7 +540,7 @@ public class Container {
                 if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {
                     data.put("graphicsDriver", "wrapper");
                 }
-                else if (graphicsDriver.equals("virgl")) {
+                else if (graphicsDriver.equals("llvmpipe")) {
                     data.put("graphicsDriver", "virgl");
                 }
             }
@@ -605,5 +605,6 @@ public class Container {
     }
 
 }
+
 
 
