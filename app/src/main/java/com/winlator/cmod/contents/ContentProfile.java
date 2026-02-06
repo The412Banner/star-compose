@@ -20,7 +20,6 @@ public class ContentProfile {
     public enum ContentType {
         CONTENT_TYPE_WINE("Wine"),
         CONTENT_TYPE_DXVK("DXVK"),
-        CONTENT_TYPE_VIRGL("VirGL"),
         CONTENT_TYPE_VKD3D("VKD3D"),
         CONTENT_TYPE_BOX64("Box64"),
         CONTENT_TYPE_WOWBOX64("WOWBox64"),
@@ -61,4 +60,5 @@ public class ContentProfile {
     public String winePrefixPack;
     public String remoteUrl;
 }
+
 
