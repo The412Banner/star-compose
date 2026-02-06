@@ -19,9 +19,7 @@
         <item>1920x1080 (16:9)</item>
     </string-array>
     <string-array name="graphics_driver_entries">
-        <item>Turnip/Wrapper</item>
-        <item>VirGL</item>
-        <item>LLVMPIPE</item>
+        <item>Wrapper</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
@@ -335,6 +333,7 @@
         <item>DLS</item>
     </string-array>
 </resources>
+
 
 
 
