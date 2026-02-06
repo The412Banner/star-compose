@@ -58,7 +58,6 @@ import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ScreenEffectDialog;
-import com.winlator.cmod.contentdialog.VirGLConfigDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
@@ -1471,117 +1470,111 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void extractGraphicsDriverFiles() {
-    // --- 1. Basic Setup ---
-    String graphicsDriver = graphicsDriverConfig.get("graphicsDriver"); 
-    // Fix: Fallback to "none" or "wrapper" if null to prevent crashes
-    if (graphicsDriver == null) graphicsDriver = "wrapper"; 
-    
-    String adrenoToolsDriverId = graphicsDriverConfig.get("version");
-    File rootDir = imageFs.getRootDir();
-    
-    boolean useOldVirGL = Boolean.parseBoolean(container.getExtra("useOldVirGL", "false"));
-    int cacheContainerId = preferences.getInt("cache_container_id", 0);
-    String cacheDriverId = container.getExtra("graphicsDriver", "");
-    
-    // Fix: Perform null-safe check for missing files
-    boolean filesMissing = false;
-    if (graphicsDriver.startsWith("virgl")) {
-        File virglLib = new File(rootDir, "usr/lib/libGL.so.1");
-        filesMissing = !virglLib.exists();
-    } else if (graphicsDriver.startsWith("llvmpipe")) {
-        File llvmLib = new File(rootDir, "usr/lib/libvulkan_lvp.so"); // LLVMpipe indicator
-        filesMissing = !llvmLib.exists();
-    }
+        String adrenoToolsDriverId = graphicsDriverConfig.get("version");
 
-    boolean changed = (!cacheDriverId.equals(graphicsDriver)) || (cacheContainerId != container.id) || firstTimeBoot || filesMissing;
+        Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
 
-    // --- 2. DX Wrapper (Original) ---
-    if (dxwrapper != null && dxwrapper.contains("dxvk")) {
-        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-    } else {
-        WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-    }
+        File rootDir = imageFs.getRootDir();
 
-    // --- 3. VirGL & LLVMpipe ---
-    if (graphicsDriver.startsWith("virgl")) {
-        envVars.put("GALLIUM_DRIVER", "virpipe");
-        envVars.put("VIRGL_NO_READBACK", "true");
-        envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
-        envVars.put("vblank_mode", "0");
-        
-        com.winlator.cmod.core.KeyValueSet kvSet = new com.winlator.cmod.core.KeyValueSet();
-        if (this.graphicsDriverConfig != null) {
-            for (java.util.Map.Entry<String, String> entry : this.graphicsDriverConfig.entrySet()) {
-                kvSet.put(entry.getKey(), entry.getValue());
+        if (dxwrapper.contains("dxvk")) {
+            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+            String version = dxwrapperConfig.get("version");
+            if (version.equals("1.11.1-sarek")) {
+                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
             }
         }
-        com.winlator.cmod.contentdialog.VirGLConfigDialog.setEnvVars(kvSet, this.envVars);
-        
-        if (changed) {
-            com.winlator.cmod.contents.ContentProfile profile = contentsManager != null ? contentsManager.getProfileByEntryName(graphicsDriver) : null;
-            if (profile != null) {
-                contentsManager.applyContent(profile);
-            } else {
-                String version = com.winlator.cmod.core.DefaultVersion.VIRGL;
-                String fileName = (useOldVirGL ? "graphics_driver/virgl-old-" : "graphics_driver/virgl-") + version + ".tzst";
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, fileName, rootDir);
-            }
+        else {
+            WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
         }
-    } 
-    else if (graphicsDriver.startsWith("llvmpipe")) {
-        if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/llvmpipe-" + com.winlator.cmod.core.DefaultVersion.LLVMPIPE + ".tzst", rootDir);
+
+        boolean useDRI3 = preferences.getBoolean("use_dri3", true);
+        if (!useDRI3) {
+            envVars.put("MESA_VK_WSI_DEBUG", "sw");
         }
-    }
-    // --- 4. Fallback Logic ---
-    else {
+
         envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
         envVars.put("GALLIUM_DRIVER", "zink");
-        if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper.tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers.tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
-            
-            // Fix: Check Mali renderer to avoid zink DLL conflicts
+
+        if (firstTimeBoot) {
+            Log.d("XServerDisplayActivity", "First time container boot, re-extracting libs");
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
             if (wineInfo.isArm64EC() && !GPUInformation.getRenderer(null,null).contains("Mali"))
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls" + ".tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
         }
-    }
 
-    // --- 5. Adrenotools Support ---
-    if (adrenoToolsDriverId != null && !adrenoToolsDriverId.equals("System")) {
-        new AdrenotoolsManager(this).setDriverById(envVars, imageFs, adrenoToolsDriverId);
-    }
+        if (adrenoToolsDriverId != "System") {
+            AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
+            adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
+        }
 
-    // --- 6. Extensions & BCN Fix ---
-    String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
-    if (bcnEmulation == null) bcnEmulation = "default";
-    String bcnType = graphicsDriverConfig.get("bcnEmulationType");
+        String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
+        String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
+        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
+        envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
 
-    switch (bcnEmulation) {
-        case "auto", "full" -> {
-            if ("compute".equals(bcnType) && GPUInformation.getVendorID(null, null) != 0x5143) {
-                envVars.put("ENABLE_BCN_COMPUTE", "1");
-                envVars.put("BCN_COMPUTE_AUTO", bcnEmulation.equals("auto") ? "1" : "0");
+        String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
+        envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
+
+        String gpuName = graphicsDriverConfig.get("gpuName");
+        if (!gpuName.equals("Device")) {
+            envVars.put("WRAPPER_DEVICE_NAME", gpuName);
+            envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
+            envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
+        }
+
+        String maxDeviceMemory = graphicsDriverConfig.get("maxDeviceMemory");
+        if (maxDeviceMemory != null && Integer.parseInt(maxDeviceMemory) > 0)
+            envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
+        
+        String presentMode = graphicsDriverConfig.get("presentMode");
+        if (presentMode.contains("immediate")) {
+            envVars.put("WRAPPER_MAX_IMAGE_COUNT", "1");
+        }
+        envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
+
+        String resourceType = graphicsDriverConfig.get("resourceType");
+        envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
+
+        String syncFrame = graphicsDriverConfig.get("syncFrame");
+        if (syncFrame.equals("1"))
+            envVars.put("MESA_VK_WSI_DEBUG", "forcesync");
+
+        String disablePresentWait = graphicsDriverConfig.get("disablePresentWait");
+        envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
+
+        String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
+        String bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType");
+
+        switch (bcnEmulation) {
+            case "auto" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "1");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
-            envVars.put("WRAPPER_EMULATE_BCN", bcnEmulation.equals("auto") ? "3" : "2");
+            case "full" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "0");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "2");
+            }
+            case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
+            default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
         }
-        case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
-        default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
-    }
 
-    if (vkbasaltConfig != null && !vkbasaltConfig.isEmpty()) {
-        envVars.put("ENABLE_VKBASALT", "1");
-        envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
-    }
+        String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
+        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
 
-    // --- 7. Save State ---
-    if (changed) {
-        container.putExtra("graphicsDriver", graphicsDriver);
-        container.saveData();
-        preferences.edit().putInt("cache_container_id", container.id).apply();
+        if (!vkbasaltConfig.isEmpty()) {
+            envVars.put("ENABLE_VKBASALT", "1");
+            envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
+        }
     }
-}
     
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
@@ -1967,34 +1960,8 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     public void setScreenEffectProfile(String screenEffectProfile) {
         this.screenEffectProfile = screenEffectProfile;
     }
-
-    public static void startVirGLTestServer(android.content.Context context) {
-        Thread t = new Thread(new Runnable(){
-            @Override
-            public void run() {
-                // Taken from
-                // https://stackoverflow.com/questions/25879994/where-should-i-add-binary-executables-in-an-android-project
-                try {
-                    // creating exec process
-                    Log.v("THREAD", "virgl_test_server starting...");
-                    Process process =
-                            Runtime.getRuntime().exec(context.getApplicationInfo().nativeLibraryDir +
-                                    "/libvirgl_test_server.so");
-                    // reading and printing executable outcome
-                    byte[] buffer = new byte[2048];
-                    process.waitFor();
-                    process.getInputStream().read(buffer, 0 , buffer.length);
-                    System.out.println(new String(buffer));
-
-                } catch (IOException | InterruptedException e)
-                {
-                    e.printStackTrace();
-                }
-            }
-        });
-        t.start();
-    }
 }
+
 
 
 
