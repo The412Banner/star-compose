@@ -42,7 +42,6 @@ import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
-import com.winlator.cmod.contentdialog.VirGLConfigDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
@@ -730,71 +729,44 @@ public class ContainerDetailFragment extends Fragment {
         }
     }
 
+    // New method: Adds support for the GraphicsDriverConfigDialog
     public void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vGraphicsDriverConfig, String selectedGraphicsDriver, String selectedDXWrapper) {
-    final Context context = sGraphicsDriver.getContext();
-    final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
+        final Context context = sGraphicsDriver.getContext();
 
-    // Update the spinner with the available graphics driver options
-    updateGraphicsDriverSpinner(context, sGraphicsDriver);
+        // Update the spinner with the available graphics driver options
+        updateGraphicsDriverSpinner(context, sGraphicsDriver);
 
-    Runnable update = () -> {
-        // Use the raw selected item string to ensure we match what's actually in the adapter
-        Object selectedItem = sGraphicsDriver.getSelectedItem();
-        String graphicsDriver = StringUtils.parseIdentifier(selectedItem).toLowerCase();
+        Runnable update = () -> {
+            String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
 
-        // FIX 1: DXWrapper Filtering Logic
-        // We only allow DXVK/VKD3D for Turnip or Vortek. 
-        // VirGL and LLVMPIPE are explicitly restricted to WineD3D.
-        boolean isVulkanDriver = graphicsDriver.contains("turnip") || graphicsDriver.contains("vortek");
-        boolean isVirGL = graphicsDriver.contains("virgl");
-        
-        // Final check: Must be a Vulkan driver AND definitely NOT VirGL
-        boolean supportsVulkan = isVulkanDriver && !isVirGL;
-
-        ArrayList<String> items = new ArrayList<>();
-        for (String value : dxwrapperEntries) {
-            if (supportsVulkan || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
+            // Update the DXWrapper spinner
+            ArrayList<String> items = new ArrayList<>();
+            for (String value : context.getResources().getStringArray(R.array.dxwrapper_entries)) {
                 items.add(value);
             }
-        }
-        
-        // Refresh the DXWrapper spinner adapter with filtered items
-        sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
-        
-        // Force reset selection if the current selectedDXWrapper is no longer in the list (e.g. switching to VirGL)
-        AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
+            sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray()));
+            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
-        // FIX 2: Configuration Dialog Logic
-        if (isVirGL) {
-            // Case 1: VirGL specific dialog
+            vGraphicsDriverConfig.setOnClickListener((v) -> {
+                new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show();
+            });
             vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-            vGraphicsDriverConfig.setOnClickListener(v -> new VirGLConfigDialog(vGraphicsDriverConfig).show());
-        } else if (graphicsDriver.contains("turnip") || graphicsDriver.contains("vortek") || graphicsDriver.contains("wrapper")) {
-            // Case 2: Broaden "Wrapper" check so names like "wrapper" or "custom" work
-            vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-            vGraphicsDriverConfig.setOnClickListener(v -> new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, null).show());
-        } else {
-            // Case 3: LLVMPIPE and others - No dialog gear shown
-            vGraphicsDriverConfig.setVisibility(View.GONE);
-            vGraphicsDriverConfig.setOnClickListener(null);
-        }
-    };
+        };
 
-    sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-        @Override
-        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-            update.run();
-        }
+        sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                update.run();
+            }
 
-        @Override
-        public void onNothingSelected(AdapterView<?> parent) {}
-    });
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
-    // Set initial selection
-    AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
-    update.run();
-}
-
+        // Set the spinner's initial selection
+        AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
+        update.run();
+    }
 
     public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, boolean isARM64EC) {
         AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
@@ -1111,6 +1083,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
