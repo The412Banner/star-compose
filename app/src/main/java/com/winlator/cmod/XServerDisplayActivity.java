@@ -14,9 +14,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -182,11 +179,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private Runnable configChangedCallback = null;
     private boolean isPaused = false;
     private boolean isRelativeMouseMovement = false;
+    private boolean isMouseDisabled = false;
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
-    private Sensor gyroSensor;
-    private ExternalController controller;
 
     // Playtime stats tracking
     private long startTime;
@@ -226,24 +222,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 
-    private final SensorEventListener gyroListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                float gyroX = event.values[0]; // Rotation around the X-axis
-                float gyroY = event.values[1]; // Rotation around the Y-axis
-
-                winHandler.updateGyroData(gyroX, gyroY); // Send gyro data to WinHandler
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // No action needed
-        }
-    };
-
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -262,19 +240,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
 
-        // Initialize the WinHandler after context is set up
-        winHandler = new WinHandler(this);
-        winHandler.initializeController();
-        controller = winHandler.getCurrentController();
-
-        if (isOpenWithAndroidBrowser || isShareAndroidClipboard)
-            wineRequestHandler = new WineRequestHandler(this);
-
-        if (controller != null) {
-            int triggerType = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS); // Default to TRIGGER_IS_AXIS
-            controller.setTriggerType((byte) triggerType); // Cast to byte if needed
-        }
-
 
 
         // Check if xinputDisabled extra is passed
@@ -284,15 +249,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
         // Initialize SensorManager
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Register the sensor event listener
-            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
-        }
 
 
 
@@ -353,6 +309,20 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         });
 
         imageFs = ImageFs.find(this);
+
+        // Cleanup event files before initializing WinHandler
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        if (devInputDir.exists() || devInputDir.mkdirs()) {
+            for (int i = 0; i < 4; i++) {
+                File eventFile = new File(devInputDir, "event" + i);
+                if (eventFile.exists()) eventFile.delete();
+            }
+            try { new File(devInputDir, "event0").createNewFile(); } catch (Exception e) {}
+        }
+
+        // Initialize the WinHandler
+        winHandler = new WinHandler(this);
+        winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
         containerManager = new ContainerManager(this);
@@ -719,12 +689,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onResume() {
         super.onResume();
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Re-register the sensor listener when the activity is resumed
-            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
-        }
 
         if (environment != null) {
             xServerView.onResume();
@@ -738,12 +702,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onPause() {
         super.onPause();
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Unregister the sensor listener when the activity is paused
-            sensorManager.unregisterListener(gyroListener);
-        }
 
         // Check if we are entering Picture-in-Picture mode
         if (!isInPictureInPictureMode()) {
@@ -800,7 +758,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 handler.removeCallbacks(savePlaytimeRunnable);
                 if (midiHandler != null) midiHandler.stop();
                 // Unregister sensor listener to avoid memory leaks
-                if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
                 if (environment != null) environment.stopEnvironmentComponents();
                 if (preloaderDialog != null && preloaderDialog.isShowing()) preloaderDialog.closeOnUiThread();
                 if (winHandler != null) winHandler.stop();
@@ -860,6 +817,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 isRelativeMouseMovement = !isRelativeMouseMovement;
                 drawerLayout.closeDrawers();
                 xServer.setRelativeMouseMovement(isRelativeMouseMovement);
+                break;
+            case R.id.main_menu_disable_mouse:
+                isMouseDisabled = !isMouseDisabled;
+                touchpadView.setMouseEnabled(!isMouseDisabled);
+                drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_toggle_fullscreen:
                 renderer.toggleFullscreen();
@@ -962,13 +924,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
     }
 
-    private void extractInputDLLs() {
-        String inputAsset = "input_dlls.tzst";
-        File wineFolder = new File(imageFs.getWinePath() + "/lib/wine/");
-        boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, inputAsset, wineFolder);
-        if (!success)
-            Log.d("XServerDisplayActivity", "Failed to extract input dlls");
-    }
+    // private void extractInputDLLs() {
+    //     String inputAsset = "input_dlls.tzst";
+    //     File wineFolder = new File(imageFs.getWinePath() + "/lib/wine/");
+    //     boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, inputAsset, wineFolder);
+    //     if (!success)
+    //         Log.d("XServerDisplayActivity", "Failed to extract input dlls");
+    // }
 
     private void setupWineSystemFiles() {
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));
@@ -1013,6 +975,24 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         WineStartMenuCreator.create(this, container);
         WineUtils.createDosdevicesSymlinks(container);
+        
+        // Configure Wine joystick registry keys based on DInput setting
+        int inputType = container.getInputType();
+        if (shortcut != null) {
+            String shortcutInputType = shortcut.getExtra("inputType");
+            if (!shortcutInputType.isEmpty()) {
+                inputType = Byte.parseByte(shortcutInputType);
+            }
+        }
+        boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
+        
+        boolean exclusiveXInput = container.isExclusiveXInput();
+        if (shortcut != null) {
+            String extra = shortcut.getExtra("exclusiveXInput");
+            if (!extra.isEmpty()) exclusiveXInput = extra.equals("1");
+        }
+        
+        WineUtils.setJoystickRegistryKeys(container, dinputEnabled, exclusiveXInput);
 
         if (shortcut != null)
             startupSelection = shortcut.getExtra("startupSelection", String.valueOf(container.getStartupSelection()));
@@ -1020,13 +1000,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             startupSelection = String.valueOf(container.getStartupSelection());
 
         if (!startupSelection.equals(container.getExtra("startupSelection"))) {
-            WineUtils.changeServicesStatus(container, Byte.parseByte(startupSelection) != Container.STARTUP_SELECTION_NORMAL);
+            WineUtils.changeServicesStatus(container, startupSelection);
             container.putExtra("startupSelection", startupSelection);
             containerDataChanged = true;
         }
-        
-        extractInputDLLs();
-
         if (containerDataChanged) container.saveData();
     }
 
@@ -1057,7 +1034,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Additional container checks and environment configuration
         if (container != null) {
             if (Byte.parseByte(startupSelection) == Container.STARTUP_SELECTION_AGGRESSIVE) {
-                winHandler.killProcess("services.exe");
+                // winHandler.killProcess("services.exe"); 
             }
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
@@ -1140,10 +1117,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Add the launcher to our environment
         environment.addComponent(guestProgramLauncherComponent);
 
-        // Start all environment components (XServer, Audio, etc.)
+        // Initialize fake input for controller emulation - MUST be before Wine starts! Deleting old ones should also be done here ofc.
+        // Initialize fake input for controller emulation - MUST be before Wine starts!
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        if (devInputDir.exists() || devInputDir.mkdirs()) {
+             // Cleanup moved to onCreate
+        }
+
+        // Start all environment components (XServer, Audio, Wine, etc.)
         environment.startEnvironmentComponents();
 
-        // Start the WinHandler
+        // Start the WinHandler (writes events to the file)
         winHandler.start();
 
         if (wineRequestHandler != null) wineRequestHandler.start();
@@ -1175,6 +1159,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
         touchpadView.setSensitivity(globalCursorSpeed);
+        touchpadView.setMouseEnabled(!isMouseDisabled);
         touchpadView.setFourFingersTapCallback(() -> {
             if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
         });
@@ -1455,6 +1440,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setPointerButtonRightEnabled(false);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void hideInputControls() {
@@ -1467,6 +1453,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setPointerButtonRightEnabled(true);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void extractGraphicsDriverFiles() {

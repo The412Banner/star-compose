@@ -37,3 +37,16 @@ target_link_libraries(winlator
         GLESv3
         adrenotools
 )
+
+# Add Fake Input library for controller emulation (loaded via LD_PRELOAD)
+add_library(fakeinput SHARED
+        winlator/fakeinput.cpp
+)
+
+target_compile_options(fakeinput PRIVATE -Wall -Wextra -fvisibility=hidden)
+
+target_link_libraries(fakeinput
+        log
+        dl
+)
+

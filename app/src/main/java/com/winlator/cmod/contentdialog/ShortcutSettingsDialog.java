@@ -207,28 +207,58 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final Runnable showInputWarning = () -> ContentDialog.alert(context, R.string.enable_xinput_and_dinput_same_time, null);
         final CheckBox cbEnableXInput = findViewById(R.id.CBEnableXInput);
         final CheckBox cbEnableDInput = findViewById(R.id.CBEnableDInput);
-        final View llDInputType = findViewById(R.id.LLDinputMapperType);
+        final CheckBox cbExclusiveXInput = findViewById(R.id.CBExclusiveXInput);
         final View btHelpXInput = findViewById(R.id.BTXInputHelp);
         final View btHelpDInput = findViewById(R.id.BTDInputHelp);
-        Spinner SDInputType = findViewById(R.id.SDInputType);
+        final View btHelpExclusiveXInput = findViewById(R.id.BTExclusiveXInputHelp);
         int inputType = Integer.parseInt(shortcut.getExtra("inputType", String.valueOf(shortcut.container.getInputType())));
 
 
         cbEnableXInput.setChecked((inputType & WinHandler.FLAG_INPUT_TYPE_XINPUT) == WinHandler.FLAG_INPUT_TYPE_XINPUT);
         cbEnableDInput.setChecked((inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT);
+        
+        String exclusiveXInputExtra = shortcut.getExtra("exclusiveXInput");
+        boolean exclusiveXInput = exclusiveXInputExtra.isEmpty() ? shortcut.container.isExclusiveXInput() : exclusiveXInputExtra.equals("1");
+        cbExclusiveXInput.setChecked(exclusiveXInput);
+
         cbEnableDInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            llDInputType.setVisibility(isChecked?View.VISIBLE:View.GONE);
-            if (isChecked && cbEnableXInput.isChecked())
-                showInputWarning.run();
+            if (cbExclusiveXInput.isChecked()) {
+                if (isChecked && cbEnableXInput.isChecked()) {
+                    cbEnableXInput.setChecked(false);
+                }
+            }
         });
         cbEnableXInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && cbEnableDInput.isChecked())
-                showInputWarning.run();
+            if (cbExclusiveXInput.isChecked()) {
+                if (isChecked && cbEnableDInput.isChecked()) {
+                    cbEnableDInput.setChecked(false);
+                }
+            }
         });
+
+        cbExclusiveXInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!isChecked) {
+                cbEnableXInput.setChecked(true);
+                cbEnableDInput.setChecked(true);
+                cbEnableXInput.setEnabled(false);
+                cbEnableDInput.setEnabled(false);
+            } else {
+                cbEnableXInput.setEnabled(true);
+                cbEnableDInput.setEnabled(true);
+                if (cbEnableXInput.isChecked() && cbEnableDInput.isChecked()) cbEnableDInput.setChecked(false);
+            }
+        });
+
+        // Trigger initial state logic
+        if (!cbExclusiveXInput.isChecked()) {
+            cbEnableXInput.setChecked(true);
+            cbEnableDInput.setChecked(true);
+            cbEnableXInput.setEnabled(false);
+            cbEnableDInput.setEnabled(false);
+        }
         btHelpXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_xinput));
         btHelpDInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_dinput));
-        SDInputType.setSelection(((inputType & WinHandler.FLAG_DINPUT_MAPPER_STANDARD) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD) ? 0 : 1);
-        llDInputType.setVisibility(cbEnableDInput.isChecked()?View.VISIBLE:View.GONE);
+        btHelpExclusiveXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_exclusive_xinput));
 
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
         Box64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
@@ -361,10 +391,11 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 int finalInputType = 0;
                 finalInputType |= cbEnableXInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_XINPUT : 0;
                 finalInputType |= cbEnableDInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_DINPUT : 0;
-                finalInputType |= SDInputType.getSelectedItemPosition() == 0 ?  WinHandler.FLAG_DINPUT_MAPPER_STANDARD : WinHandler.FLAG_DINPUT_MAPPER_XINPUT;
 
 
                 shortcut.putExtra("inputType", String.valueOf(finalInputType));
+                
+                shortcut.putExtra("exclusiveXInput", cbExclusiveXInput.isChecked() ? "1" : "0");
 
                 boolean disabledXInput = cbDisabledXInput.isChecked();
                 shortcut.putExtra("disableXinput", disabledXInput ? "1" : null);
@@ -499,7 +530,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Spinner sEmulatorSpinner = view.findViewById(R.id.SEmulator);
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Spinner sControlsProfile = view.findViewById(R.id.SControlsProfile);
-        Spinner sDInputType = view.findViewById(R.id.SDInputType);
         Spinner sMIDISoundFont = view.findViewById(R.id.SMIDISoundFont);
         Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
         Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
@@ -514,7 +544,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sEmulatorSpinner.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sControlsProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-        sDInputType.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sMIDISoundFont.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox64Version.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sFEXCorePreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
