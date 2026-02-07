@@ -34,6 +34,7 @@ public class WineD3DConfigDialog extends ContentDialog {
         setTitle("WineD3D " + context.getString(R.string.configuration));
 
         final Spinner sCSMT = findViewById(R.id.SCSMT);
+        final Spinner sDDRAWrapper = findViewById(R.id.SDDRAWrapper);
         final Spinner sGPUName = findViewById(R.id.SGPUName);
         final Spinner sVideoMemorySize = findViewById(R.id.SVideoMemorySize);
         final Spinner sStrictShaderMath = findViewById(R.id.SStrictShaderMath);
@@ -60,6 +61,7 @@ public class WineD3DConfigDialog extends ContentDialog {
         sStrictShaderMath.setSelection(config.get("strict_shader_math").equals("1") ? 0 : 1);
         AppUtils.setSpinnerSelectionFromValue(sOffscreenRenderingMode, config.get("OffscreenRenderingMode"));
         AppUtils.setSpinnerSelectionFromValue(sGPUName, config.get("gpuName"));
+        AppUtils.setSpinnerSelectionFromIdentifier(sDDRAWrapper, config.get("ddrawrapper"));
         AppUtils.setSpinnerSelectionFromValue(sRenderer, config.get("renderer"));
         AppUtils.setSpinnerSelectionFromNumber(sVideoMemorySize, config.get("videoMemorySize"));
 
@@ -68,6 +70,7 @@ public class WineD3DConfigDialog extends ContentDialog {
             config.put("strict_shader_math", sStrictShaderMath.getSelectedItem().toString().equals("Enabled") ? "1" : "0");
             config.put("OffscreenRenderingMode", sOffscreenRenderingMode.getSelectedItem().toString());
             config.put("gpuName", sGPUName.getSelectedItem().toString());
+            config.put("ddrawrapper", StringUtils.parseIdentifier(sDDRAWrapper.getSelectedItem().toString()));
             config.put("videoMemorySize", StringUtils.parseNumber(sVideoMemorySize.getSelectedItem().toString()));
             config.put("renderer", sRenderer.getSelectedItem().toString());
             anchor.setTag(config.toString());
