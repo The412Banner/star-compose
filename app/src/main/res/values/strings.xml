@@ -44,6 +44,7 @@
     <string name="untitled">Untitled</string>
     <string name="no_profile_selected">No profile selected</string>
     <string name="no_profile_found">No profile found</string>
+    <string name="no_items_to_display_saves">Register a save file directory from one of your containers to get started!</string>
     <string name="do_you_want_to_remove_this_profile">Do you want to remove this profile?</string>
     <string name="do_you_want_to_duplicate_this_profile">Do you want to duplicate this profile?</string>
     <string name="do_you_want_to_duplicate_this_preset">Do you want to duplicate this preset?</string>
@@ -644,5 +645,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="shutdown">Shutdown</string>
 
 </resources>
+
 
 
