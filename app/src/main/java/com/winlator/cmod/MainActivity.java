@@ -64,7 +64,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean editInputControls = false;
     private int selectedProfileId;
     private SharedPreferences sharedPreferences;
+    private SaveSettingsDialog saveSettingsDialog;
+    private SaveEditDialog saveEditDialog;
+    private SaveManager saveManager;
     private ContainerManager containerManager;
+    private SaveEditDialog currentSaveEditDialog;
     private boolean isDarkMode;
 
 
@@ -442,6 +446,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem.setTitle(spanString);
     }
 }
+
 
 
 
