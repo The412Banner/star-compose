@@ -44,6 +44,7 @@
     <string name="untitled">Untitled</string>
     <string name="no_profile_selected">No profile selected</string>
     <string name="no_profile_found">No profile found</string>
+    <string name="no_items_to_display_saves">Register a save file directory from one of your containers to get started!</string>
     <string name="do_you_want_to_remove_this_profile">Do you want to remove this profile?</string>
     <string name="do_you_want_to_duplicate_this_profile">Do you want to duplicate this profile?</string>
     <string name="do_you_want_to_duplicate_this_preset">Do you want to duplicate this preset?</string>
@@ -342,7 +343,7 @@
     <string name="unable_to_remove_content_since_container_using">Unable to remove this content, because a container is currently using this Wine.</string>
     <string name="get_more_contents_form_github">You can access https://github.com/longjunyu2/winlator/releases to get more contents.</string>
     <string name="setup_failed">Setup failed</string>
-    <string name="graphics_driver_configuration">Graphics Driver Configuration</string>
+    <string name="graphics_driver_configuration">Turnip/Wrapper Driver Configuration</string>
     <string name="select_graphics_driver_version">Select Graphics Driver Version:</string>
     <string name="graphics_driver_version">Graphics Driver Version</string>
     <string name="graphics_driver_available_extensions">Available Extensions</string>
@@ -456,6 +457,7 @@
     <string name="fullscreen_stretched">Enable Fullscreen (Stretched)</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
+    <string name="importing_container">Importing Container...</string>
 
     <string name="brightness">Brightness</string>
     <string name="contrast">Contrast</string>
@@ -622,10 +624,15 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="graphics_driver_bcn_emulation">BCn Emulation</string>
     <string name="graphics_driver_bcn_emulation_type">BCn Emulation Type</string>
     <string name="graphics_driver_bcn_emulation_cache">BCn Emulation Cache</string>
+    <string name="opengl_version">OpenGL Version</string>
+    <string name="disableVertexArrayBGRA">Disable "Vertex array BGRA"</string>
+    <string name="disableKHRdebug">Disable "KHR debug"</string>
+    <string name="disableTextureSRGBdecode">Disable "Texture sRGB decode"</string>
+    <string name="useOldVirGL">Use old VirGL server</string>
+    <string name="useOldVirGLinfo">(better compatibility, slower)</string>
     <string name="vkbasalt">vkBasalt</string>
     <string name="vkbasalt_sharpness_effects">Sharpness Effect</string>
     <string name="vkbasalt_sharpness_level">Sharpness Level</string>
     <string name="vkbasalt_sharpness_denoise">Sharpeness Denoise</string>
     <string name="shutdown">Shutdown</string>
-    <string name="disable_mouse">Toggle Mouse</string>
-</resources>
+

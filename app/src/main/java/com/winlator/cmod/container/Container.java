@@ -554,7 +554,7 @@ public class Container {
                     data.put("graphicsDriver", "wrapper");
                 }
                 else if (graphicsDriver.equals("llvmpipe")) {
-                    data.put("graphicsDriver", "wrapper");
+                    data.put("graphicsDriver", "virgl");
                 }
             }
 
@@ -618,3 +618,6 @@ public class Container {
     }
 
 }
+
+
+

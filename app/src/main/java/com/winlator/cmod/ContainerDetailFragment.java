@@ -550,6 +550,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setControllerMapping(controllerMapping);
                     container.saveData();
                     saveWineRegistryKeys(view);
+                    AppUtils.showToast(getContext(), "Settings saved!");
                     getActivity().onBackPressed();
                 } else {
                     // Create new container with specified properties
@@ -1004,6 +1005,8 @@ public class ContainerDetailFragment extends Fragment {
         wineVersions.addAll(Arrays.asList(versions));
         for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
             wineVersions.add(ContentsManager.getEntryName(profile));
+        for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
+            wineVersions.add(ContentsManager.getEntryName(profile));
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineVersions));
         if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sWineVersion, container.getWineVersion());
     }
@@ -1083,5 +1086,17 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 

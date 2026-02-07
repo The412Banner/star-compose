@@ -296,4 +296,4 @@ public class DXVKConfigDialog extends ContentDialog {
         ArrayAdapter<VKD3DVersionItem> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList);
         spinner.setAdapter(adapter);
     }
-}
+                        }

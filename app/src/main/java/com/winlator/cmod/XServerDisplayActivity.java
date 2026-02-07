@@ -8,6 +8,7 @@ import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -458,7 +459,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             };
         }
 
-        preloaderDialog.show(R.string.starting_up);
+        if (shortcut == null)
+            preloaderDialog.show(container.getName(), null);
+        else {
+            preloaderDialog.show(shortcut.name, shortcut.icon);
+        }
 
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(new ScreenInfo(screenSize));
@@ -1458,10 +1463,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         File rootDir = imageFs.getRootDir();
 
-        if (dxwrapper.contains("dxvk"))
+        if (dxwrapper.contains("dxvk")) {
             DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        else
+            String version = dxwrapperConfig.get("version");
+            if (version.equals("1.11.1-sarek")) {
+                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
+            }
+        }
+        else {
             WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+        }
 
         boolean useDRI3 = preferences.getBoolean("use_dri3", true);
         if (!useDRI3) {
@@ -1525,14 +1537,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         switch (bcnEmulation) {
             case "auto" -> {
-                if (bcnEmulationType.equals("compute")) {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "1");
                 }
                 envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
             case "full" -> {
-                if (bcnEmulationType.equals("compute")) {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "0");
                 }
@@ -1550,7 +1562,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
         }
     }
-
+    
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
         boolean handledByWinHandler = false;
@@ -1615,6 +1627,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (dxwrapper.contains("dxvk")) {
             Log.d(TAG, "Extracting DXVK wrapper files, version: " + dxwrapper);
+
             String dxvkWrapper = dxwrapper.split(";")[0];
             String vkd3dWrapper = dxwrapper.split(";")[1];
             String ddrawrapper = dxwrapper.split(";")[2];
@@ -1648,24 +1661,33 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
             Log.d(TAG, "Extracting nglide wrapper");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
+TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
 
-            if (ddrawrapper.contains("None")) {
-                Log.d(TAG, "No DDRaw wrapper has been selected, restoring original ddraw files");
-                restoreOriginalDllFiles(new String[]{ "ddraw.dll", "d3dimm.dll" });
-            }
-            else {
-                if (ddrawrapper.equals("cnc-ddraw"))
-                    envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
+if (ddrawrapper.contains("None")) {
+    Log.d(TAG, "No DDRaw wrapper has been selected, restoring original ddraw files");
+    restoreOriginalDllFiles(new String[]{ "ddraw.dll", "d3dimm.dll" });
+}
+else {
+    if (ddrawrapper.equals("cnc-ddraw")) {
+        envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
+    }
+    // Fixed: Ensure no hidden characters (\u200b) exist before 'else if'
+    else if (ddrawrapper.equals("dgvoodoo")) {
+        Log.d(TAG, "Applying dgvoodoo ddrawrapper");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/dgvoodoo.tzst", windowsDir, onExtractFileListener);
+    }
 
-                Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
-            }
+    Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
+    // Only extract if it wasn't already handled specifically above
+    if (!ddrawrapper.equals("dgvoodoo")) {
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
+    }
+}
 
-            Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
-        } else if (dxwrapper.contains("wined3d")) {
-            Log.d(TAG, "Restoring original DLL files for wined3d.");
-            restoreOriginalDllFiles(dlls);
+Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
+} else if (dxwrapper.contains("wined3d")) {
+    Log.d(TAG, "Restoring original DLL files for wined3d.");
+    restoreOriginalDllFiles(dlls);
         }
     }
 
@@ -1925,8 +1947,27 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     public void setScreenEffectProfile(String screenEffectProfile) {
         this.screenEffectProfile = screenEffectProfile;
     }
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
