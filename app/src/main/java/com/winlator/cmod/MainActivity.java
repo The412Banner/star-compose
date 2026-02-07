@@ -38,11 +38,15 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.navigation.NavigationView;
 import com.winlator.cmod.R;
 import com.winlator.cmod.contentdialog.ContentDialog;
+import com.winlator.cmod.contentdialog.SaveEditDialog;
+import com.winlator.cmod.contentdialog.SaveSettingsDialog;
 import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.ImageUtils;
 import com.winlator.cmod.core.PreloaderDialog;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.core.WineThemeManager;
+import com.winlator.cmod.saves.Save;
+import com.winlator.cmod.saves.SaveManager;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import java.io.File;
@@ -60,7 +64,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean editInputControls = false;
     private int selectedProfileId;
     private SharedPreferences sharedPreferences;
+    private SaveSettingsDialog saveSettingsDialog;
+    private SaveEditDialog saveEditDialog;
+    private SaveManager saveManager;
     private ContainerManager containerManager;
+    private SaveEditDialog currentSaveEditDialog;
     private boolean isDarkMode;
 
 
@@ -108,8 +116,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Determine text color based on dark mode
         int textColor = isDarkMode ? Color.WHITE : Color.BLACK;
         setNavigationViewItemTextColor(navigationView, textColor);
-        
 
+        // Create Winlator folder if not present
+        File winlatorDir = new File(SettingsFragment.DEFAULT_WINLATOR_PATH);
+        if (!winlatorDir.exists())
+            winlatorDir.mkdirs();
+
+        // Initialize SaveManager and ContainerManager
+        saveManager = new SaveManager(this);
         containerManager = new ContainerManager(this);
 
         Intent intent = getIntent();
@@ -168,6 +182,51 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        Log.d("WinActivity", "onActivityResult called with requestCode: " + requestCode + " and resultCode: " + resultCode);
+
+        if (saveSettingsDialog != null && saveSettingsDialog.isShowing()) {
+            Log.d("WinActivity", "Forwarding result to SaveSettingsDialog");
+            saveSettingsDialog.onActivityResult(requestCode, resultCode, data);
+        } else if (saveEditDialog != null && saveEditDialog.isShowing()) {
+            Log.d("WinActivity", "Forwarding result to SaveEditDialog");
+            saveEditDialog.onActivityResult(requestCode, resultCode, data);
+        } else {
+            Log.d("WinActivity", "No dialog found for request code: " + requestCode);
+        }
+    }
+
+    private void showSavesFragment() {
+        SavesFragment fragment = new SavesFragment();
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.FLFragmentContainer, fragment)
+                .commit();
+    }
+
+    // Method to show SaveEditDialog
+    public void showSaveEditDialog(Save saveToEdit) {
+        saveEditDialog = new SaveEditDialog(this, saveManager, containerManager, saveToEdit);
+
+        // Check for dark mode and set the background accordingly
+        if (isDarkMode) {
+            saveEditDialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background_dark);
+        } else {
+            saveEditDialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
+        }
+
+        saveEditDialog.show();
+    }
+
+    public void onSaveAdded() {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.FLFragmentContainer);
+        if (currentFragment instanceof SavesFragment) {
+            ((SavesFragment) currentFragment).refreshSavesList();
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         List<Fragment> fragments = fragmentManager.getFragments();
@@ -203,15 +262,37 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
         if (menuItem.getItemId() == android.R.id.home) {
-            if (editInputControls) {
-                onBackPressed();
-                return true;
-            }
-
+            // Toggle the drawer
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START);
             } else {
                 drawerLayout.openDrawer(GravityCompat.START);
+            }
+            return true;
+        } else if (menuItem.getItemId() == R.id.saves_menu_add) {
+            // Check if we are editing a save
+            Intent intent = getIntent();
+            int editSaveId = intent.getIntExtra("edit_save_id", -1);
+            Save saveToEdit = editSaveId >= 0 ? saveManager.getSaveById(editSaveId) : null;
+
+            // Create and show SaveEditDialog or SaveSettingsDialog as appropriate
+            if (saveToEdit != null) {
+                // Ensure previous dialog is dismissed before showing a new one
+                if (saveEditDialog != null && saveEditDialog.isShowing()) {
+                    saveEditDialog.dismiss();
+                }
+                showSaveEditDialog(saveToEdit); // Use the correct method to show SaveEditDialog
+            } else {
+                saveSettingsDialog = new SaveSettingsDialog(this, saveManager, containerManager);
+
+                // Check for dark mode and set the background accordingly
+                if (isDarkMode) {
+                    saveSettingsDialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background_dark);
+                } else {
+                    saveSettingsDialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
+                }
+
+                saveSettingsDialog.show();
             }
             return true;
         } else {
@@ -249,6 +330,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.main_menu_adrenotools_gpu_drivers:
                 show(new AdrenotoolsFragment(), false);
+                break;
+            case R.id.main_menu_saves:
+                show(new SavesFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_settings:
                 show(new SettingsFragment(), false);  // Forward animation
@@ -307,7 +391,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ((TextView) dialog.findViewById(R.id.TVAppVersion)).setText(getString(R.string.version) + " " + pInfo.versionName);
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
-                    "Winlator Cmod by coffincolors, me (<a href=\"https://github.com/coffincolors/winlator\">Fork</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Fork</a>)",
+                    "Modified by Star Windows Emulator Team",
+                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a> and <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating winlator bionic",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",
@@ -360,15 +445,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         spanString.setSpan(new ForegroundColorSpan(color), 0, spanString.length(), 0);
         menuItem.setTitle(spanString);
     }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == OPEN_IMAGE_REQUEST_CODE && resultCode == RESULT_OK) {
-            Bitmap bitmap = ImageUtils.getBitmapFromUri(this, data.getData(), 1280);
-            if (bitmap == null) return;
-            File userWallpaperFile = WineThemeManager.getUserWallpaperFile(this);
-            ImageUtils.save(bitmap, userWallpaperFile, Bitmap.CompressFormat.PNG, 100);
-        }
-    }
 }
+
+
+
+
