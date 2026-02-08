@@ -865,6 +865,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 }
                 drawerLayout.closeDrawers();
                 break;
+            case R.id.main_menu_fsr_control:
+                new com.winlator.cmod.contentdialog.FSRControlFloatingDialog(this).show();
+                drawerLayout.closeDrawers();
+                break;
             case R.id.main_menu_screen_effects:
                 Log.d("ScreenEffectDialog", "Initializing ScreenEffectDialog");
                 ScreenEffectDialog screenEffectDialog = new ScreenEffectDialog(this);
@@ -1948,6 +1952,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 }
+
 
 
 
