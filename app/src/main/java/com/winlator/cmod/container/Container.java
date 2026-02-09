@@ -206,7 +206,7 @@ public class Container {
     public void setFullscreenStretched(boolean fullscreenStretched) { this.fullscreenStretched = fullscreenStretched; }
 
     public void setShowFPS(boolean showFPS) {
-        this.showFPS = data.optBoolean("showFPS", false);
+        this.showFPS = showFPS;
     }
 
     public String getFPSCounterConfig() {
@@ -214,7 +214,7 @@ public class Container {
     }
 
     public void setFPSCounterConfig(String fpsCounterConfig) {
-        this.fpsCounterConfig = data.optString("fpsCounterConfig", DEFAULT_FPS_COUNTER_CONFIG);
+        this.fpsCounterConfig = fpsCounterConfig;
     }
 
     public byte getStartupSelection() {
@@ -630,6 +630,7 @@ public class Container {
     }
 
 }
+
 
 
 
