@@ -30,6 +30,11 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRenderer;
     private final TextView tvGPU;
     private final TextView tvRAM;
+    private final View rowFPS;
+    private final View rowCPU;
+    private final View rowGPU;
+    private final View rowRAM;
+    private final View rowRenderer;
     private HashMap graphicsDriverConfig;
 
     public FrameRating(Context context, HashMap graphicsDriverConfig) {
@@ -105,4 +110,19 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
     }
+
+    public void applyConfig(String configString) {
+    com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
+    
+    // Toggle visibility based on config string values ("1" or "0")
+    findViewById(R.id.TVFPS).setVisibility(config.get("showFPS").equals("1") ? View.VISIBLE : View.GONE);
+    findViewById(R.id.TVRAM).setVisibility(config.get("showRAM").equals("1") ? View.VISIBLE : View.GONE);
+    
+    // Add logic for CPU/GPU Load if you added those TextViews to frame_rating.xml
+    // e.g. tvCPULoad.setVisibility(config.get("showCPULoad").equals("1") ? View.VISIBLE : View.GONE);
+    
+    tvRenderer.setVisibility(config.get("showRenderer").equals("1") ? View.VISIBLE : View.GONE);
+    tvGPU.setVisibility(config.get("showRenderer").equals("1") ? View.VISIBLE : View.GONE);
+    }
 }
+
