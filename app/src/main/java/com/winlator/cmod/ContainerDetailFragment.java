@@ -40,6 +40,7 @@ import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.contentdialog.AddEnvVarDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
+import com.winlator.cmod.contentdialog.FPSCounterConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
@@ -340,6 +341,20 @@ public class ContainerDetailFragment extends Fragment {
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
+        final View btFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
+// Store the config string in the view's tag (similar to how GraphicsDriverConfig works)
+btFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
+
+btFPSCounterConfig.setOnClickListener((v) -> {
+    // Pass the context and the current config string to the dialog
+    FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, btFPSCounterConfig.getTag().toString());
+    dialog.setOnConfirmCallback(() -> {
+        // Update the tag with the new config string when the user clicks 'OK' in the dialog
+        btFPSCounterConfig.setTag(dialog.getConfigString());
+    });
+    dialog.show();
+});
+
         final CheckBox cbFullscreenStretched = view.findViewById(R.id.CBFullscreenStretched);
         cbFullscreenStretched.setChecked(isEditMode() && container.isFullscreenStretched());
 
@@ -535,6 +550,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setWinComponents(wincomponents);
                     container.setDrives(drives);
                     container.setShowFPS(showFPS);
+                    container.setFPSCounterConfig(btFPSCounterConfig.getTag().toString());
                     container.setFullscreenStretched(fullscreenStretched);
                     container.setExclusiveXInput(exclusiveXInput);
                     container.setInputType(finalInputType);
@@ -569,6 +585,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("wincomponents", wincomponents);
                     data.put("drives", drives);
                     data.put("showFPS", showFPS);
+                    data.put("fpsCounterConfig", btFPSCounterConfig.getTag().toString());
                     data.put("fullscreenStretched", fullscreenStretched);
                     data.put("exclusiveXInput", exclusiveXInput);
                     data.put("inputType", finalInputType);
@@ -1086,6 +1103,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
