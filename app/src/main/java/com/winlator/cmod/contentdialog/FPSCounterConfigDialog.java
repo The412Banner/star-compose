@@ -13,7 +13,6 @@ public class FPSCounterConfigDialog extends ContentDialog {
     private final CheckBox cbShowRenderer;
     private String configString;
 
-    // We now pass the String config instead of the Container object
     public FPSCounterConfigDialog(Context context, String initialConfig) {
         super(context, R.layout.fps_counter_config_dialog);
         this.configString = initialConfig;
@@ -25,7 +24,6 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRAM = findViewById(R.id.CBShowRAM);
         cbShowRenderer = findViewById(R.id.CBShowRenderer);
 
-        // Load values from the provided string
         KeyValueSet config = new KeyValueSet(initialConfig);
         cbShowFPS.setChecked(config.get("showFPS").equals("1"));
         cbShowCPULoad.setChecked(config.get("showCPULoad").equals("1"));
@@ -34,7 +32,6 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRenderer.setChecked(config.get("showRenderer").equals("1"));
 
         setOnConfirmCallback(() -> {
-            // Update the local configString when OK is pressed
             KeyValueSet newConfig = new KeyValueSet();
             newConfig.put("showFPS", cbShowFPS.isChecked() ? "1" : "0");
             newConfig.put("showCPULoad", cbShowCPULoad.isChecked() ? "1" : "0");
@@ -45,15 +42,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
         });
     }
 
-    // Getter to retrieve the modified string back in the Fragment
     public String getConfigString() {
         return configString;
-    }
-}
-            config.put("showGPULoad", cbShowGPULoad.isChecked() ? "1" : "0");
-            config.put("showRAM", cbShowRAM.isChecked() ? "1" : "0");
-            config.put("showRenderer", cbShowRenderer.isChecked() ? "1" : "0");
-            container.setFPSCounterConfig(config.toString());
-        });
     }
 }
