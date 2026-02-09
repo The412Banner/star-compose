@@ -545,7 +545,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                     container.setWinComponents(wincomponents);
                     container.setDrives(drives);
                     container.setShowFPS(showFPS);
-                    container.setFPSCounterConfig(btFPSCounterConfig.getTag().toString());
+                    container.setFPSCounterConfig(view.findViewById(R.id.BTFPSCounterConfig).getTag().toString());
                     container.setFullscreenStretched(fullscreenStretched);
                     container.setExclusiveXInput(exclusiveXInput);
                     container.setInputType(finalInputType);
@@ -580,7 +580,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                     data.put("wincomponents", wincomponents);
                     data.put("drives", drives);
                     data.put("showFPS", showFPS);
-                    data.put("fpsCounterConfig", btFPSCounterConfig.getTag().toString());
+                    data.put("fpsCounterConfig", view.findViewById(R.id.BTFPSCounterConfig).getTag().toString());
                     data.put("fullscreenStretched", fullscreenStretched);
                     data.put("exclusiveXInput", exclusiveXInput);
                     data.put("inputType", finalInputType);
@@ -1098,6 +1098,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
