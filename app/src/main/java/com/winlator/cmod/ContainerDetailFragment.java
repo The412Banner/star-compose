@@ -342,16 +342,11 @@ public class ContainerDetailFragment extends Fragment {
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
         final View btFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
-// Store the config string in the view's tag (similar to how GraphicsDriverConfig works)
 btFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
 
 btFPSCounterConfig.setOnClickListener((v) -> {
-    // Pass the context and the current config string to the dialog
     FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, btFPSCounterConfig.getTag().toString());
-    dialog.setOnConfirmCallback(() -> {
-        // Update the tag with the new config string when the user clicks 'OK' in the dialog
-        btFPSCounterConfig.setTag(dialog.getConfigString());
-    });
+    dialog.setOnConfirmCallback(() -> btFPSCounterConfig.setTag(dialog.getConfigString()));
     dialog.show();
 });
 
@@ -1103,6 +1098,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
