@@ -53,6 +53,7 @@ import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
+import com.winlator.cmod.contentdialog.FPSCounterDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
@@ -415,6 +416,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         emulator = container.getEmulator();
         midiSoundFont = container.getMIDISoundFont();
         dxwrapper = container.getDXWrapper();
+        String fpsCounterConfig = container.getFPSCounterDialog();
         String dxwrapperConfig = container.getDXWrapperConfig();
         screenSize = container.getScreenSize();
         winHandler.setInputType((byte) container.getInputType());
@@ -430,6 +432,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
             emulator = shortcut.getExtra("emulator", container.getEmulator());
             dxwrapper = shortcut.getExtra("dxwrapper", container.getDXWrapper());
+            fpsCounterConfig = shortcut.getExtra("fpsCounterConfig", container.getFPSCounterDialog()):
             dxwrapperConfig = shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig());
             screenSize = shortcut.getExtra("screenSize", container.getScreenSize());
             lc_all = shortcut.getExtra("lc_all", container.getLC_ALL());
@@ -1952,6 +1955,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 }
+
 
 
 
