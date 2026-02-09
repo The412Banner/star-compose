@@ -416,7 +416,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         emulator = container.getEmulator();
         midiSoundFont = container.getMIDISoundFont();
         dxwrapper = container.getDXWrapper();
-        String fpsCounterConfig = container.getFPSCounterDialog();
+        String fpsCounterConfig = container.getFPSCounterConfig();
         String dxwrapperConfig = container.getDXWrapperConfig();
         screenSize = container.getScreenSize();
         winHandler.setInputType((byte) container.getInputType());
@@ -1954,6 +1954,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 }
+
 
 
 
