@@ -488,6 +488,9 @@ public class Container {
                 case "showFPS" :
                     setShowFPS(data.getBoolean(key));
                     break;
+                case "fpsCounterConfig" :
+                    setFPSCounterConfig(data.getString(key));
+                    break;
                 case "fullscreenStretched" :
                     setFullscreenStretched(data.getBoolean(key));
                     break;
@@ -630,6 +633,7 @@ public class Container {
     }
 
 }
+
 
 
 
