@@ -114,14 +114,18 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void applyConfig(String configString) {
     com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
     
-    // Toggle visibility of the TextViews based on the config string ("1" = visible, "0" = gone)
+    // It is better to hide the parent views (rows) if you defined them in frame_rating.xml
+    // If you only want to hide the text:
     tvFPS.setVisibility(config.get("showFPS", "0").equals("1") ? View.VISIBLE : View.GONE);
     tvRAM.setVisibility(config.get("showRAM", "0").equals("1") ? View.VISIBLE : View.GONE);
-    tvRenderer.setVisibility(config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE);
-    tvGPU.setVisibility(config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE);
     
-    // If you have labels/rows in your XML, hide those parents instead for a cleaner look
+    int rendererVisibility = config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE;
+    tvRenderer.setVisibility(rendererVisibility);
+    tvGPU.setVisibility(rendererVisibility);
+    
+    // Ensure you handle showCPULoad and showGPULoad if those TextViews exist
     }
+
 
 }
 
