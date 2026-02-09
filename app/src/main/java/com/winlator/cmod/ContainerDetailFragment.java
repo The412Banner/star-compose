@@ -504,6 +504,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                 String wincomponents = getWinComponents(view);
                 String drives = getDrives(view);
                 boolean showFPS = cbShowFPS.isChecked();
+                String fpsCounterConfig = view.findViewById(R.id.BTFPSCounterConfig).getTag().toString();
                 boolean fullscreenStretched = cbFullscreenStretched.isChecked();
                 boolean exclusiveXInput = cbExclusiveXInput.isChecked();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
@@ -545,7 +546,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                     container.setWinComponents(wincomponents);
                     container.setDrives(drives);
                     container.setShowFPS(showFPS);
-                    container.setFPSCounterConfig(view.findViewById(R.id.BTFPSCounterConfig).getTag().toString());
+                    container.setFPSCounterConfig(fpsCounterConfig);
                     container.setFullscreenStretched(fullscreenStretched);
                     container.setExclusiveXInput(exclusiveXInput);
                     container.setInputType(finalInputType);
@@ -580,7 +581,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                     data.put("wincomponents", wincomponents);
                     data.put("drives", drives);
                     data.put("showFPS", showFPS);
-                    data.put("fpsCounterConfig", view.findViewById(R.id.BTFPSCounterConfig).getTag().toString());
+                    data.put("fpsCounterConfig", fpsCounterConfig);
                     data.put("fullscreenStretched", fullscreenStretched);
                     data.put("exclusiveXInput", exclusiveXInput);
                     data.put("inputType", finalInputType);
@@ -1098,6 +1099,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
