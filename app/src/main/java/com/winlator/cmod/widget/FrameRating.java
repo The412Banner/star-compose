@@ -114,15 +114,14 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void applyConfig(String configString) {
     com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
     
-    // Toggle visibility based on config string values ("1" or "0")
-    findViewById(R.id.TVFPS).setVisibility(config.get("showFPS").equals("1") ? View.VISIBLE : View.GONE);
-    findViewById(R.id.TVRAM).setVisibility(config.get("showRAM").equals("1") ? View.VISIBLE : View.GONE);
+    // Toggle visibility of the TextViews based on the config string ("1" = visible, "0" = gone)
+    tvFPS.setVisibility(config.get("showFPS", "0").equals("1") ? View.VISIBLE : View.GONE);
+    tvRAM.setVisibility(config.get("showRAM", "0").equals("1") ? View.VISIBLE : View.GONE);
+    tvRenderer.setVisibility(config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE);
+    tvGPU.setVisibility(config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE);
     
-    // Add logic for CPU/GPU Load if you added those TextViews to frame_rating.xml
-    // e.g. tvCPULoad.setVisibility(config.get("showCPULoad").equals("1") ? View.VISIBLE : View.GONE);
-    
-    tvRenderer.setVisibility(config.get("showRenderer").equals("1") ? View.VISIBLE : View.GONE);
-    tvGPU.setVisibility(config.get("showRenderer").equals("1") ? View.VISIBLE : View.GONE);
+    // If you have labels/rows in your XML, hide those parents instead for a cleaner look
     }
+
 }
 
