@@ -46,19 +46,35 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public FrameRating(Context context, HashMap graphicsDriverConfig, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        this.context = context;
-        View view = LayoutInflater.from(context).inflate(R.layout.frame_rating, this, false);
-        tvFPS = view.findViewById(R.id.TVFPS);
-        tvRenderer = view.findViewById(R.id.TVRenderer);
-        tvRenderer.setText("OpenGL");
-        tvGPU = view.findViewById(R.id.TVGPU);
-        tvGPU.setText(GPUInformation.getRenderer(graphicsDriverConfig.get("version").toString(), context));
-        tvRAM = view.findViewById(R.id.TVRAM);
-        totalRAM = getTotalRAM();
-        this.graphicsDriverConfig = graphicsDriverConfig;
-        addView(view);
-    }
+    super(context, attrs, defStyleAttr);
+    // ...
+    LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
+
+    // YOU MUST INITIALIZE THESE TO AVOID COMPILATION ERRORS:
+    tvFPS = findViewById(R.id.TVFPS);
+    tvRAM = findViewById(R.id.TVRAM);
+    tvRenderer = findViewById(R.id.TVRenderer);
+    tvGPU = findViewById(R.id.TVGPU);
+    
+    // Initialize the row containers (the LinearLayouts in frame_rating.xml)
+    rowFPS = (View) tvFPS.getParent(); 
+    rowRAM = (View) tvRAM.getParent();
+    rowRenderer = (View) tvRenderer.getParent();
+    rowGPU = (View) tvGPU.getParent();
+    rowCPU = null; // Set to null if not used to satisfy 'final' requirement or remove the variable
+}
+
+public void applyConfig(String configString) {
+    com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
+    
+    // Toggle visibility of the entire ROW so the UI collapses properly
+    rowFPS.setVisibility(config.get("showFPS", "0").equals("1") ? View.VISIBLE : View.GONE);
+    rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? View.VISIBLE : View.GONE);
+    
+    int rendererVisibility = config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE;
+    rowRenderer.setVisibility(rendererVisibility);
+    rowGPU.setVisibility(rendererVisibility);
+}
     
     private String getTotalRAM() {
         String totalRAM = "";
@@ -110,22 +126,6 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
     }
-
-    public void applyConfig(String configString) {
-    com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
-    
-    // It is better to hide the parent views (rows) if you defined them in frame_rating.xml
-    // If you only want to hide the text:
-    tvFPS.setVisibility(config.get("showFPS", "0").equals("1") ? View.VISIBLE : View.GONE);
-    tvRAM.setVisibility(config.get("showRAM", "0").equals("1") ? View.VISIBLE : View.GONE);
-    
-    int rendererVisibility = config.get("showRenderer", "0").equals("1") ? View.VISIBLE : View.GONE;
-    tvRenderer.setVisibility(rendererVisibility);
-    tvGPU.setVisibility(rendererVisibility);
-    
-    // Ensure you handle showCPULoad and showGPULoad if those TextViews exist
-    }
-
 
 }
 
