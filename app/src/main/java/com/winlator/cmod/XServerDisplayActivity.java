@@ -53,7 +53,7 @@ import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
-import com.winlator.cmod.contentdialog.FPSCounterDialog;
+import com.winlator.cmod.contentdialog.FPSCounterConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
@@ -1954,6 +1954,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 }
+
 
 
 
