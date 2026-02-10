@@ -24,6 +24,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRAM = findViewById(R.id.CBShowRAM);
         cbShowRenderer = findViewById(R.id.CBShowRenderer);
 
+        // Load current values
         KeyValueSet config = new KeyValueSet(initialConfig);
         cbShowFPS.setChecked(config.get("showFPS").equals("1"));
         cbShowCPULoad.setChecked(config.get("showCPULoad").equals("1"));
@@ -31,6 +32,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRAM.setChecked(config.get("showRAM").equals("1"));
         cbShowRenderer.setChecked(config.get("showRenderer").equals("1"));
 
+        // When "Confirm" is clicked, we must bake the UI state into the configString
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
             newConfig.put("showFPS", cbShowFPS.isChecked() ? "1" : "0");
@@ -38,6 +40,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
             newConfig.put("showGPULoad", cbShowGPULoad.isChecked() ? "1" : "0");
             newConfig.put("showRAM", cbShowRAM.isChecked() ? "1" : "0");
             newConfig.put("showRenderer", cbShowRenderer.isChecked() ? "1" : "0");
+            
+            // CRITICAL: Update the member variable so getConfigString() returns the NEW data
             this.configString = newConfig.toString();
         });
     }
