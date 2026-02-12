@@ -341,12 +341,12 @@ public class ContainerDetailFragment extends Fragment {
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
-        final View btFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
-btFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
+        final View vFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
+vFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
 
-btFPSCounterConfig.setOnClickListener((v) -> {
-    FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, btFPSCounterConfig.getTag().toString());
-    dialog.setOnConfirmCallback(() -> btFPSCounterConfig.setTag(dialog.getConfigString()));
+vFPSCounterConfig.setOnClickListener((v) -> {
+    FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, v.getTag().toString());
+    dialog.setOnConfirmCallback(() -> v.setTag(dialog.getConfigString()));
     dialog.show();
 });
 
@@ -504,7 +504,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
                 String wincomponents = getWinComponents(view);
                 String drives = getDrives(view);
                 boolean showFPS = cbShowFPS.isChecked();
-                String fpsCounterConfig = view.findViewById(R.id.BTFPSCounterConfig).getTag().toString();
+                String fpsCounterConfig = vFPSCounterConfig.getTag().toString();
                 boolean fullscreenStretched = cbFullscreenStretched.isChecked();
                 boolean exclusiveXInput = cbExclusiveXInput.isChecked();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
@@ -1099,6 +1099,7 @@ btFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
