@@ -48,36 +48,31 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
 
-        // Initialize TextViews (Values)
         tvFPS = findViewById(R.id.TVFPS);
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
 
-        // Initialize Row Containers (The layout holding label + value)
+        // Link the Row containers to the IDs in the XML
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
 
-        // Pre-calculate total RAM
         this.totalRAM = getTotalRAM();
     }
 
-    /**
-     * Updates visibility of elements based on the configuration string from FPSCounterConfigDialog
-     */
     public void applyConfig(String configString) {
+        if (configString == null || configString.isEmpty()) return;
         KeyValueSet config = new KeyValueSet(configString);
 
-        // Visibility logic: "1" = Visible, "0" = Gone
-        rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
-        rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
+        // If row is null (not found in XML), skip to prevent crash
+        if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
+        if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
 
-        // Renderer and GPU Name are usually grouped together
         int rendererVisibility = config.get("showRenderer", "1").equals("1") ? View.VISIBLE : View.GONE;
-        rowRenderer.setVisibility(rendererVisibility);
-        rowGPU.setVisibility(rendererVisibility);
+        if (rowRenderer != null) rowRenderer.setVisibility(rendererVisibility);
+        if (rowGPU != null) rowGPU.setVisibility(rendererVisibility);
     }
 
     private String getTotalRAM() {
