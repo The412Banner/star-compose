@@ -54,13 +54,12 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
 
-        [span_6](start_span)// Initialize Row Containers using specific IDs from XML[span_6](end_span)
+        // Initialize Row Containers using specific IDs from XML
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
 
-        // Pre-calculate total RAM
         this.totalRAM = getTotalRAM();
     }
 
