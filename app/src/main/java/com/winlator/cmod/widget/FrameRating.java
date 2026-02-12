@@ -48,17 +48,17 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
 
-        // Initialize TextViews
+        // Initialize TextViews (Values)
         tvFPS = findViewById(R.id.TVFPS);
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
 
-        // Initialize Row Containers (the LinearLayouts wrap the label + value)
-        rowFPS = (View) tvFPS.getParent();
-        rowRAM = (View) tvRAM.getParent();
-        rowRenderer = (View) tvRenderer.getParent();
-        rowGPU = (View) tvGPU.getParent();
+        // Initialize Row Containers (The layout holding label + value)
+        rowFPS = findViewById(R.id.RowFPS);
+        rowRAM = findViewById(R.id.RowRAM);
+        rowRenderer = findViewById(R.id.RowRenderer);
+        rowGPU = findViewById(R.id.RowGPU);
 
         // Pre-calculate total RAM
         this.totalRAM = getTotalRAM();
@@ -70,17 +70,14 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void applyConfig(String configString) {
         KeyValueSet config = new KeyValueSet(configString);
 
-        // "1" = Visible, "0" = Gone
+        // Visibility logic: "1" = Visible, "0" = Gone
         rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
         rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
 
-        // Renderer and GPU Name are usually grouped together in the UI
+        // Renderer and GPU Name are usually grouped together
         int rendererVisibility = config.get("showRenderer", "1").equals("1") ? View.VISIBLE : View.GONE;
         rowRenderer.setVisibility(rendererVisibility);
         rowGPU.setVisibility(rendererVisibility);
-        
-        // Note: CPU Load is not implemented in the layout yet, but if you add it:
-        // rowCPU.setVisibility(config.get("showCPULoad", "1").equals("1") ? View.VISIBLE : View.GONE);
     }
 
     private String getTotalRAM() {
