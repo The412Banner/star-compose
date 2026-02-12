@@ -13,8 +13,8 @@
         android:layout_marginTop="2dp"
         android:layout_marginLeft="10dp"
         android:background="#33000000">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS: " android:textColor="#0277bd" android:textStyle="bold" android:textSize="12dp" />
-        <TextView android:id="@+id/TVFPS" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS: " android:textColor="#0277bd" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVFPS" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -26,8 +26,8 @@
         android:layout_marginTop="2dp"
         android:layout_marginLeft="10dp"
         android:background="#33000000">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Renderer: " android:textColor="#fc0303" android:textStyle="bold" android:textSize="12dp" />
-        <TextView android:id="@+id/TVRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Renderer: " android:textColor="#fc0303" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -39,8 +39,8 @@
         android:layout_marginTop="2dp"
         android:layout_marginLeft="10dp"
         android:background="#33000000">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU: " android:textColor="#5c23a6" android:textStyle="bold" android:textSize="12dp" />
-        <TextView android:id="@+id/TVGPU" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU: " android:textColor="#5c23a6" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVGPU" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -52,7 +52,7 @@
         android:layout_marginTop="2dp"
         android:layout_marginLeft="10dp"
         android:background="#33000000">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAM: " android:textColor="#23a6a4" android:textStyle="bold" android:textSize="12dp" />
-        <TextView android:id="@+id/TVRAM" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAM: " android:textColor="#23a6a4" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVRAM" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>
