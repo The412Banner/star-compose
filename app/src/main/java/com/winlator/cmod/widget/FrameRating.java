@@ -48,25 +48,27 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
 
+        // Initialize TextViews
         tvFPS = findViewById(R.id.TVFPS);
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
 
-        // Link the Row containers to the IDs in the XML
+        [span_6](start_span)// Initialize Row Containers using specific IDs from XML[span_6](end_span)
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
 
+        // Pre-calculate total RAM
         this.totalRAM = getTotalRAM();
     }
 
     public void applyConfig(String configString) {
-        if (configString == null || configString.isEmpty()) return;
+        if (configString == null) return;
         KeyValueSet config = new KeyValueSet(configString);
 
-        // If row is null (not found in XML), skip to prevent crash
+        // Use null-checks to prevent crashes if IDs aren't found in older XML versions
         if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
         if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
 
