@@ -31,17 +31,19 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final View rowGPU;
     private final View rowRAM;
     private final View rowRenderer;
-    private final HashMap<String, Object> graphicsDriverConfig;
+    // FIX: Use wildcard <String, ?> to accept HashMap<String, String> or HashMap<String, Object>
+    private final HashMap<String, ?> graphicsDriverConfig;
 
-    public FrameRating(Context context, HashMap<String, Object> graphicsDriverConfig) {
+    // FIX: Update constructors to use HashMap<String, ?>
+    public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig) {
         this(context, graphicsDriverConfig, null);
     }
 
-    public FrameRating(Context context, HashMap<String, Object> graphicsDriverConfig, AttributeSet attrs) {
+    public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig, AttributeSet attrs) {
         this(context, graphicsDriverConfig, attrs, 0);
     }
 
-    public FrameRating(Context context, HashMap<String, Object> graphicsDriverConfig, AttributeSet attrs, int defStyleAttr) {
+    public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         this.context = context;
         this.graphicsDriverConfig = graphicsDriverConfig;
@@ -64,16 +66,15 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public void applyConfig(String configString) {
-    if (configString == null || configString.isEmpty()) return;
-    com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
+        if (configString == null || configString.isEmpty()) return;
+        com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
 
-    // Use null-checks to prevent crashes if IDs aren't found in older XML versions
-    if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
-    if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
+        if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
+        if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
 
-    int rendererVisibility = config.get("showRenderer", "1").equals("1") ? View.VISIBLE : View.GONE;
-    if (rowRenderer != null) rowRenderer.setVisibility(rendererVisibility);
-    if (rowGPU != null) rowGPU.setVisibility(rendererVisibility);
+        int rendererVisibility = config.get("showRenderer", "1").equals("1") ? View.VISIBLE : View.GONE;
+        if (rowRenderer != null) rowRenderer.setVisibility(rendererVisibility);
+        if (rowGPU != null) rowGPU.setVisibility(rendererVisibility);
     }
 
     private String getTotalRAM() {
@@ -101,6 +102,7 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     public void reset() {
         tvRenderer.setText("OpenGL");
+        // FIX: Safely retrieve the version object from the wildcard HashMap
         Object version = graphicsDriverConfig.get("version");
         tvGPU.setText(GPUInformation.getRenderer(version != null ? version.toString() : "", context));
     }
