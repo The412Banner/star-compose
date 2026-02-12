@@ -5,6 +5,7 @@
     android:layout_height="match_parent">
 
     <LinearLayout
+        android:id="@+id/RowFPS"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -17,7 +18,6 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:text="FPS:"
@@ -30,7 +30,6 @@
             android:id="@+id/TVFPS"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:text="0"
@@ -38,7 +37,9 @@
             android:includeFontPadding="false"
             android:maxLines="1" />
     </LinearLayout>
+
     <LinearLayout
+        android:id="@+id/RowRenderer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -51,7 +52,6 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:text="Renderer:"
@@ -64,14 +64,15 @@
             android:id="@+id/TVRenderer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:textColor="#ffffff"
             android:includeFontPadding="false"
             android:maxLines="1" />
     </LinearLayout>
+
     <LinearLayout
+        android:id="@+id/RowGPU"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -84,7 +85,6 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:text="GPU:"
@@ -97,14 +97,15 @@
             android:id="@+id/TVGPU"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:textColor="#ffffff"
             android:includeFontPadding="false"
             android:maxLines="1" />
     </LinearLayout>
+
     <LinearLayout
+        android:id="@+id/RowRAM"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -117,7 +118,6 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:text="RAM:"
@@ -130,7 +130,6 @@
             android:id="@+id/TVRAM"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textStyle="bold"
             android:textSize="12dp"
             android:textColor="#ffffff"
