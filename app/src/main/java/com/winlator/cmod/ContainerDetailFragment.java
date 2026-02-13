@@ -341,7 +341,7 @@ public class ContainerDetailFragment extends Fragment {
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
-        final View vFPSCounterConfig = view.findViewById(R.id.VFPSCounterConfig);
+        final View vFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
 
 // FIX: Initialize the tag with existing data or the proper constant
 String initialFPSConfig = isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG;
@@ -1104,6 +1104,7 @@ vFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
