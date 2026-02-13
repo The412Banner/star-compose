@@ -344,17 +344,16 @@ public class ContainerDetailFragment extends Fragment {
         final View vFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
         vFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
         vFPSCounterConfig.setOnClickListener((v) -> {
-    // 1. Open dialog with the current config stored in the view's tag
     FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, v.getTag().toString());
-    
     dialog.setOnConfirmCallback(() -> {
-        // 2. Update the tag so the UI remembers the selection if reopened
         String newConfig = dialog.getConfigString();
         v.setTag(newConfig);
         
-        // 3. CRITICAL: Save the new config into the actual Container object
+        // Update the container object immediately
         if (container != null) {
             container.setFPSCounterConfig(newConfig);
+            // This ensures the data is written to the JSON file immediately
+            container.saveData(); 
         }
     });
     dialog.show();
@@ -1109,6 +1108,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
