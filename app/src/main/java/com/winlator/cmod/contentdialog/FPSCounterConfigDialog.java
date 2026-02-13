@@ -26,13 +26,15 @@ public class FPSCounterConfigDialog extends ContentDialog {
 
         // Load current values
         KeyValueSet config = new KeyValueSet(initialConfig);
-        cbShowFPS.setChecked(config.get("showFPS").equals("1"));
-        cbShowCPULoad.setChecked(config.get("showCPULoad").equals("1"));
-        cbShowGPULoad.setChecked(config.get("showGPULoad").equals("1"));
-        cbShowRAM.setChecked(config.get("showRAM").equals("1"));
-        cbShowRenderer.setChecked(config.get("showRenderer").equals("1"));
+        
+        // FIX: Added default "1" so checkboxes are checked by default on new containers
+        cbShowFPS.setChecked(config.get("showFPS", "1").equals("1"));
+        cbShowCPULoad.setChecked(config.get("showCPULoad", "1").equals("1"));
+        cbShowGPULoad.setChecked(config.get("showGPULoad", "1").equals("1"));
+        cbShowRAM.setChecked(config.get("showRAM", "1").equals("1"));
+        cbShowRenderer.setChecked(config.get("showRenderer", "1").equals("1"));
 
-        // When "Confirm" is clicked, we must bake the UI state into the configString
+        // When "Confirm" is clicked, we bake the UI state into the configString
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
             newConfig.put("showFPS", cbShowFPS.isChecked() ? "1" : "0");
@@ -41,7 +43,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
             newConfig.put("showRAM", cbShowRAM.isChecked() ? "1" : "0");
             newConfig.put("showRenderer", cbShowRenderer.isChecked() ? "1" : "0");
             
-            // CRITICAL: Update the member variable so getConfigString() returns the NEW data
+            // Update the member variable so the caller gets the new data
             this.configString = newConfig.toString();
         });
     }
