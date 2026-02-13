@@ -342,12 +342,16 @@ public class ContainerDetailFragment extends Fragment {
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
         final View vFPSCounterConfig = view.findViewById(R.id.VFPSCounterConfig);
+
+// FIX: Initialize the tag with existing data or the proper constant
 String initialFPSConfig = isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG;
 vFPSCounterConfig.setTag(initialFPSConfig);
 
 vFPSCounterConfig.setOnClickListener((v) -> {
     FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, v.getTag().toString());
-    dialog.setOnConfirmCallback(() -> v.setTag(dialog.getConfigString()));
+    dialog.setOnConfirmCallback(() -> {
+        v.setTag(dialog.getConfigString());
+    });
     dialog.show();
 });
         
@@ -1100,6 +1104,7 @@ vFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
