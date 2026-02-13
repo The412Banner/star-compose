@@ -343,6 +343,22 @@ public class ContainerDetailFragment extends Fragment {
 
         final View vFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
         vFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
+        vFPSCounterConfig.setOnClickListener((v) -> {
+    // 1. Open dialog with the current config stored in the view's tag
+    FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, v.getTag().toString());
+    
+    dialog.setOnConfirmCallback(() -> {
+        // 2. Update the tag so the UI remembers the selection if reopened
+        String newConfig = dialog.getConfigString();
+        v.setTag(newConfig);
+        
+        // 3. CRITICAL: Save the new config into the actual Container object
+        if (container != null) {
+            container.setFPSCounterConfig(newConfig);
+        }
+    });
+    dialog.show();
+});
 
         final CheckBox cbFullscreenStretched = view.findViewById(R.id.CBFullscreenStretched);
         cbFullscreenStretched.setChecked(isEditMode() && container.isFullscreenStretched());
@@ -1093,6 +1109,7 @@ public class ContainerDetailFragment extends Fragment {
     }
 
 }
+
 
 
 
