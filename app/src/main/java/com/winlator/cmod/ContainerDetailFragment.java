@@ -341,19 +341,13 @@ public class ContainerDetailFragment extends Fragment {
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
 
-        final View vFPSCounterConfig = view.findViewById(R.id.BTFPSCounterConfig);
+        final View vFPSCounterConfig = view.findViewById(R.id.VFPSCounterConfig);
 
-// FIX: Initialize the tag with existing data or the proper constant
-String initialFPSConfig = isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG;
-vFPSCounterConfig.setTag(initialFPSConfig);
+// Set the initial tag from container data or default
+vFPSCounterConfig.setTag(isEditMode() ? container.getFPSCounterConfig() : Container.DEFAULT_FPS_COUNTER_CONFIG);
 
-vFPSCounterConfig.setOnClickListener((v) -> {
-    FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, v.getTag().toString());
-    dialog.setOnConfirmCallback(() -> {
-        v.setTag(dialog.getConfigString());
-    });
-    dialog.show();
-});
+// Call the unified show method
+vFPSCounterConfig.setOnClickListener((v) -> FPSCounterConfigDialog.show(context, v));
         
         final CheckBox cbFullscreenStretched = view.findViewById(R.id.CBFullscreenStretched);
         cbFullscreenStretched.setChecked(isEditMode() && container.isFullscreenStretched());
@@ -1104,6 +1098,7 @@ vFPSCounterConfig.setOnClickListener((v) -> {
     }
 
 }
+
 
 
 
