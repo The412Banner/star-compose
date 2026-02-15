@@ -1188,10 +1188,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         if (container != null && container.isShowFPS()) {
-            frameRating = new FrameRating(this, graphicsDriverConfig);
-            frameRating.setVisibility(View.GONE);
-            rootView.addView(frameRating);
-        }
+    frameRating = new FrameRating(this, graphicsDriverConfig);
+    
+    // NEW: Apply the custom configuration string from the container
+    frameRating.applyConfig(container.getFPSCounterConfig());
+    
+    frameRating.setVisibility(View.GONE);
+    rootView.addView(frameRating);
+}
 
         // Get the fullscreen stretched extra from the shortcut if available
         String shortcutFullscreenStretched = shortcut != null ? shortcut.getExtra("fullscreenStretched") : null;
@@ -1923,28 +1927,33 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     }
 
     private void changeFrameRatingVisibility(Window window, Property property) {
-        if (frameRating == null) return;
+    if (frameRating == null) return;
 
-        if (property != null) {
-            if (frameRatingWindowId == -1 && property.nameAsString().contains("_MESA_DRV")) {
-                frameRatingWindowId = window.id;
-                Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
-                frameRating.update();
-            }
-            if (property.nameAsString().contains("_MESA_DRV_ENGINE_NAME")) {
-                runOnUiThread(() -> frameRating.setRenderer(property.toString()));
-            }
-            if (property.nameAsString().contains("_MESA_DRV_GPU_NAME")) {
-                runOnUiThread(() -> frameRating.setGpuName(property.toString()));
-            }
+    if (property != null) {
+        if (frameRatingWindowId == -1 && property.nameAsString().contains("_MESA_DRV")) {
+            frameRatingWindowId = window.id;
+            Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
+            
+            // NEW: Ensure the HUD becomes visible when the driver property is detected
+            runOnUiThread(() -> frameRating.setVisibility(View.VISIBLE));
+            
+            frameRating.update();
         }
-        else if (frameRatingWindowId != -1) {
-            frameRatingWindowId = -1;
-            Log.d("XServerDisplayActivity", "Hiding hud for Window " + window.getName());
-            runOnUiThread(() -> frameRating.setVisibility(View.GONE));
-            runOnUiThread(() -> frameRating.reset());
+        if (property.nameAsString().contains("_MESA_DRV_ENGINE_NAME")) {
+            runOnUiThread(() -> frameRating.setRenderer(property.toString()));
+        }
+        if (property.nameAsString().contains("_MESA_DRV_GPU_NAME")) {
+            runOnUiThread(() -> frameRating.setGpuName(property.toString()));
         }
     }
+    else if (frameRatingWindowId != -1) {
+        frameRatingWindowId = -1;
+        Log.d("XServerDisplayActivity", "Hiding hud for Window " + window.getName());
+        runOnUiThread(() -> frameRating.setVisibility(View.GONE));
+        runOnUiThread(() -> frameRating.reset());
+    }
+}
+
 
     public String getScreenEffectProfile() {
         return screenEffectProfile;
@@ -1954,6 +1963,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         this.screenEffectProfile = screenEffectProfile;
     }
 }
+
 
 
 
