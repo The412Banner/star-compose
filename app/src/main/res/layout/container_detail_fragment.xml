@@ -262,16 +262,33 @@
             </LinearLayout>
 
             <CheckBox
-                android:id="@+id/CBShowFPS"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/show_fps"
-                android:layout_marginTop="8dp" />
+                    android:id="@+id/CBShowFPS"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/show_fps"
+                    android:layout_marginTop="8dp" />
 
-            <ImageButton
-                style="@style/ListMenuButton"
-                android:id="@+id/BTFPSCounterConfig"
-                android:src="@drawable/icon_settings" />
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+             <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="FPS Counter Configuration"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp" />
+
+             <ImageButton
+                    style="@style/ListMenuButton"
+                    android:id="@+id/BTFPSCounterConfig"
+                    android:src="@drawable/icon_settings"
+                    android:contentDescription="Configure FPS Counter" />
+            </LinearLayout>
 
             <CheckBox
                 android:id="@+id/CBFullscreenStretched"
@@ -845,4 +862,5 @@
         android:src="@drawable/icon_confirm"
         android:layout_margin="16dp" />
 </FrameLayout>
+
 
