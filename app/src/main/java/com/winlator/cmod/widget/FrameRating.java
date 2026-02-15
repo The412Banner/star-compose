@@ -16,7 +16,6 @@ import com.winlator.cmod.core.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Locale;
 
@@ -25,27 +24,33 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
-    private int cpuLoad = 0;
+    private float cpuTemp = 0; // Changed from cpuLoad to cpuTemp
     private int gpuLoad = 0;
-    private long lastCpuTotal = 0;
-    private long lastCpuIdle = 0;
     private final String totalRAM;
 
     private final TextView tvFPS;
     private final TextView tvRenderer;
     private final TextView tvGPU;
     private final TextView tvRAM;
-    private final TextView tvCPULoad;
+    private final TextView tvCPUTemp; // Renamed from tvCPULoad
     private final TextView tvGPULoad;
 
     private final View rowFPS;
     private final View rowGPU;
     private final View rowRAM;
     private final View rowRenderer;
-    private final View rowCPULoad;
+    private final View rowCPUTemp; // Renamed from rowCPULoad
     private final View rowGPULoad;
 
     private final HashMap<String, ?> graphicsDriverConfig;
+
+    // Common paths for CPU temperature on various Android devices
+    private static final String[] THERMAL_PATHS = {
+        "/sys/class/thermal/thermal_zone0/temp",
+        "/sys/class/thermal/thermal_zone1/temp",
+        "/sys/devices/virtual/thermal/thermal_zone0/temp",
+        "/sys/devices/system/cpu/cpu0/cpufreq/cpu_temp"
+    };
 
     public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig) {
         this(context, graphicsDriverConfig, null);
@@ -67,7 +72,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
-        tvCPULoad = findViewById(R.id.TVCPULoad);
+        tvCPUTemp = findViewById(R.id.TVCPULoad); // Keeping ID for XML compatibility
         tvGPULoad = findViewById(R.id.TVGPULoad);
 
         // Bind Rows
@@ -75,7 +80,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
-        rowCPULoad = findViewById(R.id.RowCPULoad);
+        rowCPUTemp = findViewById(R.id.RowCPULoad); // Keeping ID for XML compatibility
         rowGPULoad = findViewById(R.id.RowGPULoad);
 
         this.totalRAM = getTotalRAM();
@@ -87,7 +92,7 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? VISIBLE : GONE);
         if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? VISIBLE : GONE);
-        if (rowCPULoad != null) rowCPULoad.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
+        if (rowCPUTemp != null) rowCPUTemp.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
         if (rowGPULoad != null) rowGPULoad.setVisibility(config.get("showGPULoad", "0").equals("1") ? VISIBLE : GONE);
 
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
@@ -102,7 +107,7 @@ public class FrameRating extends FrameLayout implements Runnable {
                              (rowRAM != null && rowRAM.getVisibility() == VISIBLE) ||
                              (rowRenderer != null && rowRenderer.getVisibility() == VISIBLE) ||
                              (rowGPU != null && rowGPU.getVisibility() == VISIBLE) ||
-                             (rowCPULoad != null && rowCPULoad.getVisibility() == VISIBLE) ||
+                             (rowCPUTemp != null && rowCPUTemp.getVisibility() == VISIBLE) ||
                              (rowGPULoad != null && rowGPULoad.getVisibility() == VISIBLE);
         setVisibility(anyVisible ? VISIBLE : GONE);
     }
@@ -123,37 +128,24 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     /**
-     * Calculates system-wide CPU load by comparing /proc/stat snapshots.
+     * Scans system thermal zones to find CPU temperature.
      */
-    private int calculateCPULoad() {
-        try {
-            RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
-            String line = reader.readLine();
-            reader.close();
-            if (line == null) return 0;
-            
-            String[] toks = line.trim().split(" +");
-            long idle = Long.parseLong(toks[4]);
-            long total = 0;
-            for (int i = 1; i < toks.length; i++) total += Long.parseLong(toks[i]);
-            
-            long diffIdle = idle - lastCpuIdle;
-            long diffTotal = total - lastCpuTotal;
-            lastCpuIdle = idle;
-            lastCpuTotal = total;
-            
-            return diffTotal == 0 ? 0 : (int) (100 - (diffIdle * 100 / diffTotal));
-        } catch (Exception e) {
-            return 0; // Likely restricted on Android 8+ without specific driver access
+    private float getCPUTemperature() {
+        for (String path : THERMAL_PATHS) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+                String line = reader.readLine();
+                if (line != null) {
+                    float temp = Float.parseFloat(line.trim());
+                    // Convert millidegrees (standard on most Androids) to Celsius
+                    return temp > 1000 ? temp / 1000.0f : temp;
+                }
+            } catch (Exception ignored) {}
         }
+        return 0;
     }
 
-    /**
-     * Calculates GPU load by reading vendor-specific sysfs paths.
-     */
     private int calculateGPULoad() {
         try {
-            // Check Adreno (Qualcomm) path
             BufferedReader reader = new BufferedReader(new FileReader("/sys/class/kgsl/kgsl-3d0/gpubusy"));
             String line = reader.readLine();
             reader.close();
@@ -167,7 +159,6 @@ public class FrameRating extends FrameLayout implements Runnable {
             }
         } catch (Exception e) {
             try {
-                // Check Mali (ARM) path
                 BufferedReader reader = new BufferedReader(new FileReader("/sys/class/misc/mali0/device/utilisation"));
                 String line = reader.readLine();
                 reader.close();
@@ -195,15 +186,14 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (lastTime == 0) lastTime = SystemClock.elapsedRealtime();
         long time = SystemClock.elapsedRealtime();
         
-        // Update stats every 500ms
         if (time >= lastTime + 500) {
             lastFPS = ((float) (frameCount * 1000) / (time - lastTime));
             
-            // Perform load calculations off-thread (on the renderer thread calling update)
-            cpuLoad = calculateCPULoad();
+            // REPLACED: Temperature instead of Load
+            cpuTemp = getCPUTemperature();
             gpuLoad = calculateGPULoad();
             
-            post(this); // Refresh UI
+            post(this); 
             lastTime = time;
             frameCount = 0;
         }
@@ -214,7 +204,10 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void run() {
         if (tvFPS != null) tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         if (tvRAM != null) tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
-        if (tvCPULoad != null) tvCPULoad.setText(cpuLoad + "%");
+        
+        // Display as Temperature (e.g., 45.5°C)
+        if (tvCPUTemp != null) tvCPUTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", cpuTemp));
+        
         if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
     }
 }
