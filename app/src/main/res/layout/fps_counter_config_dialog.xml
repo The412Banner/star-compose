@@ -39,5 +39,17 @@
             android:layout_height="wrap_content"
             android:text="Show Renderer/GPU Name" />
 
+        <CheckBox
+            android:id="@+id/CBShowBatteryTemp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show Battery Temperature" />
+
+        <CheckBox
+            android:id="@+id/CBShowBatteryVoltage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show Battery Voltage" />
+
     </LinearLayout>
 </ScrollView>
