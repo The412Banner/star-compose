@@ -17,13 +17,26 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/RowCPULoad"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CPU: " android:textColor="#2e7d32" android:textStyle="bold" android:textSize="12sp" />
-        <TextView android:id="@+id/TVCPULoad" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0%" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
+    android:id="@+id/RowCPULoad"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="1dp">
+    <TextView 
+        android:layout_width="wrap_content" 
+        android:layout_height="wrap_content" 
+        android:text="CPU Temp: " 
+        android:textColor="#ffeb3b" 
+        android:textStyle="bold" 
+        android:textSize="12sp" />
+    <TextView 
+        android:id="@+id/TVCPULoad" 
+        android:layout_width="wrap_content" 
+        android:layout_height="wrap_content" 
+        android:text="0°C" 
+        android:textColor="#ffffff" 
+        android:textStyle="bold" 
+        android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -66,3 +79,4 @@
         <TextView android:id="@+id/TVRAM" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>
+
