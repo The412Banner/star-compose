@@ -13,6 +13,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
     private final CheckBox cbShowGPULoad;
     private final CheckBox cbShowRAM;
     private final CheckBox cbShowRenderer;
+    private final CheckBox cbShowBatteryTemp; // New
+    private final CheckBox cbShowBatteryVoltage; // New
 
     public FPSCounterConfigDialog(Context context, String configString) {
         super(context, R.layout.fps_counter_config_dialog);
@@ -23,6 +25,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowGPULoad = findViewById(R.id.CBShowGPULoad);
         cbShowRAM = findViewById(R.id.CBShowRAM);
         cbShowRenderer = findViewById(R.id.CBShowRenderer);
+        cbShowBatteryTemp = findViewById(R.id.CBShowBatteryTemp); // New
+        cbShowBatteryVoltage = findViewById(R.id.CBShowBatteryVoltage); // New
 
         // Parse and set initial state
         HashMap<String, String> config = parseConfig(configString);
@@ -31,6 +35,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowGPULoad.setChecked(config.getOrDefault("showGPULoad", "0").equals("1"));
         cbShowRAM.setChecked(config.getOrDefault("showRAM", "0").equals("1"));
         cbShowRenderer.setChecked(config.getOrDefault("showRenderer", "0").equals("1"));
+        cbShowBatteryTemp.setChecked(config.getOrDefault("showBatteryTemp", "0").equals("1")); // New
+        cbShowBatteryVoltage.setChecked(config.getOrDefault("showBatteryVoltage", "0").equals("1")); // New
     }
 
     /**
@@ -47,6 +53,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
             config.put("showGPULoad", dialog.cbShowGPULoad.isChecked() ? "1" : "0");
             config.put("showRAM", dialog.cbShowRAM.isChecked() ? "1" : "0");
             config.put("showRenderer", dialog.cbShowRenderer.isChecked() ? "1" : "0");
+            config.put("showBatteryTemp", dialog.cbShowBatteryTemp.isChecked() ? "1" : "0"); // New
+            config.put("showBatteryVoltage", dialog.cbShowBatteryVoltage.isChecked() ? "1" : "0"); // New
             
             // Save the serialized string back to the view's tag
             anchorView.setTag(toConfigString(config));
