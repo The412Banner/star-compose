@@ -77,7 +77,7 @@
     <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
     <string name="strict_shader_math">Strict Shader Math</string>
     <string name="video_memory_size">Video Memory Size</string>
-    <string name="show_fps">Show FPS</string>
+    <string name="show_fps">Show FPS Counter</string>
     <string name="none">None</string>
     <string name="custom_text">Custom Text</string>
     <string name="icon">Icon</string>
@@ -637,5 +637,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="shutdown">Shutdown</string>
     <string name="disable_mouse">Toggle Mouse</string>
 </resources>
+
 
 
