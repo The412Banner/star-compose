@@ -3,7 +3,6 @@
     android:orientation="vertical"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="#88000000"
     android:padding="6dp">
 
     <LinearLayout
@@ -11,32 +10,27 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS: " android:textColor="#0277bd" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS:" android:textColor="#0277bd" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVFPS" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
-    android:id="@+id/RowCPULoad"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="1dp">
-    <TextView 
-        android:layout_width="wrap_content" 
-        android:layout_height="wrap_content" 
-        android:text="CPU Temp: " 
-        android:textColor="#ffeb3b" 
-        android:textStyle="bold" 
-        android:textSize="12sp" />
-    <TextView 
-        android:id="@+id/TVCPULoad" 
-        android:layout_width="wrap_content" 
-        android:layout_height="wrap_content" 
-        android:text="0°C" 
-        android:textColor="#ffffff" 
-        android:textStyle="bold" 
-        android:textSize="12sp" />
+        android:id="@+id/RowCPULoad"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CPU Temp:" android:textColor="#ffeb3b" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
+        <TextView android:id="@+id/TVCPULoad" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°C" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -44,8 +38,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Renderer: " android:textColor="#fc0303" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Renderer:" android:textColor="#fc0303" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
@@ -54,8 +52,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU: " android:textColor="#5c23a6" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU:" android:textColor="#5c23a6" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVGPU" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
@@ -64,8 +66,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Load: " android:textColor="#ff6f00" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Load:" android:textColor="#ff6f00" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVGPULoad" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0%" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
@@ -74,8 +80,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAM: " android:textColor="#23a6a4" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAM:" android:textColor="#23a6a4" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVRAM" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
@@ -84,9 +94,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Temp: " android:textColor="#ff9800" android:textStyle="bold" android:textSize="12sp" />
-        <TextView android:id="@+id/TVBatteryTemp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°C" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Temp:" android:textColor="#ff9800" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
+        <TextView android:id="@+id/TVBatteryTemp" android:id="@+id/TVBatteryTemp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°C" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -94,8 +108,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="1dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Volt: " android:textColor="#4caf50" android:textStyle="bold" android:textSize="12sp" />
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Volt:" android:textColor="#4caf50" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
         <TextView android:id="@+id/TVBatteryVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0mV" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
