@@ -24,7 +24,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRAM = findViewById(R.id.CBShowRAM);
         cbShowRenderer = findViewById(R.id.CBShowRenderer);
 
-        // Parse existing config
+        // Parse and set initial state
         HashMap<String, String> config = parseConfig(configString);
         cbShowFPS.setChecked(config.getOrDefault("showFPS", "1").equals("1"));
         cbShowCPULoad.setChecked(config.getOrDefault("showCPULoad", "0").equals("1"));
@@ -33,9 +33,13 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowRenderer.setChecked(config.getOrDefault("showRenderer", "0").equals("1"));
     }
 
-    // Static helper to show the dialog and update the tag automatically
+    /**
+     * Integrated show method that handles tag management automatically.
+     */
     public static void show(Context context, View anchorView) {
-        FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, anchorView.getTag().toString());
+        String currentTag = anchorView.getTag() != null ? anchorView.getTag().toString() : "";
+        FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, currentTag);
+        
         dialog.setOnConfirmCallback(() -> {
             HashMap<String, String> config = new HashMap<>();
             config.put("showFPS", dialog.cbShowFPS.isChecked() ? "1" : "0");
@@ -43,6 +47,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
             config.put("showGPULoad", dialog.cbShowGPULoad.isChecked() ? "1" : "0");
             config.put("showRAM", dialog.cbShowRAM.isChecked() ? "1" : "0");
             config.put("showRenderer", dialog.cbShowRenderer.isChecked() ? "1" : "0");
+            
+            // Save the serialized string back to the view's tag
             anchorView.setTag(toConfigString(config));
         });
         dialog.show();
@@ -50,6 +56,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
 
     private static HashMap<String, String> parseConfig(String configString) {
         HashMap<String, String> config = new HashMap<>();
+        if (configString == null || configString.isEmpty()) return config;
         KeyValueSet kv = new KeyValueSet(configString);
         for (String[] entry : kv) config.put(entry[0], entry[1]);
         return config;
