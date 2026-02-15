@@ -31,10 +31,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final View rowGPU;
     private final View rowRAM;
     private final View rowRenderer;
-    // FIX: Use wildcard <String, ?> to accept HashMap<String, String> or HashMap<String, Object>
     private final HashMap<String, ?> graphicsDriverConfig;
 
-    // FIX: Update constructors to use HashMap<String, ?>
     public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig) {
         this(context, graphicsDriverConfig, null);
     }
@@ -50,13 +48,11 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
 
-        // Initialize TextViews
         tvFPS = findViewById(R.id.TVFPS);
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
 
-        // Initialize Row Containers using specific IDs from XML
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
@@ -65,16 +61,35 @@ public class FrameRating extends FrameLayout implements Runnable {
         this.totalRAM = getTotalRAM();
     }
 
+    /**
+     * Applies the visibility settings from the Container's FPS counter config string.
+     */
     public void applyConfig(String configString) {
         if (configString == null || configString.isEmpty()) return;
-        com.winlator.cmod.core.KeyValueSet config = new com.winlator.cmod.core.KeyValueSet(configString);
+        KeyValueSet config = new KeyValueSet(configString);
 
-        if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? View.VISIBLE : View.GONE);
-        if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "1").equals("1") ? View.VISIBLE : View.GONE);
+        // Map config keys to View visibility
+        if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? VISIBLE : GONE);
+        if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? VISIBLE : GONE);
+        
+        // Handling CPU Load row (if present in your XML)
+        View rowCPULoad = findViewById(R.id.RowCPULoad);
+        if (rowCPULoad != null) rowCPULoad.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
 
-        int rendererVisibility = config.get("showRenderer", "1").equals("1") ? View.VISIBLE : View.GONE;
-        if (rowRenderer != null) rowRenderer.setVisibility(rendererVisibility);
-        if (rowGPU != null) rowGPU.setVisibility(rendererVisibility);
+        // Renderer and GPU info usually go together in the HUD
+        int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
+        if (rowRenderer != null) rowRenderer.setVisibility(rendererVis);
+        if (rowGPU != null) rowGPU.setVisibility(rendererVis);
+        
+        // Logic to hide the whole widget if all rows are hidden
+        updateParentVisibility();
+    }
+
+    private void updateParentVisibility() {
+        boolean anyVisible = (rowFPS != null && rowFPS.getVisibility() == VISIBLE) ||
+                             (rowRAM != null && rowRAM.getVisibility() == VISIBLE) ||
+                             (rowRenderer != null && rowRenderer.getVisibility() == VISIBLE);
+        setVisibility(anyVisible ? VISIBLE : GONE);
     }
 
     private String getTotalRAM() {
@@ -93,18 +108,17 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public void setRenderer(String renderer) {
-        tvRenderer.setText(renderer);
+        if (tvRenderer != null) tvRenderer.setText(renderer);
     }
 
     public void setGpuName(String gpuName) {
-        tvGPU.setText(gpuName);
+        if (tvGPU != null) tvGPU.setText(gpuName);
     }
 
     public void reset() {
-        tvRenderer.setText("OpenGL");
-        // FIX: Safely retrieve the version object from the wildcard HashMap
+        if (tvRenderer != null) tvRenderer.setText("OpenGL");
         Object version = graphicsDriverConfig.get("version");
-        tvGPU.setText(GPUInformation.getRenderer(version != null ? version.toString() : "", context));
+        if (tvGPU != null) tvGPU.setText(GPUInformation.getRenderer(version != null ? version.toString() : "", context));
     }
 
     public void update() {
@@ -121,7 +135,7 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        if (getVisibility() == GONE) setVisibility(View.VISIBLE);
+        // Only show if updateParentVisibility hasn't hidden us
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
     }
