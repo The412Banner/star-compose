@@ -100,7 +100,7 @@
         android:gravity="center_vertical"
         android:background="#33000000">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Temp:" android:textColor="#ff9800" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
-        <TextView android:id="@+id/TVBatteryTemp" android:id="@+id/TVBatteryTemp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°C" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVBatteryTemp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°C" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
