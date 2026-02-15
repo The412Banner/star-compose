@@ -2,6 +2,9 @@ package com.winlator.cmod.widget;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -24,27 +27,32 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
-    private float cpuTemp = 0; // Changed from cpuLoad to cpuTemp
+    private float cpuTemp = 0;
     private int gpuLoad = 0;
+    private float batteryTemp = 0; // New
+    private int batteryVoltage = 0; // New
     private final String totalRAM;
 
     private final TextView tvFPS;
     private final TextView tvRenderer;
     private final TextView tvGPU;
     private final TextView tvRAM;
-    private final TextView tvCPUTemp; // Renamed from tvCPULoad
+    private final TextView tvCPUTemp;
     private final TextView tvGPULoad;
+    private final TextView tvBatteryTemp; // New
+    private final TextView tvBatteryVoltage; // New
 
     private final View rowFPS;
     private final View rowGPU;
     private final View rowRAM;
     private final View rowRenderer;
-    private final View rowCPUTemp; // Renamed from rowCPULoad
+    private final View rowCPUTemp;
     private final View rowGPULoad;
+    private final View rowBatteryTemp; // New
+    private final View rowBatteryVoltage; // New
 
     private final HashMap<String, ?> graphicsDriverConfig;
 
-    // Common paths for CPU temperature on various Android devices
     private static final String[] THERMAL_PATHS = {
         "/sys/class/thermal/thermal_zone0/temp",
         "/sys/class/thermal/thermal_zone1/temp",
@@ -72,16 +80,20 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
-        tvCPUTemp = findViewById(R.id.TVCPULoad); // Keeping ID for XML compatibility
+        tvCPUTemp = findViewById(R.id.TVCPULoad);
         tvGPULoad = findViewById(R.id.TVGPULoad);
+        tvBatteryTemp = findViewById(R.id.TVBatteryTemp); // New
+        tvBatteryVoltage = findViewById(R.id.TVBatteryVoltage); // New
 
         // Bind Rows
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
-        rowCPUTemp = findViewById(R.id.RowCPULoad); // Keeping ID for XML compatibility
+        rowCPUTemp = findViewById(R.id.RowCPULoad);
         rowGPULoad = findViewById(R.id.RowGPULoad);
+        rowBatteryTemp = findViewById(R.id.RowBatteryTemp); // New
+        rowBatteryVoltage = findViewById(R.id.RowBatteryVoltage); // New
 
         this.totalRAM = getTotalRAM();
     }
@@ -94,6 +106,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? VISIBLE : GONE);
         if (rowCPUTemp != null) rowCPUTemp.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
         if (rowGPULoad != null) rowGPULoad.setVisibility(config.get("showGPULoad", "0").equals("1") ? VISIBLE : GONE);
+        if (rowBatteryTemp != null) rowBatteryTemp.setVisibility(config.get("showBatteryTemp", "0").equals("1") ? VISIBLE : GONE); // New
+        if (rowBatteryVoltage != null) rowBatteryVoltage.setVisibility(config.get("showBatteryVoltage", "0").equals("1") ? VISIBLE : GONE); // New
 
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
         if (rowRenderer != null) rowRenderer.setVisibility(rendererVis);
@@ -108,7 +122,9 @@ public class FrameRating extends FrameLayout implements Runnable {
                              (rowRenderer != null && rowRenderer.getVisibility() == VISIBLE) ||
                              (rowGPU != null && rowGPU.getVisibility() == VISIBLE) ||
                              (rowCPUTemp != null && rowCPUTemp.getVisibility() == VISIBLE) ||
-                             (rowGPULoad != null && rowGPULoad.getVisibility() == VISIBLE);
+                             (rowGPULoad != null && rowGPULoad.getVisibility() == VISIBLE) ||
+                             (rowBatteryTemp != null && rowBatteryTemp.getVisibility() == VISIBLE) || // New
+                             (rowBatteryVoltage != null && rowBatteryVoltage.getVisibility() == VISIBLE); // New
         setVisibility(anyVisible ? VISIBLE : GONE);
     }
 
@@ -127,16 +143,12 @@ public class FrameRating extends FrameLayout implements Runnable {
         return StringUtils.formatBytes(usedMem, false);
     }
 
-    /**
-     * Scans system thermal zones to find CPU temperature.
-     */
     private float getCPUTemperature() {
         for (String path : THERMAL_PATHS) {
             try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
                 String line = reader.readLine();
                 if (line != null) {
                     float temp = Float.parseFloat(line.trim());
-                    // Convert millidegrees (standard on most Androids) to Celsius
                     return temp > 1000 ? temp / 1000.0f : temp;
                 }
             } catch (Exception ignored) {}
@@ -189,9 +201,15 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (time >= lastTime + 500) {
             lastFPS = ((float) (frameCount * 1000) / (time - lastTime));
             
-            // REPLACED: Temperature instead of Load
             cpuTemp = getCPUTemperature();
             gpuLoad = calculateGPULoad();
+
+            // Fetch Battery Data
+            Intent batteryStatus = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (batteryStatus != null) {
+                batteryTemp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0f;
+                batteryVoltage = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0);
+            }
             
             post(this); 
             lastTime = time;
@@ -204,10 +222,11 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void run() {
         if (tvFPS != null) tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         if (tvRAM != null) tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
-        
-        // Display as Temperature (e.g., 45.5°C)
         if (tvCPUTemp != null) tvCPUTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", cpuTemp));
-        
         if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
+        
+        // Update Battery UI
+        if (tvBatteryTemp != null) tvBatteryTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", batteryTemp));
+        if (tvBatteryVoltage != null) tvBatteryVoltage.setText(batteryVoltage + "mV");
     }
 }
