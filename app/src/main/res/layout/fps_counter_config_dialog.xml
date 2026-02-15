@@ -19,7 +19,7 @@
             android:id="@+id/CBShowCPULoad"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Show CPU Load" />
+            android:text="Show CPU Temperature" />
 
         <CheckBox
             android:id="@+id/CBShowGPULoad"
