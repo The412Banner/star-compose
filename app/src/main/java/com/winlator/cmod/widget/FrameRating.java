@@ -14,6 +14,9 @@ import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.core.StringUtils;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Locale;
 
@@ -22,15 +25,26 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
+    private int cpuLoad = 0;
+    private int gpuLoad = 0;
+    private long lastCpuTotal = 0;
+    private long lastCpuIdle = 0;
     private final String totalRAM;
+
     private final TextView tvFPS;
     private final TextView tvRenderer;
     private final TextView tvGPU;
     private final TextView tvRAM;
+    private final TextView tvCPULoad;
+    private final TextView tvGPULoad;
+
     private final View rowFPS;
     private final View rowGPU;
     private final View rowRAM;
     private final View rowRenderer;
+    private final View rowCPULoad;
+    private final View rowGPULoad;
+
     private final HashMap<String, ?> graphicsDriverConfig;
 
     public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig) {
@@ -48,47 +62,48 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         LayoutInflater.from(context).inflate(R.layout.frame_rating, this, true);
 
+        // Bind TextViews
         tvFPS = findViewById(R.id.TVFPS);
         tvRAM = findViewById(R.id.TVRAM);
         tvRenderer = findViewById(R.id.TVRenderer);
         tvGPU = findViewById(R.id.TVGPU);
+        tvCPULoad = findViewById(R.id.TVCPULoad);
+        tvGPULoad = findViewById(R.id.TVGPULoad);
 
+        // Bind Rows
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
         rowRenderer = findViewById(R.id.RowRenderer);
         rowGPU = findViewById(R.id.RowGPU);
+        rowCPULoad = findViewById(R.id.RowCPULoad);
+        rowGPULoad = findViewById(R.id.RowGPULoad);
 
         this.totalRAM = getTotalRAM();
     }
 
-    /**
-     * Applies the visibility settings from the Container's FPS counter config string.
-     */
     public void applyConfig(String configString) {
         if (configString == null || configString.isEmpty()) return;
         KeyValueSet config = new KeyValueSet(configString);
 
-        // Map config keys to View visibility
         if (rowFPS != null) rowFPS.setVisibility(config.get("showFPS", "1").equals("1") ? VISIBLE : GONE);
         if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? VISIBLE : GONE);
-        
-        // Handling CPU Load row (if present in your XML)
-        View rowCPULoad = findViewById(R.id.RowCPULoad);
         if (rowCPULoad != null) rowCPULoad.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
+        if (rowGPULoad != null) rowGPULoad.setVisibility(config.get("showGPULoad", "0").equals("1") ? VISIBLE : GONE);
 
-        // Renderer and GPU info usually go together in the HUD
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
         if (rowRenderer != null) rowRenderer.setVisibility(rendererVis);
         if (rowGPU != null) rowGPU.setVisibility(rendererVis);
         
-        // Logic to hide the whole widget if all rows are hidden
         updateParentVisibility();
     }
 
     private void updateParentVisibility() {
         boolean anyVisible = (rowFPS != null && rowFPS.getVisibility() == VISIBLE) ||
                              (rowRAM != null && rowRAM.getVisibility() == VISIBLE) ||
-                             (rowRenderer != null && rowRenderer.getVisibility() == VISIBLE);
+                             (rowRenderer != null && rowRenderer.getVisibility() == VISIBLE) ||
+                             (rowGPU != null && rowGPU.getVisibility() == VISIBLE) ||
+                             (rowCPULoad != null && rowCPULoad.getVisibility() == VISIBLE) ||
+                             (rowGPULoad != null && rowGPULoad.getVisibility() == VISIBLE);
         setVisibility(anyVisible ? VISIBLE : GONE);
     }
 
@@ -105,6 +120,61 @@ public class FrameRating extends FrameLayout implements Runnable {
         activityManager.getMemoryInfo(memoryInfo);
         long usedMem = memoryInfo.totalMem - memoryInfo.availMem;
         return StringUtils.formatBytes(usedMem, false);
+    }
+
+    /**
+     * Calculates system-wide CPU load by comparing /proc/stat snapshots.
+     */
+    private int calculateCPULoad() {
+        try {
+            RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
+            String line = reader.readLine();
+            reader.close();
+            if (line == null) return 0;
+            
+            String[] toks = line.trim().split(" +");
+            long idle = Long.parseLong(toks[4]);
+            long total = 0;
+            for (int i = 1; i < toks.length; i++) total += Long.parseLong(toks[i]);
+            
+            long diffIdle = idle - lastCpuIdle;
+            long diffTotal = total - lastCpuTotal;
+            lastCpuIdle = idle;
+            lastCpuTotal = total;
+            
+            return diffTotal == 0 ? 0 : (int) (100 - (diffIdle * 100 / diffTotal));
+        } catch (Exception e) {
+            return 0; // Likely restricted on Android 8+ without specific driver access
+        }
+    }
+
+    /**
+     * Calculates GPU load by reading vendor-specific sysfs paths.
+     */
+    private int calculateGPULoad() {
+        try {
+            // Check Adreno (Qualcomm) path
+            BufferedReader reader = new BufferedReader(new FileReader("/sys/class/kgsl/kgsl-3d0/gpubusy"));
+            String line = reader.readLine();
+            reader.close();
+            if (line != null) {
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length >= 2) {
+                    long busy = Long.parseLong(parts[0]);
+                    long total = Long.parseLong(parts[1]);
+                    if (total != 0) return (int) ((busy * 100) / total);
+                }
+            }
+        } catch (Exception e) {
+            try {
+                // Check Mali (ARM) path
+                BufferedReader reader = new BufferedReader(new FileReader("/sys/class/misc/mali0/device/utilisation"));
+                String line = reader.readLine();
+                reader.close();
+                if (line != null) return Integer.parseInt(line.trim());
+            } catch (Exception e2) {}
+        }
+        return 0;
     }
 
     public void setRenderer(String renderer) {
@@ -124,9 +194,16 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void update() {
         if (lastTime == 0) lastTime = SystemClock.elapsedRealtime();
         long time = SystemClock.elapsedRealtime();
+        
+        // Update stats every 500ms
         if (time >= lastTime + 500) {
             lastFPS = ((float) (frameCount * 1000) / (time - lastTime));
-            post(this);
+            
+            // Perform load calculations off-thread (on the renderer thread calling update)
+            cpuLoad = calculateCPULoad();
+            gpuLoad = calculateGPULoad();
+            
+            post(this); // Refresh UI
             lastTime = time;
             frameCount = 0;
         }
@@ -135,8 +212,9 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        // Only show if updateParentVisibility hasn't hidden us
-        tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
-        tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
+        if (tvFPS != null) tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
+        if (tvRAM != null) tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
+        if (tvCPULoad != null) tvCPULoad.setText(cpuLoad + "%");
+        if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
     }
 }
