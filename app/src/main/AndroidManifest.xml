@@ -107,6 +107,12 @@
             android:screenOrientation="sensor"
             android:exported="false" />
 
+        <activity
+            android:name=".saves.CustomFilePickerActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="sensor"
+            android:exported="false" />
+
 
 
         <receiver
@@ -140,6 +146,12 @@
             </intent-filter>
         </provider>
 
+        <activity
+            android:name=".restore.RestoreActivity"
+            android:process=":restore_process"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:exported="true" />
+
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="false"/>
@@ -148,4 +160,5 @@
             android:value="true" />
     </application>
 </manifest>
+
 
