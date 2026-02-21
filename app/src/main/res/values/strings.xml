@@ -636,7 +636,11 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="vkbasalt_sharpness_denoise">Sharpeness Denoise</string>
     <string name="shutdown">Shutdown</string>
     <string name="disable_mouse">Toggle Mouse</string>
+    <string name="custom_icon">Custom Icon</string>
+    <string name="select_png_jpg_jpeg_ico">Select PNG/JPG/JPEG/ICO</string>
+    <string name="shortcuticon">ShortcutIcon</string>
 </resources>
+
 
 
 
