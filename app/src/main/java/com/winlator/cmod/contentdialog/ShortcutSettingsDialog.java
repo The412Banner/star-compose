@@ -3,7 +3,10 @@ package com.winlator.cmod.contentdialog;
 
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.util.Log;
@@ -15,6 +18,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.SeekBar;
@@ -83,6 +87,39 @@ public class ShortcutSettingsDialog extends ContentDialog {
         createContentView();
     }
 
+    public void onIconSelected(Uri iconUri) {
+        try {
+            Context context = fragment.getContext();
+
+            InputStream inputStream = context.getContentResolver().openInputStream(iconUri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            inputStream.close();
+
+            if (bitmap == null) {
+                AppUtils.showToast(getContext(),"Can't load image");
+                return;
+            }
+
+            File iconFile = shortcut.iconFile;
+            FileOutputStream out = new FileOutputStream(iconFile);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.flush();
+            out.close();
+
+            shortcut.icon = bitmap;
+
+            ImageView iconPreview = findViewById(R.id.CustomIcon);
+            if (iconPreview != null) {
+                iconPreview.setImageBitmap(bitmap);
+            }
+
+            AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void createContentView() {
         final Context context = fragment.getContext();
         inputControlsManager = new InputControlsManager(context);
@@ -99,6 +136,14 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
         final EditText etName = findViewById(R.id.ETName);
         etName.setText(shortcut.name);
+
+        Button selectIcon = findViewById(R.id.SelectIcon);
+        selectIcon.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            fragment.startActivityForResult(intent, 1337);
+        });
 
         final EditText etExecArgs = findViewById(R.id.ETExecArgs);
         etExecArgs.setText(shortcut.getExtra("execArgs"));
@@ -743,3 +788,4 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
