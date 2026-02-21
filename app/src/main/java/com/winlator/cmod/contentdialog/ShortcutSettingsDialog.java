@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
+import android.net.Uri;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -788,4 +789,5 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
