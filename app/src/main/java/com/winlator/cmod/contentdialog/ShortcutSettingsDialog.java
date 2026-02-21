@@ -54,6 +54,8 @@ import com.winlator.cmod.widget.EnvVarsView;
 import com.winlator.cmod.winhandler.WinHandler;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -790,6 +792,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
