@@ -110,15 +110,13 @@ public class ShortcutsFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == 1337 && resultCode == Activity.RESULT_OK && data != null) {
-            Uri selectedImageUri = data.getData();
-
-            if (currentDialog != null) {
-                currentDialog.onIconSelected(selectedImageUri);
-            }
-        }
+    super.onActivityResult(requestCode, resultCode, data);
+          if (requestCode == 1337 && resultCode == Activity.RESULT_OK && data != null) {
+               Uri iconUri = data.getData();
+          if (iconUri != null && currentSettingsDialog != null) {
+               currentSettingsDialog.onIconSelected(iconUri);
+               }
+          }
     }
 
 
@@ -442,5 +440,6 @@ public class ShortcutsFragment extends Fragment {
         } catch (Exception e) {}
     }
 }
+
 
 
