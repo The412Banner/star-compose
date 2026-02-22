@@ -182,8 +182,10 @@ public class ShortcutsFragment extends Fragment {
             listItemMenu.setOnMenuItemClickListener((menuItem) -> {
                 int itemId = menuItem.getItemId();
                 if (itemId == R.id.shortcut_settings) {
-                    (new ShortcutSettingsDialog(ShortcutsFragment.this, shortcut)).show();
+                    currentDialog = new ShortcutSettingsDialog(ShortcutsFragment.this, shortcut); // Save to the variable
+                    currentDialog.show();
                 }
+
                 else if (itemId == R.id.shortcut_remove) {
                     ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_shortcut, () -> {
                         boolean fileDeleted = shortcut.file.delete();
@@ -447,6 +449,7 @@ public class ShortcutsFragment extends Fragment {
         currentSettingsDialog.show();
     }
 }
+
 
 
 
