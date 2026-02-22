@@ -93,36 +93,44 @@ public class ShortcutSettingsDialog extends ContentDialog {
     }
 
     public void onIconSelected(Uri iconUri) {
-        try {
-            Context context = fragment.getContext();
+    try {
+        Context context = fragment.getContext();
+        InputStream inputStream = context.getContentResolver().openInputStream(iconUri);
+        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+        inputStream.close();
 
-            InputStream inputStream = context.getContentResolver().openInputStream(iconUri);
-            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-            inputStream.close();
-
-            if (bitmap == null) {
-                AppUtils.showToast(getContext(),"Can't load image");
-                return;
-            }
-
-            File iconFile = shortcut.iconFile;
-            FileOutputStream out = new FileOutputStream(iconFile);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.flush();
-            out.close();
-
-            shortcut.icon = bitmap;
-
-            ImageView iconPreview = findViewById(R.id.CustomIcon);
-            if (iconPreview != null) {
-                iconPreview.setImageBitmap(bitmap);
-            }
-
-            AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (bitmap == null) {
+            AppUtils.showToast(getContext(), "Can't load image");
+            return;
         }
+
+        // FIX: Ensure the file path exists. 
+        // If shortcut.iconFile is null or doesn't have a path, create it.
+        File iconFile = shortcut.iconFile;
+        if (iconFile == null) {
+            // Create a default path in the internal files directory
+            iconFile = new File(context.getFilesDir(), "shortcut_" + shortcut.name + ".png");
+        }
+
+        FileOutputStream out = new FileOutputStream(iconFile);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+        out.flush();
+        out.close();
+
+        shortcut.icon = bitmap;
+        // Update the shortcut's internal reference to the new file
+        // You may need a setter for this depending on your Shortcut class structure
+        
+        ImageView iconPreview = findViewById(R.id.CustomIcon);
+        if (iconPreview != null) {
+            iconPreview.setImageBitmap(bitmap);
+        }
+
+        AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
+
+    } catch (Exception e) { // Changed to catch all Exceptions for debugging
+        e.printStackTrace();
+        AppUtils.showToast(getContext(), "Error: " + e.getMessage());
     }
 
     private void createContentView() {
@@ -793,6 +801,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
