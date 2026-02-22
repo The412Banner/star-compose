@@ -114,8 +114,8 @@ public class ShortcutsFragment extends Fragment {
         if (requestCode == 1337 && resultCode == Activity.RESULT_OK && data != null) {
             Uri iconUri = data.getData();
             // This will now find the variable correctly
-            if (iconUri != null && currentSettingsDialog != null) {
-                currentSettingsDialog.onIconSelected(iconUri);
+            if (iconUri != null && currentDialog != null) {
+                currentDialog.onIconSelected(iconUri);
             }
         }
     }
@@ -449,6 +449,7 @@ public class ShortcutsFragment extends Fragment {
         currentDialog.show();
     }
 }
+
 
 
 
