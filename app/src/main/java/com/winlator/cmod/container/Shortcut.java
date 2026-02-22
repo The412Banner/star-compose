@@ -65,6 +65,13 @@ import java.nio.file.Files;
                                 if (iconFile.isFile()){
                                     icon = BitmapFactory.decodeFile(iconFile.getPath());
                                     break;
+                                } else {
+                                    File iconIfNotFound = new File("/data/user/0/" + PACKAGE_NAME + "/files/imagefs/home/xuser/.cache/wallpaper.bmp");
+                                    if (iconIfNotFound.isFile()) {
+                                        icon = BitmapFactory.decodeFile(iconIfNotFound.getPath());
+                                    } else {
+                                        icon = null;
+                                    }
                                 }
                             }
                         }
@@ -309,4 +316,5 @@ import java.nio.file.Files;
         }
 
     }
+
 
