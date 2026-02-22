@@ -1,4 +1,4 @@
-package com.winlator.cmo;
+package com.winlator.cmod;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.winlator.cmo.saves.FileAdapter;
+import com.winlator.cmod.saves.FileAdapter;
 
 import java.io.File;
 
