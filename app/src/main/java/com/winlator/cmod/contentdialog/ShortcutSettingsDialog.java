@@ -102,18 +102,17 @@ public class ShortcutSettingsDialog extends ContentDialog {
         if (inputStream != null) inputStream.close();
 
         if (bitmap == null) {
-            AppUtils.showToast(getContext(), "Can't load image");
+            AppUtils.showToast(context, "Can't load image");
             return;
         }
 
-        // Fix: Use a safer way to get the file path without needing md5()
+        // Ensure we have a valid file to write to
         File iconFile = shortcut.iconFile;
-        if (iconFile == null) {
-            File iconsDir = new File(context.getFilesDir(), "icons");
-            if (!iconsDir.exists()) iconsDir.mkdirs();
-            // Use name and hashCode as a unique identifier instead of md5
-            String fileName = "shortcut_" + shortcut.name.hashCode() + ".png";
-            iconFile = new File(iconsDir, fileName);
+        if (iconFile == null || !iconFile.getParentFile().exists()) {
+            // Fallback: create an icons directory if it doesn't exist
+            File internalIconsDir = new File(context.getFilesDir(), "icons");
+            if (!internalIconsDir.exists()) internalIconsDir.mkdirs();
+            iconFile = new File(internalIconsDir, "shortcut_" + System.currentTimeMillis() + ".png");
         }
 
         try (FileOutputStream out = new FileOutputStream(iconFile)) {
@@ -121,17 +120,24 @@ public class ShortcutSettingsDialog extends ContentDialog {
             out.flush();
         }
 
+        // Update the shortcut object
         shortcut.icon = bitmap;
 
-        ImageView iconPreview = findViewById(R.id.CustomIcon);
-        if (iconPreview != null) {
-            iconPreview.setImageBitmap(bitmap);
-        }
+        // Force UI update on the Main Thread
+        fragment.getActivity().runOnUiThread(() -> {
+            ImageView iconPreview = findViewById(R.id.CustomIcon);
+            if (iconPreview != null) {
+                iconPreview.setImageBitmap(bitmap);
+            }
+            AppUtils.showToast(context, "Icon updated! Refresh layout!");
+        });
 
-        AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
     } catch (Exception e) {
         e.printStackTrace();
-        AppUtils.showToast(getContext(), "Error saving icon");
+        // Show the actual error in the toast so you can debug it
+        fragment.getActivity().runOnUiThread(() -> 
+            AppUtils.showToast(fragment.getContext(), "Error: " + e.getMessage())
+        );
     }
 }
 
@@ -803,6 +809,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
