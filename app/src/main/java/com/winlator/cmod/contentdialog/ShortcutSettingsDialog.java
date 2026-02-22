@@ -128,11 +128,12 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
         AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
 
-        } catch (Exception e) { // Changed to catch all Exceptions for debugging
+    } catch (Exception e) { // Changed to catch all Exceptions for debugging
         e.printStackTrace();
         AppUtils.showToast(getContext(), "Error: " + e.getMessage());
-        }
-    }​
+    }
+}
+​
 
     private void createContentView() {
         final Context context = fragment.getContext();
@@ -802,6 +803,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
