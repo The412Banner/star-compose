@@ -104,33 +104,25 @@ public class ShortcutSettingsDialog extends ContentDialog {
             return;
         }
 
-        // FIX: Ensure the file path exists. 
-        // If shortcut.iconFile is null or doesn't have a path, create it.
+        // Use the existing icon file reference from the shortcut object
         File iconFile = shortcut.iconFile;
-        if (iconFile == null) {
-            // Create a default path in the internal files directory
-            iconFile = new File(context.getFilesDir(), "shortcut_" + shortcut.name + ".png");
+        
+        try (FileOutputStream out = new FileOutputStream(iconFile)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.flush();
         }
 
-        FileOutputStream out = new FileOutputStream(iconFile);
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-        out.flush();
-        out.close();
-
         shortcut.icon = bitmap;
-        // Update the shortcut's internal reference to the new file
-        // You may need a setter for this depending on your Shortcut class structure
-        
+
         ImageView iconPreview = findViewById(R.id.CustomIcon);
         if (iconPreview != null) {
             iconPreview.setImageBitmap(bitmap);
         }
 
         AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
-
-    } catch (Exception e) { // Changed to catch all Exceptions for debugging
+    } catch (Exception e) {
         e.printStackTrace();
-        AppUtils.showToast(getContext(), "Error: " + e.getMessage());
+        AppUtils.showToast(getContext(), "Error saving icon: " + e.getMessage());
     }
 }
 ​
@@ -803,6 +795,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
