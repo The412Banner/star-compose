@@ -119,74 +119,6 @@ public class ShortcutsFragment extends Fragment {
                 currentDialog.onIconSelected(selectedImageUri);
             }
         }
-
-        if (requestCode == 7777 && resultCode == Activity.RESULT_OK && data != null) {
-            Uri selectedFile = data.getData();
-            String selectedFilePath = selectedFile.getPath().toLowerCase();
-            //AppUtils.showToast(getContext(), selectedFilePath);
-            if (selectedFilePath.endsWith(".exe") && selectedFilePath.contains("/document/")) {
-                if (shortcutContainer != null) {
-                    String driveLetter = null;
-
-                    if (selectedFilePath.contains("primary:"))
-                        driveLetter = "D:";
-
-                    if (selectedFilePath.contains("/data/user/0/" + PACKAGE_NAME + "/files/imagefs/"))
-                        driveLetter = "Z:";
-
-                    if (driveLetter == null) {
-                        AppUtils.showToast(getContext(), "Wrong path! Can't detect drive!");
-                        return;
-                    }
-
-                    String fileName = queryName(getContext().getContentResolver(), selectedFile);
-                    String fileNameOutExe = fileName.substring(0, fileName.length() - 4); // -.exe
-                    String pathWOutDocument = selectedFilePath;
-
-                    if (pathWOutDocument.startsWith("/document/primary:")) {
-                        pathWOutDocument = pathWOutDocument.replaceFirst("/document/primary:", "");
-                    } else if (pathWOutDocument.startsWith("/document/")) {
-                        pathWOutDocument = pathWOutDocument.replaceFirst("/document/", "");
-                    }
-
-                    if (driveLetter.equals("Z:"))
-                        pathWOutDocument = pathWOutDocument.replaceFirst("/data/user/0/" + PACKAGE_NAME + "/files/imagefs/", "");
-
-                    if (driveLetter.equals("D:"))
-                        pathWOutDocument = pathWOutDocument.replaceFirst("download/", "");
-
-                    String execPath = pathWOutDocument.replace("/", "\\\\\\\\");
-                    execPath = execPath.replace(" ", "\\\\ ");
-                    String shortcutDesktop =
-                                    "[Desktop Entry]\n" +
-                                    "Name=" + fileNameOutExe + "\n" +
-                                    "Exec=env WINEPREFIX=\"/data/user/0/" + PACKAGE_NAME + "/files/imagefs/home/xuser/.wine/dosdevices/z:/home/xuser/.wine\" wine " + driveLetter + "\\\\\\\\" + execPath /*+ fileName*/ + "\n" +
-                                    "Type=Application\n" +
-                                    "StartupNotify=true\n" +
-                                    "Path=/data/user/0/" + PACKAGE_NAME + "/files/imagefs/home/xuser/.wine/dosdevices/" + driveLetter.toLowerCase()  + "/" + pathWOutDocument.replaceFirst(fileName.toLowerCase(), "") + "\n" +
-                                    "Icon=MAKE_BIONIC_GREAT_AGAIN\n" +
-                                    "StartupWMClass=" + fileName;
-
-                    File desktopFile = new File(shortcutContainer.getDesktopDir(), fileNameOutExe + ".desktop");
-
-                    //AppUtils.showToast(getContext(), "Path: " + driveLetter + selectedFilePath.substring(0, pathWOutDocument.length() - fileName.length()) + "\n"
-                    //        + "Exec: " + driveLetter + execPath + fileName);
-
-                    try (FileWriter writer = new FileWriter(desktopFile)) {
-                        writer.write(shortcutDesktop);
-                    } catch (IOException e) {
-                        Log.e("ShortcutsFragment", e.toString());
-                        AppUtils.showToast(getContext(), "Error occured while adding shortcut!");
-                        return;
-                    }
-
-                    loadShortcutsList(curSortType);
-                    AppUtils.showToast(getContext(), "Shortcut created for Container: " + shortcutContainer.name);
-                }
-            } else {
-                AppUtils.showToast(getContext(), "Wrong file type! U need choose .exe file!");
-            }
-        }
     }
 
 
@@ -510,4 +442,5 @@ public class ShortcutsFragment extends Fragment {
         } catch (Exception e) {}
     }
 }
+
 
