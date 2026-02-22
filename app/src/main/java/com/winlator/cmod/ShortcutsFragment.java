@@ -65,7 +65,7 @@ public class ShortcutsFragment extends Fragment {
     private RecyclerView recyclerView;
     private TextView emptyTextView;
     private ContainerManager manager;
-    private ShortcutSettingsDialog currentDialog;
+    private ShortcutSettingsDialog currentSettingsDialog;
     private ShortcutsAdapter adapter;
     private SharedPreferences prefs;
     private Container shortcutContainer;
@@ -110,13 +110,14 @@ public class ShortcutsFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-    super.onActivityResult(requestCode, resultCode, data);
-          if (requestCode == 1337 && resultCode == Activity.RESULT_OK && data != null) {
-               Uri iconUri = data.getData();
-          if (iconUri != null && currentSettingsDialog != null) {
-               currentSettingsDialog.onIconSelected(iconUri);
-               }
-          }
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1337 && resultCode == Activity.RESULT_OK && data != null) {
+            Uri iconUri = data.getData();
+            // This will now find the variable correctly
+            if (iconUri != null && currentSettingsDialog != null) {
+                currentSettingsDialog.onIconSelected(iconUri);
+            }
+        }
     }
 
 
@@ -439,7 +440,14 @@ public class ShortcutsFragment extends Fragment {
             }
         } catch (Exception e) {}
     }
+
+    private void showShortcutSettings(Shortcut shortcut) {
+        // Initialize the variable here
+        currentSettingsDialog = new ShortcutSettingsDialog(this, shortcut);
+        currentSettingsDialog.show();
+    }
 }
+
 
 
 
