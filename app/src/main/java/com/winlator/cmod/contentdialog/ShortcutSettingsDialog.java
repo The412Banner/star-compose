@@ -95,18 +95,25 @@ public class ShortcutSettingsDialog extends ContentDialog {
     public void onIconSelected(Uri iconUri) {
     try {
         Context context = fragment.getContext();
+        if (context == null) return;
+
         InputStream inputStream = context.getContentResolver().openInputStream(iconUri);
         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-        inputStream.close();
+        if (inputStream != null) inputStream.close();
 
         if (bitmap == null) {
             AppUtils.showToast(getContext(), "Can't load image");
             return;
         }
 
-        // Use the existing icon file reference from the shortcut object
+        // Ensure iconFile is not null before writing
         File iconFile = shortcut.iconFile;
-        
+        if (iconFile == null) {
+            File iconsDir = new File(context.getFilesDir(), "icons");
+            if (!iconsDir.exists()) iconsDir.mkdirs();
+            iconFile = new File(iconsDir, StringUtils.md5(shortcut.name) + ".png");
+        }
+
         try (FileOutputStream out = new FileOutputStream(iconFile)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.flush();
@@ -120,12 +127,11 @@ public class ShortcutSettingsDialog extends ContentDialog {
         }
 
         AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
-    } catch (Exception e) {
+    } catch (IOException e) {
         e.printStackTrace();
-        AppUtils.showToast(getContext(), "Error saving icon: " + e.getMessage());
+        AppUtils.showToast(getContext(), "Error saving icon");
     }
 }
-​
 
     private void createContentView() {
         final Context context = fragment.getContext();
@@ -795,6 +801,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
