@@ -53,6 +53,7 @@ import java.io.File;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+    public static String PACKAGE_NAME;
     public static final @IntRange(from = 1, to = 19) byte CONTAINER_PATTERN_COMPRESSION_LEVEL = 9;
     public static final byte PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
     public static final byte OPEN_FILE_REQUEST_CODE = 2;
@@ -101,6 +102,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
 
         setContentView(R.layout.main_activity);
+
+        PACKAGE_NAME = getApplicationContext().getPackageName();
 
         drawerLayout = findViewById(R.id.DrawerLayout);
         NavigationView navigationView = findViewById(R.id.NavigationView);
@@ -392,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
                     "Modified by the star Emulator Team",
-                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating Winlator bionic and to href=\"https://github.com/StevenMXZ\">StevenMXZ</a> for his useful changes.",
+                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating Winlator bionic and to <a href=\"https://github.com/StevenMXZ\">StevenMXZ</a> for his useful changes.",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",
@@ -446,6 +449,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem.setTitle(spanString);
     }
 }
+
 
 
 
