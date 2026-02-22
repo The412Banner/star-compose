@@ -65,7 +65,7 @@ public class ShortcutsFragment extends Fragment {
     private RecyclerView recyclerView;
     private TextView emptyTextView;
     private ContainerManager manager;
-    private ShortcutSettingsDialog currentSettingsDialog;
+    private ShortcutSettingsDialog currentDialog;
     private ShortcutsAdapter adapter;
     private SharedPreferences prefs;
     private Container shortcutContainer;
@@ -445,10 +445,11 @@ public class ShortcutsFragment extends Fragment {
 
     private void showShortcutSettings(Shortcut shortcut) {
         // Initialize the variable here
-        currentSettingsDialog = new ShortcutSettingsDialog(this, shortcut);
-        currentSettingsDialog.show();
+        currentDialog = new ShortcutSettingsDialog(this, shortcut);
+        currentDialog.show();
     }
 }
+
 
 
 
