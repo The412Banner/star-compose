@@ -111,7 +111,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
             out.flush();
             out.close();
 
-            shortcut.icon = bitmap;
+            shortcut.setIcon(bitmap);
 
             ImageView iconPreview = findViewById(R.id.CustomIcon);
             if (iconPreview != null) {
@@ -793,6 +793,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
