@@ -106,12 +106,14 @@ public class ShortcutSettingsDialog extends ContentDialog {
             return;
         }
 
-        // Ensure iconFile is not null before writing
+        // Fix: Use a safer way to get the file path without needing md5()
         File iconFile = shortcut.iconFile;
         if (iconFile == null) {
             File iconsDir = new File(context.getFilesDir(), "icons");
             if (!iconsDir.exists()) iconsDir.mkdirs();
-            iconFile = new File(iconsDir, StringUtils.md5(shortcut.name) + ".png");
+            // Use name and hashCode as a unique identifier instead of md5
+            String fileName = "shortcut_" + shortcut.name.hashCode() + ".png";
+            iconFile = new File(iconsDir, fileName);
         }
 
         try (FileOutputStream out = new FileOutputStream(iconFile)) {
@@ -127,7 +129,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         }
 
         AppUtils.showToast(getContext(), "Icon updated! Refresh layout!");
-    } catch (IOException e) {
+    } catch (Exception e) {
         e.printStackTrace();
         AppUtils.showToast(getContext(), "Error saving icon");
     }
@@ -801,6 +803,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         update.run();
     }
 }
+
 
 
 
