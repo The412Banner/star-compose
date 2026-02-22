@@ -113,6 +113,12 @@
             android:screenOrientation="sensor"
             android:exported="false" />
 
+        <activity
+            android:name="com.winlator.cmod.ShortcutPickerActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="sensor"
+            android:exported="false" />
+
 
 
         <receiver
@@ -160,5 +166,6 @@
             android:value="true" />
     </application>
 </manifest>
+
 
 
