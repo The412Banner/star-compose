@@ -825,6 +825,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 touchpadView.setMouseEnabled(!isMouseDisabled);
                 drawerLayout.closeDrawers();
                 break;
+            case R.id.main_menu_move_cursor_to_touchpoint: //
+                MoveCursorToTouchpoint();
+                drawerLayout.closeDrawers();
+                break;
             case R.id.main_menu_toggle_fullscreen:
                 renderer.toggleFullscreen();
                 drawerLayout.closeDrawers();
@@ -1962,7 +1966,20 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     public void setScreenEffectProfile(String screenEffectProfile) {
         this.screenEffectProfile = screenEffectProfile;
     }
+
+    private void MoveCursorToTouchpoint() {
+    //
+    boolean currentValue = preferences.getBoolean("move_cursor_to_touchpoint", false);
+    boolean newValue = !currentValue; // xor-int/lit8 v3, v0, 1
+    
+    preferences.edit().putBoolean("move_cursor_to_touchpoint", newValue).apply();
+    
+    // Update the touchpadView state
+    if (touchpadView != null) {
+        touchpadView.setMoveCursorToTouchpoint(newValue);
+    }
 }
+
 
 
 
