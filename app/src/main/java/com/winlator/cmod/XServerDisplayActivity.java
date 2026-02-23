@@ -1968,17 +1968,21 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     }
 
     private void MoveCursorToTouchpoint() {
-    //
-    boolean currentValue = preferences.getBoolean("move_cursor_to_touchpoint", false);
-    boolean newValue = !currentValue; // xor-int/lit8 v3, v0, 1
-    
-    preferences.edit().putBoolean("move_cursor_to_touchpoint", newValue).apply();
-    
-    // Update the touchpadView state
-    if (touchpadView != null) {
-        touchpadView.setMoveCursorToTouchpoint(newValue);
-    }
-}
+        // Toggle the preference value
+        boolean currentValue = preferences.getBoolean("move_cursor_to_touchpoint", false);
+        boolean newValue = !currentValue;
+        
+        preferences.edit().putBoolean("move_cursor_to_touchpoint", newValue).apply();
+        
+        // Update the touchpadView state
+        if (touchpadView != null) {
+            touchpadView.setMoveCursorToTouchpoint(newValue);
+        }
+    } // Closes MoveCursorToTouchpoint
+
+} // Closes the XServerDisplayActivity class
+
+
 
 
 
