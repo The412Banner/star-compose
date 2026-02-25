@@ -129,14 +129,22 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Map;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -811,6 +819,89 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
             else drawerLayout.closeDrawers();
         }
+    }
+
+    private void openXServerDrawer() {
+        if (environment != null) {
+            releasePointerCaptureIfNeeded("open-drawer/shortcut");
+            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.openDrawer(GravityCompat.START);
+            } else {
+                drawerLayout.closeDrawers();
+            }
+        }
+    }
+
+
+    // Fields
+    private static final String PREF_EXP_INPUT   = "drawer_exp_input";
+    private static final String PREF_EXP_DISPLAY = "drawer_exp_display";
+    private static final String PREF_EXP_SYSTEM  = "drawer_exp_system";
+
+    private boolean expInput   = false;
+    private boolean expDisplay = false;
+    private boolean expSystem  = false;
+
+    private NavigationView navigationView;
+
+    private LayoutAnimationController navLayoutAnim;
+
+    private boolean enableLogs = false;
+    private boolean allowMagnifier = true;
+
+    private static final int ANIM_DURATION = 300; // ms
+    private static final float SLIDE_DP = 0f;     // small vertical shift
+
+    private static final float COLLAPSE_TRANSLATION_DP = 6f;
+
+    private float dp(float v) {
+        return v * getResources().getDisplayMetrics().density;
+    }
+
+    @Nullable
+    private RecyclerView navRecycler() {
+        return findNavRecycler(navigationView);
+    }
+
+    private Set<CharSequence> titlesForIds(Menu menu, int[] itemIds) {
+        HashSet<CharSequence> set = new HashSet<>();
+        for (int id : itemIds) {
+            MenuItem mi = menu.findItem(id);
+            if (mi != null && mi.getTitle() != null) set.add(mi.getTitle());
+        }
+        return set;
+    }
+
+    @Nullable
+    private TextView rowTitle(View row) {
+        // Try Material id, then fallback to first TextView
+        int textId = getResources().getIdentifier("design_menu_item_text", "id", getPackageName());
+        View v = textId != 0 ? row.findViewById(textId) : null;
+        if (v instanceof TextView) return (TextView) v;
+
+        if (row instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) row;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                View c = vg.getChildAt(i);
+                if (c instanceof TextView) return (TextView) c;
+            }
+        }
+        return null;
+    }
+
+    private List<View> findVisibleRowsForTitles(Set<CharSequence> wantedTitles) {
+        ArrayList<View> rows = new ArrayList<>();
+        RecyclerView rv = navRecycler();
+        if (rv == null) return rows;
+
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            View row = rv.getChildAt(i);
+            TextView tv = rowTitle(row);
+            if (tv != null && tv.getText() != null && wantedTitles.contains(tv.getText())) {
+                rows.add(row);
+            }
+        }
+        return rows;
     }
 
     private void animateInGroupItems(int[] itemIds) {
@@ -2169,6 +2260,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
