@@ -71,6 +71,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:min="50"
                 android:max="150"
                 android:progress="100" />
 
