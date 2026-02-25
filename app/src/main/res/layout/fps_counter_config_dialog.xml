@@ -51,5 +51,38 @@
             android:layout_height="wrap_content"
             android:text="Show Battery Voltage" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HUD Scale"
+            android:layout_marginTop="16dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <SeekBar
+                android:id="@+id/SBHUDScale"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="150"
+                android:progress="100" />
+
+            <TextView
+                android:id="@+id/TVHUDScaleValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="100%"
+                android:minWidth="45dp"
+                android:gravity="end"
+                android:textColor="?android:attr/textColorPrimary" />
+        </LinearLayout>
+
     </LinearLayout>
 </ScrollView>
