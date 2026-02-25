@@ -10,7 +10,7 @@
             android:title="@string/input_controls" />
         <item
             android:id="@+id/header_cursor"
-            android:title="Mouse &​ Cursor Option"
+            android:title="Mouse and​ Cursor Option"
             android:icon="@drawable/cursor" />
         <group
             android:id="@+id/group_cursor"
