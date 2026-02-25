@@ -9,14 +9,22 @@
             android:id="@+id/main_menu_input_controls"
             android:title="@string/input_controls" />
         <item
-            android:id="@+id/main_menu_move_cursor_to_touchpoint"
-            android:title="Move Cursor to Touchpoint" />
-        <item
-            android:id="@+id/main_menu_relative_mouse_movement"
-            android:title="Toggle Relative Mouse Movement" />
-        <item
-            android:id="@+id/main_menu_disable_mouse"
-            android:title="@string/disable_mouse" />
+            android:id="@+id/header_cursor"
+            android:title="Mouse &​ Cursor Option"
+            android:icon="@drawable/cursor" />
+        <group
+            android:id="@+id/group_cursor"
+            android:checkableBehavior="none">
+            <item
+                android:id="@+id/main_menu_move_cursor_to_touchpoint"
+                android:title="Move Cursor to Touchpoint" />
+            <item
+                android:id="@+id/main_menu_relative_mouse_movement"
+                android:title="Toggle Relative Mouse Movement" />
+            <item
+                android:id="@+id/main_menu_disable_mouse"
+                android:title="@string/disable_mouse" />
+        </group>
         <item
             android:icon="@drawable/icon_screen_effect"
             android:id="@+id/main_menu_screen_effects"
