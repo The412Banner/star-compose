@@ -3,6 +3,8 @@ package com.winlator.cmod.contentdialog;
 import android.content.Context;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import com.winlator.cmod.R;
 import com.winlator.cmod.core.KeyValueSet;
 import java.util.HashMap;
@@ -13,8 +15,10 @@ public class FPSCounterConfigDialog extends ContentDialog {
     private final CheckBox cbShowGPULoad;
     private final CheckBox cbShowRAM;
     private final CheckBox cbShowRenderer;
-    private final CheckBox cbShowBatteryTemp; // New
-    private final CheckBox cbShowBatteryVoltage; // New
+    private final CheckBox cbShowBatteryTemp;
+    private final CheckBox cbShowBatteryVoltage;
+    private final SeekBar sbHUDScale;
+    private final TextView tvHUDScaleValue;
 
     public FPSCounterConfigDialog(Context context, String configString) {
         super(context, R.layout.fps_counter_config_dialog);
@@ -25,8 +29,10 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowGPULoad = findViewById(R.id.CBShowGPULoad);
         cbShowRAM = findViewById(R.id.CBShowRAM);
         cbShowRenderer = findViewById(R.id.CBShowRenderer);
-        cbShowBatteryTemp = findViewById(R.id.CBShowBatteryTemp); // New
-        cbShowBatteryVoltage = findViewById(R.id.CBShowBatteryVoltage); // New
+        cbShowBatteryTemp = findViewById(R.id.CBShowBatteryTemp);
+        cbShowBatteryVoltage = findViewById(R.id.CBShowBatteryVoltage);
+        sbHUDScale = findViewById(R.id.SBHUDScale);
+        tvHUDScaleValue = findViewById(R.id.TVHUDScaleValue);
 
         // Parse and set initial state
         HashMap<String, String> config = parseConfig(configString);
@@ -35,13 +41,33 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowGPULoad.setChecked(config.getOrDefault("showGPULoad", "0").equals("1"));
         cbShowRAM.setChecked(config.getOrDefault("showRAM", "0").equals("1"));
         cbShowRenderer.setChecked(config.getOrDefault("showRenderer", "0").equals("1"));
-        cbShowBatteryTemp.setChecked(config.getOrDefault("showBatteryTemp", "0").equals("1")); // New
-        cbShowBatteryVoltage.setChecked(config.getOrDefault("showBatteryVoltage", "0").equals("1")); // New
+        cbShowBatteryTemp.setChecked(config.getOrDefault("showBatteryTemp", "0").equals("1"));
+        cbShowBatteryVoltage.setChecked(config.getOrDefault("showBatteryVoltage", "0").equals("1"));
+
+        // Initialize SeekBar for HUD Scale (Range 50-150, default 100)
+        int initialScale = Integer.parseInt(config.getOrDefault("hudScale", "100"));
+        sbHUDScale.setProgress(initialScale);
+        tvHUDScaleValue.setText(initialScale + "%");
+
+        sbHUDScale.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                // Enforce minimum value of 50
+                int finalValue = Math.max(50, progress);
+                tvHUDScaleValue.setText(finalValue + "%");
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // If user releases below 50, snap it back to 50
+                if (seekBar.getProgress() < 50) seekBar.setProgress(50);
+            }
+        });
     }
 
-    /**
-     * Integrated show method that handles tag management automatically.
-     */
     public static void show(Context context, View anchorView) {
         String currentTag = anchorView.getTag() != null ? anchorView.getTag().toString() : "";
         FPSCounterConfigDialog dialog = new FPSCounterConfigDialog(context, currentTag);
@@ -53,10 +79,13 @@ public class FPSCounterConfigDialog extends ContentDialog {
             config.put("showGPULoad", dialog.cbShowGPULoad.isChecked() ? "1" : "0");
             config.put("showRAM", dialog.cbShowRAM.isChecked() ? "1" : "0");
             config.put("showRenderer", dialog.cbShowRenderer.isChecked() ? "1" : "0");
-            config.put("showBatteryTemp", dialog.cbShowBatteryTemp.isChecked() ? "1" : "0"); // New
-            config.put("showBatteryVoltage", dialog.cbShowBatteryVoltage.isChecked() ? "1" : "0"); // New
+            config.put("showBatteryTemp", dialog.cbShowBatteryTemp.isChecked() ? "1" : "0");
+            config.put("showBatteryVoltage", dialog.cbShowBatteryVoltage.isChecked() ? "1" : "0");
             
-            // Save the serialized string back to the view's tag
+            // Save scale value (ensure min 50)
+            int scaleValue = Math.max(50, dialog.sbHUDScale.getProgress());
+            config.put("hudScale", String.valueOf(scaleValue));
+            
             anchorView.setTag(toConfigString(config));
         });
         dialog.show();
