@@ -29,8 +29,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     private float lastFPS = 0;
     private float cpuTemp = 0;
     private int gpuLoad = 0;
-    private float batteryTemp = 0; // New
-    private int batteryVoltage = 0; // New
+    private float batteryTemp = 0; 
+    private int batteryVoltage = 0; 
     private final String totalRAM;
 
     private final TextView tvFPS;
@@ -39,8 +39,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRAM;
     private final TextView tvCPUTemp;
     private final TextView tvGPULoad;
-    private final TextView tvBatteryTemp; // New
-    private final TextView tvBatteryVoltage; // New
+    private final TextView tvBatteryTemp; 
+    private final TextView tvBatteryVoltage; 
 
     private final View rowFPS;
     private final View rowGPU;
@@ -48,8 +48,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final View rowRenderer;
     private final View rowCPUTemp;
     private final View rowGPULoad;
-    private final View rowBatteryTemp; // New
-    private final View rowBatteryVoltage; // New
+    private final View rowBatteryTemp; 
+    private final View rowBatteryVoltage; 
 
     private final HashMap<String, ?> graphicsDriverConfig;
 
@@ -82,8 +82,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvGPU = findViewById(R.id.TVGPU);
         tvCPUTemp = findViewById(R.id.TVCPULoad);
         tvGPULoad = findViewById(R.id.TVGPULoad);
-        tvBatteryTemp = findViewById(R.id.TVBatteryTemp); // New
-        tvBatteryVoltage = findViewById(R.id.TVBatteryVoltage); // New
+        tvBatteryTemp = findViewById(R.id.TVBatteryTemp); 
+        tvBatteryVoltage = findViewById(R.id.TVBatteryVoltage); 
 
         // Bind Rows
         rowFPS = findViewById(R.id.RowFPS);
@@ -92,8 +92,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         rowGPU = findViewById(R.id.RowGPU);
         rowCPUTemp = findViewById(R.id.RowCPULoad);
         rowGPULoad = findViewById(R.id.RowGPULoad);
-        rowBatteryTemp = findViewById(R.id.RowBatteryTemp); // New
-        rowBatteryVoltage = findViewById(R.id.RowBatteryVoltage); // New
+        rowBatteryTemp = findViewById(R.id.RowBatteryTemp); 
+        rowBatteryVoltage = findViewById(R.id.RowBatteryVoltage); 
 
         this.totalRAM = getTotalRAM();
     }
@@ -106,12 +106,26 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (rowRAM != null) rowRAM.setVisibility(config.get("showRAM", "0").equals("1") ? VISIBLE : GONE);
         if (rowCPUTemp != null) rowCPUTemp.setVisibility(config.get("showCPULoad", "0").equals("1") ? VISIBLE : GONE);
         if (rowGPULoad != null) rowGPULoad.setVisibility(config.get("showGPULoad", "0").equals("1") ? VISIBLE : GONE);
-        if (rowBatteryTemp != null) rowBatteryTemp.setVisibility(config.get("showBatteryTemp", "0").equals("1") ? VISIBLE : GONE); // New
-        if (rowBatteryVoltage != null) rowBatteryVoltage.setVisibility(config.get("showBatteryVoltage", "0").equals("1") ? VISIBLE : GONE); // New
+        if (rowBatteryTemp != null) rowBatteryTemp.setVisibility(config.get("showBatteryTemp", "0").equals("1") ? VISIBLE : GONE); 
+        if (rowBatteryVoltage != null) rowBatteryVoltage.setVisibility(config.get("showBatteryVoltage", "0").equals("1") ? VISIBLE : GONE); 
 
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
         if (rowRenderer != null) rowRenderer.setVisibility(rendererVis);
         if (rowGPU != null) rowGPU.setVisibility(rendererVis);
+
+        // Apply HUD Scaling
+        try {
+            int scaleInt = Integer.parseInt(config.get("hudScale", "100"));
+            float scaleFactor = Math.max(50, Math.min(150, scaleInt)) / 100.0f;
+            
+            this.setPivotX(0); // Scale relative to top-left
+            this.setPivotY(0);
+            this.setScaleX(scaleFactor);
+            this.setScaleY(scaleFactor);
+        } catch (Exception e) {
+            this.setScaleX(1.0f);
+            this.setScaleY(1.0f);
+        }
         
         updateParentVisibility();
     }
@@ -123,8 +137,8 @@ public class FrameRating extends FrameLayout implements Runnable {
                              (rowGPU != null && rowGPU.getVisibility() == VISIBLE) ||
                              (rowCPUTemp != null && rowCPUTemp.getVisibility() == VISIBLE) ||
                              (rowGPULoad != null && rowGPULoad.getVisibility() == VISIBLE) ||
-                             (rowBatteryTemp != null && rowBatteryTemp.getVisibility() == VISIBLE) || // New
-                             (rowBatteryVoltage != null && rowBatteryVoltage.getVisibility() == VISIBLE); // New
+                             (rowBatteryTemp != null && rowBatteryTemp.getVisibility() == VISIBLE) || 
+                             (rowBatteryVoltage != null && rowBatteryVoltage.getVisibility() == VISIBLE); 
         setVisibility(anyVisible ? VISIBLE : GONE);
     }
 
