@@ -1,6 +1,5 @@
 package com.winlator.cmod.contentdialog;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.winlator.R; // Ensure this points to your app's package R file
 import com.winlator.cmod.XServerDisplayActivity;
 import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.renderer.GLRenderer;
@@ -19,18 +19,20 @@ import com.winlator.cmod.xserver.XServer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class ActiveWindowsDialog extends ContentDialog {
     private final XServerDisplayActivity activity;
 
     public ActiveWindowsDialog(XServerDisplayActivity activity) {
-        super(activity, 0x7f0c001e); // layout.content_dialog_active_windows
+        // Uses the layout ID defined for active_windows_dialog.xml
+        super(activity, R.layout.active_windows_dialog); 
         this.activity = activity;
         setCancelable(true);
-        setTitle(0x7f11001f); // string.active_windows
-        setIcon(0x7f08012d); // drawable.ic_windows
+        
+        // Use R.string if defined, otherwise keep hex if directly modifying a binary
+        setTitle(activity.getString(R.string.active_windows)); 
+        setIcon(R.drawable.ic_windows);
 
         ArrayList<Window> windows = collectActiveWindows();
         loadWindowViews(windows);
@@ -66,12 +68,14 @@ public class ActiveWindowsDialog extends ContentDialog {
 
     private void loadWindowViews(ArrayList<Window> windows) {
         if (windows.isEmpty()) {
-            findViewById(0x7f0903a7).setVisibility(View.VISIBLE); // tvEmptyMessage
+            // Matches android:id="@+id/tvEmptyMessage" in active_windows_dialog.xml
+            findViewById(R.id.tvEmptyMessage).setVisibility(View.VISIBLE);
             return;
         }
 
         XServer xServer = activity.getXServer();
-        LinearLayout llWindowList = findViewById(0x7f0904cd);
+        // Matches android:id="@+id/llWindowList" in active_windows_dialog.xml
+        LinearLayout llWindowList = findViewById(R.id.llWindowList);
         llWindowList.removeAllViews();
 
         GLRenderer renderer = xServer.getRenderer();
@@ -89,11 +93,14 @@ public class ActiveWindowsDialog extends ContentDialog {
             }
 
             final Window window = windows.get(i);
-            View itemView = inflater.inflate(0x7f0c001d, currentRow, false); // layout.active_window_item
-            ImageView ivIcon = itemView.findViewById(0x7f0904cc);
-            final ImageView ivWindow = itemView.findViewById(0x7f0904cf);
-            TextView tvName = itemView.findViewById(0x7f0904ce);
-            TextView tvProcess = itemView.findViewById(0x7f0903e0);
+            // Inflates active_window_item.xml
+            View itemView = inflater.inflate(R.layout.active_window_item, currentRow, false);
+            
+            // Map views to IDs in active_window_item.xml
+            ImageView ivIcon = itemView.findViewById(R.id.ivIcon);
+            final ImageView ivWindow = itemView.findViewById(R.id.ivWindow);
+            TextView tvName = itemView.findViewById(R.id.tvName);
+            TextView tvProcess = itemView.findViewById(R.id.tvProcess);
 
             String title = window.getName();
             if (title.isEmpty() && window.getParent() != null) title = window.getParent().getName();
