@@ -46,6 +46,10 @@
             android:id="@+id/main_menu_pip_mode"
             android:title="@string/pip_mode" />
         <item
+            android:icon="@drawable/icon_active_windows"
+            android:id="@+id/main_menu_active_windows"
+            android:title="Active Windows" />
+        <item
             android:icon="@drawable/icon_task_manager"
             android:id="@+id/main_menu_task_manager"
             android:title="@string/task_manager" />
