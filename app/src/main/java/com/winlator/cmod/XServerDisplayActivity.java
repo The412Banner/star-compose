@@ -60,6 +60,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
+import com.winlator.cmod.contentdialog.ActiveWindowsDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
@@ -1168,6 +1169,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 return true;
             case R.id.main_menu_pip_mode:
                 enterPictureInPictureMode();
+                drawerLayout.closeDrawers();
+                return true;
+            case R.id.main_menu_active_windows:
+                showActiveWindowsDialog();
                 drawerLayout.closeDrawers();
                 return true;
             case R.id.main_menu_task_manager:
@@ -2315,7 +2320,14 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
         }
     } // Closes MoveCursorToTouchpoint
 
+    private void showActiveWindowsDialog() {
+        ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
+        dialog.show();
+    }
+
+
 } // Closes the XServerDisplayActivity class
+
 
 
 
