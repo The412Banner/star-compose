@@ -811,6 +811,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         handler.removeCallbacks(savePlaytimeRunnable);
     }
 
+    private void releasePointerCaptureIfNeeded(String reason) {
+        if (pointerCaptureRequested && touchpadView != null) {
+            touchpadView.releasePointerCapture();
+            touchpadView.setOnCapturedPointerListener(null);
+            pointerCaptureRequested = false;
+            Log.d("PointerCapture", "Released: " + reason);
+        }
+    }
+
     @Override
     public void onBackPressed() {
         if (environment != null) {
@@ -2260,6 +2269,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
