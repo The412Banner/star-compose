@@ -304,6 +304,19 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         contentsManager.syncContents();
 
         drawerLayout = findViewById(R.id.DrawerLayout);
+
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override public void onDrawerOpened(@NonNull View drawerView) {
+
+            }
+            @Override public void onDrawerClosed(@NonNull View drawerView) {
+                // If the user left Relative Mouse enabled, recapture.
+                if (isRelativeMouseMovement && !pointerCaptureRequested) {
+                    drawerLayout.postDelayed(() -> ensurePointerCapture("drawer-closed"), 2000);
+                }
+            }
+        });
+        
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
@@ -321,13 +334,21 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         navigationView.setNavigationItemSelectedListener(this);
         navigationView.setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_ARROW));
         navigationView.setOnFocusChangeListener((v, hasFocus) -> navigationFocused = hasFocus);
-        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            @Override
-            public void onDrawerOpened(View drawerView) {
-                super.onDrawerOpened(drawerView);
-                navigationView.requestFocus();
-            }
-        });
+
+        // restore persisted states (default collapsed = false)
+        expCursor   = preferences.getBoolean(PREF_EXP_CURSOR,   false);
+
+        applyGroup(menu, R.id.group_cursor,   R.id.header_cursor,   expCursor);
+
+        // tune RV
+        RecyclerView rv = navRecycler();
+        if (rv != null) {
+            rv.setItemAnimator(null);               // no default blink
+            rv.setHasFixedSize(true);
+            rv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            Drawable bg = navigationView.getBackground();
+            if (bg != null) rv.setBackground(bg);
+        }
 
         imageFs = ImageFs.find(this);
 
@@ -844,13 +865,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
     // Fields
-    private static final String PREF_EXP_INPUT   = "drawer_exp_input";
-    private static final String PREF_EXP_DISPLAY = "drawer_exp_display";
-    private static final String PREF_EXP_SYSTEM  = "drawer_exp_system";
+    private static final String PREF_EXP_CURSOR   = "drawer_exp_cursor";
 
-    private boolean expInput   = false;
-    private boolean expDisplay = false;
-    private boolean expSystem  = false;
+    private boolean expCursor   = false;
 
     private NavigationView navigationView;
 
@@ -1087,9 +1104,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         switch (id) {
             // ---- Section headers (toggle, do NOT close drawer) ----
             case R.id.header_cursor: {
-                boolean wasExpanded = expInput;
-                expInput = !expInput;
-                persistSection(PREF_EXP_INPUT, expInput);
+                boolean wasExpanded = expCursor;
+                expCursor = !expCursor;
+                persistSection(PREF_EXP_CURSOR, expCursor);
                 if (wasExpanded) {
                     collapseGroup(menu, R.id.group_cursor, R.id.header_cursor, CURSOR_IDS);
                 } else {
@@ -2273,6 +2290,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
