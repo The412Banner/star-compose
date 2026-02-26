@@ -347,6 +347,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             rv.setItemAnimator(null);               // no default blink
             rv.setHasFixedSize(true);
             rv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            navigationView = findViewById(R.id.NavigationView);
             Drawable bg = navigationView.getBackground();
             if (bg != null) rv.setBackground(bg);
         }
@@ -2314,6 +2315,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
