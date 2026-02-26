@@ -304,6 +304,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         contentsManager.syncContents();
 
         drawerLayout = findViewById(R.id.DrawerLayout);
+        navigationView = findViewById(R.id.NavigationView);
 
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override public void onDrawerOpened(@NonNull View drawerView) {
@@ -319,7 +320,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
-        navigationView = findViewById(R.id.NavigationView);
 
         if (isDarkMode) {
              navigationView.setItemTextColor(ContextCompat.getColorStateList(this, R.color.white));
@@ -2312,6 +2312,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
