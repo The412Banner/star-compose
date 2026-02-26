@@ -110,7 +110,7 @@ public class ActiveWindowsDialog extends ContentDialog {
             tvProcess.setText(className != null ? className : "");
 
             PixmapManager pixmapManager = xServer.pixmapManager;
-            Bitmap icon = pixmapManager.getWindowIcon(Window window);
+            Bitmap icon = pixmapManager.getWindowIcon(window);
             if (icon != null) ivIcon.setImageBitmap(icon);
 
             renderer.captureScreenshot(window, previewWidth, previewHeight, new GLRenderer.ScreenshotCallback() {
