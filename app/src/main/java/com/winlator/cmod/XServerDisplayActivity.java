@@ -2321,12 +2321,19 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
     private void showActiveWindowsDialog() {
-        ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
-        dialog.show();
+    runOnUiThread(() -> {
+        try {
+            ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
+            dialog.show();
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "Failed to show ActiveWindowsDialog", e);
+        }
+    });
     }
 
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
