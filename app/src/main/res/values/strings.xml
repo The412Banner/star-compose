@@ -639,7 +639,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="custom_icon">Custom Icon</string>
     <string name="select_png_jpg_jpeg_ico">Select PNG/JPG/JPEG/ICO</string>
     <string name="shortcuticon">ShortcutIcon</string>
+    <string name="active_windows">Active Windows</string>
 </resources>
+
 
 
 
