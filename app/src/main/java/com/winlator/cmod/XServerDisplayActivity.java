@@ -200,6 +200,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private boolean isPaused = false;
     private boolean isRelativeMouseMovement = false;
     private boolean isMouseDisabled = false;
+    private boolean pointerCaptureRequested = false;
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
@@ -2270,6 +2271,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
