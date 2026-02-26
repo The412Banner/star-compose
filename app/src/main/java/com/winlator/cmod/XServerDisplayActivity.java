@@ -19,6 +19,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.drawable.Drawable;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -2315,6 +2316,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
