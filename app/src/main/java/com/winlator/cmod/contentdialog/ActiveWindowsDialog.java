@@ -7,7 +7,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.winlator.R; // Ensure this points to your app's package R file
+import com.winlator.cmod.R; // Ensure this points to your app's package R file
 import com.winlator.cmod.XServerDisplayActivity;
 import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.renderer.GLRenderer;
