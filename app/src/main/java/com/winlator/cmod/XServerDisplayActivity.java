@@ -319,6 +319,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        navigationView = findViewById(R.id.NavigationView);
 
         NavigationView navigationView = findViewById(R.id.NavigationView);
 
@@ -715,6 +716,29 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 handled = true;
                 break;
         }
+    }
+
+    private void ensurePointerCapture(String reason) {
+        if (!isRelativeMouseMovement || touchpadView == null) return;
+
+        final int[] tries = {0};
+        Runnable attempt = new Runnable() {
+            @Override public void run() {
+                if (!hasWindowFocus()) { touchpadView.postDelayed(this, 50); return; }
+                if (!touchpadView.isAttachedToWindow()) { touchpadView.postDelayed(this, 50); return; }
+
+                // Make sure the view can take focus
+                touchpadView.setFocusableInTouchMode(true);
+                touchpadView.requestFocus();
+
+                touchpadView.requestPointerCapture();
+                touchpadView.setOnCapturedPointerListener((v, e) -> { handleCapturedPointer(e); return true; });
+                pointerCaptureRequested = true;
+
+            }
+        };
+        // Try quickly a few times to dodge transient focus transitions
+        touchpadView.postDelayed(attempt, 50); // First attempt
     }
 
     @Override
@@ -2290,6 +2314,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
