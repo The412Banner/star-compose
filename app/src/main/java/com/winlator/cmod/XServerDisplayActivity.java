@@ -1080,7 +1080,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         final GLRenderer renderer = xServerView.getRenderer();
-        switch (id) {
+        Menu menu = navigationView.getMenu();
+        switch (item.getItemId()) {
             // ---- Section headers (toggle, do NOT close drawer) ----
             case R.id.header_input: {
                 boolean wasExpanded = expInput;
@@ -2269,6 +2270,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
