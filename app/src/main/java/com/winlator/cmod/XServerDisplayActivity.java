@@ -1083,7 +1083,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         Menu menu = navigationView.getMenu();
         switch (item.getItemId()) {
             // ---- Section headers (toggle, do NOT close drawer) ----
-            case R.id.header_input: {
+            case R.id.header_cursor: {
                 boolean wasExpanded = expInput;
                 expInput = !expInput;
                 persistSection(PREF_EXP_INPUT, expInput);
@@ -2270,6 +2270,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
