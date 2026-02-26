@@ -321,6 +321,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
+        navigationView = findViewById(R.id.NavigationView);
+
         if (isDarkMode) {
              navigationView.setItemTextColor(ContextCompat.getColorStateList(this, R.color.white));
              navigationView.setBackgroundResource(R.color.content_dialog_background_dark);
@@ -2312,6 +2314,7 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
 } // Closes the XServerDisplayActivity class
+
 
 
 
