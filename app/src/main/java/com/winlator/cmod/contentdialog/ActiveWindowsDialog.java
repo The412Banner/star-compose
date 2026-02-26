@@ -30,7 +30,7 @@ public class ActiveWindowsDialog extends ContentDialog {
         setTitle(activity.getString(R.string.active_windows));
         setIcon(R.drawable.icon_active_windows);
 
-        // Fetch windows and then populate views
+        // Fetch windows using the new recursive logic and then populate views
         ArrayList<Window> windows = collectActiveWindows();
         loadWindowViews(windows);
     }
@@ -42,19 +42,34 @@ public class ActiveWindowsDialog extends ContentDialog {
         // Lock the XServer to safely iterate the window tree
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
             Window root = xServer.windowManager.rootWindow;
-            // Iterate children of root to find top-level app windows
-            for (Window child : root.getChildren()) {
-                if (child.attributes.isMapped() && !isDesktopOrTaskbar(child)) {
-                    result.add(child);
-                }
-            }
+            // Recursively search for application windows
+            findApplicationWindows(root, result);
         }
         return result;
+    }
+
+    private void findApplicationWindows(Window parent, ArrayList<Window> result) {
+        for (Window child : parent.getChildren()) {
+            // Check if the window is visible (mapped) and not a system component
+            if (child.attributes.isMapped() && !isDesktopOrTaskbar(child)) {
+                String name = child.getName();
+                // If a window has a name/title, it's likely an application window
+                if (name != null && !name.isEmpty()) {
+                    result.add(child);
+                    // Usually we don't want to list the internal sub-windows of an app, 
+                    // so we continue to the next sibling instead of going deeper here.
+                    continue; 
+                }
+            }
+            // If this window wasn't an app window but might contain one, recurse deeper
+            findApplicationWindows(child, result);
+        }
     }
 
     private boolean isDesktopOrTaskbar(Window window) {
         String className = window.getClassName();
         if (className == null) return false;
+        // Standard Windows/Wine desktop class names to ignore
         return className.equalsIgnoreCase("Progman") || 
                className.equalsIgnoreCase("Shell_TrayWnd") ||
                className.equalsIgnoreCase("explorer.exe");
@@ -64,13 +79,16 @@ public class ActiveWindowsDialog extends ContentDialog {
         LinearLayout llWindowList = findViewById(R.id.llWindowList);
         TextView tvEmptyMessage = findViewById(R.id.tvEmptyMessage);
 
+        // Clear existing views first
+        llWindowList.removeAllViews();
+
         if (windows.isEmpty()) {
             tvEmptyMessage.setVisibility(View.VISIBLE);
             return;
         }
 
+        // Hide the "No items" message as windows were found
         tvEmptyMessage.setVisibility(View.GONE);
-        llWindowList.removeAllViews();
 
         XServer xServer = activity.getXServer();
         GLRenderer renderer = xServer.getRenderer();
