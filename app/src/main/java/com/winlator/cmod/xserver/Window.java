@@ -46,6 +46,29 @@ public class Window extends XResource {
         this.originClient = originClient;
     }
 
+    /**
+     * Determines if the window is in a state where it can be rendered.
+     * Based on Smali logic: must have content and be mapped.
+     */
+    public boolean isRenderable() {
+        return content != null && isMapped();
+    }
+
+    /**
+     * Checks if the window is a desktop/shell window.
+     */
+    public boolean isDesktopWindow() {
+        String className = getClassName();
+        return className != null && className.equalsIgnoreCase("explorer.exe");
+    }
+
+    /**
+     * Helper to check if the window is currently mapped.
+     */
+    public boolean isMapped() {
+        return attributes.isMapped();
+    }
+
     public short getX() {
         return x;
     }
