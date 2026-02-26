@@ -32,7 +32,7 @@ public class ActiveWindowsDialog extends ContentDialog {
         
         // Use R.string if defined, otherwise keep hex if directly modifying a binary
         setTitle(activity.getString(R.string.active_windows)); 
-        setIcon(R.drawable.ic_windows);
+        setIcon(R.drawable.icon_active_windows);
 
         ArrayList<Window> windows = collectActiveWindows();
         loadWindowViews(windows);
