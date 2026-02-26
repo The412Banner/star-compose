@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLUtils;
 import android.util.Log;
 
 import com.winlator.cmod.R;
@@ -25,6 +26,8 @@ import com.winlator.cmod.xserver.WindowManager;
 import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -56,6 +59,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     
     private final EffectComposer effectComposer;
 
+    /**
+     * Interface used for window screenshot results.
+     */
+    @FunctionalInterface
+    public interface ScreenshotCallback {
+        void onScreenshotTaken(Bitmap bitmap);
+    }
+
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
@@ -71,6 +82,73 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         xServer.windowManager.addOnWindowModificationListener(this);
         xServer.pointer.addOnPointerMotionListener(this);
+    }
+
+    /**
+     * Initiates a window screenshot capture.
+     * Maps to the logic found in GLRenderer.smali.
+     */
+    public void captureScreenshot(Window window, int width, int height, ScreenshotCallback callback) {
+        Drawable content = window.getContent();
+        if (content != null && callback != null) {
+            // Screenshots must be taken on the GL thread
+            xServerView.queueEvent(() -> {
+                Bitmap bitmap = takeScreenshotInternal(content, width, height);
+                callback.onScreenshotTaken(bitmap);
+            });
+        }
+    }
+
+    private Bitmap takeScreenshotInternal(Drawable content, int width, int height) {
+        synchronized (content.renderLock) {
+            Texture texture = content.getTexture();
+            texture.updateFromDrawable(content);
+
+            // Create a temporary framebuffer to render the window content at requested size
+            int[] framebuffers = new int[1];
+            GLES20.glGenFramebuffers(1, framebuffers, 0);
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffers[0]);
+
+            int[] textures = new int[1];
+            GLES20.glGenTextures(1, textures, 0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, textures[0], 0);
+
+            GLES20.glViewport(0, 0, width, height);
+            GLES20.glClearColor(0, 0, 0, 0);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+            windowMaterial.use();
+            quadVertices.bind(windowMaterial.programId);
+            GLES20.glUniform2f(windowMaterial.getUniformLocation("viewSize"), content.width, content.height);
+
+            // Identity transform for the screenshot local space
+            float[] identity = XForm.getInstance();
+            XForm.identity(identity);
+            
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
+            GLES20.glUniform1i(windowMaterial.getUniformLocation("texture"), 0);
+            GLES20.glUniform1fv(windowMaterial.getUniformLocation("xform"), identity.length, identity, 0);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
+
+            // Read pixels back to CPU
+            ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
+            
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            bitmap.copyPixelsFromBuffer(buffer);
+
+            // Cleanup
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+            GLES20.glDeleteFramebuffers(1, framebuffers, 0);
+            GLES20.glDeleteTextures(1, textures, 0);
+            viewportNeedsUpdate = true; // Flag for main renderer to reset viewport
+
+            return bitmap;
+        }
     }
 
     @Override
