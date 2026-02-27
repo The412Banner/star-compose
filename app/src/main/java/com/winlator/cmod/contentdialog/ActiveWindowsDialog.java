@@ -30,7 +30,7 @@ public class ActiveWindowsDialog extends ContentDialog {
         setTitle(activity.getString(R.string.active_windows));
         setIcon(R.drawable.icon_active_windows);
 
-        // Fetch windows using the new recursive logic and then populate views
+        // Fetch windows using recursive logic and then populate views
         ArrayList<Window> windows = collectActiveWindows();
         loadWindowViews(windows);
     }
@@ -42,7 +42,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         // Lock the XServer to safely iterate the window tree
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
             Window root = xServer.windowManager.rootWindow;
-            // Recursively search for application windows
             findApplicationWindows(root, result);
         }
         return result;
@@ -53,15 +52,26 @@ public class ActiveWindowsDialog extends ContentDialog {
             // Check if the window is visible (mapped) and not a system component
             if (child.attributes.isMapped() && !isDesktopOrTaskbar(child)) {
                 String name = child.getName();
-                // If a window has a name/title, it's likely an application window
+                
+                // FIX: If the parent doesn't have a name, check children for a name
+                if (name == null || name.isEmpty()) {
+                    for (Window grandChild : child.getChildren()) {
+                        String childName = grandChild.getName();
+                        if (childName != null && !childName.isEmpty()) {
+                            name = childName;
+                            break;
+                        }
+                    }
+                }
+
+                // If we found a name (either on the window or its child), treat it as an app window
                 if (name != null && !name.isEmpty()) {
                     result.add(child);
-                    // Usually we don't want to list the internal sub-windows of an app, 
-                    // so we continue to the next sibling instead of going deeper here.
+                    // Continue to next sibling to avoid listing internal sub-windows
                     continue; 
                 }
             }
-            // If this window wasn't an app window but might contain one, recurse deeper
+            // Recurse deeper if no application window was identified at this level
             findApplicationWindows(child, result);
         }
     }
@@ -69,7 +79,6 @@ public class ActiveWindowsDialog extends ContentDialog {
     private boolean isDesktopOrTaskbar(Window window) {
         String className = window.getClassName();
         if (className == null) return false;
-        // Standard Windows/Wine desktop class names to ignore
         return className.equalsIgnoreCase("Progman") || 
                className.equalsIgnoreCase("Shell_TrayWnd") ||
                className.equalsIgnoreCase("explorer.exe");
@@ -79,7 +88,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         LinearLayout llWindowList = findViewById(R.id.llWindowList);
         TextView tvEmptyMessage = findViewById(R.id.tvEmptyMessage);
 
-        // Clear existing views first
         llWindowList.removeAllViews();
 
         if (windows.isEmpty()) {
@@ -87,7 +95,6 @@ public class ActiveWindowsDialog extends ContentDialog {
             return;
         }
 
-        // Hide the "No items" message as windows were found
         tvEmptyMessage.setVisibility(View.GONE);
 
         XServer xServer = activity.getXServer();
@@ -97,7 +104,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         int previewWidth = (int) UnitUtils.dpToPx(240.0f);
         int previewHeight = (int) UnitUtils.dpToPx(160.0f);
 
-        // Grid-like layout: 2 items per row
         LinearLayout currentRow = null;
         for (int i = 0; i < windows.size(); i++) {
             if (i % 2 == 0) {
@@ -113,7 +119,6 @@ public class ActiveWindowsDialog extends ContentDialog {
             final Window window = windows.get(i);
             View itemView = inflater.inflate(R.layout.active_window_item, currentRow, false);
             
-            // Adjust layout weight for equal distribution in the row
             LinearLayout.LayoutParams itemParams = (LinearLayout.LayoutParams) itemView.getLayoutParams();
             itemParams.weight = 1;
             itemParams.width = 0;
@@ -124,12 +129,19 @@ public class ActiveWindowsDialog extends ContentDialog {
             TextView tvName = itemView.findViewById(R.id.tvName);
             TextView tvProcess = itemView.findViewById(R.id.tvProcess);
 
-            // Set Title
+            // Set Title (with fallback if still empty)
             String title = window.getName();
-            if (title == null || title.isEmpty()) title = "Unnamed Window";
-            tvName.setText(title);
+            if (title == null || title.isEmpty()) {
+                // Final fallback check of children for the UI display
+                for (Window child : window.getChildren()) {
+                    if (child.getName() != null && !child.getName().isEmpty()) {
+                        title = child.getName();
+                        break;
+                    }
+                }
+            }
+            tvName.setText((title == null || title.isEmpty()) ? "Unnamed Window" : title);
 
-            // Set Process/Class Name
             String className = window.getClassName();
             tvProcess.setText(className != null ? className : "Unknown");
 
