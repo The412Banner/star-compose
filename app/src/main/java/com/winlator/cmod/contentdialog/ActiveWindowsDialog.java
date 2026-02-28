@@ -3,7 +3,6 @@ package com.winlator.cmod.contentdialog;
 import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -19,6 +18,8 @@ import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ActiveWindowsDialog extends ContentDialog {
     private final XServerDisplayActivity activity;
@@ -31,44 +32,64 @@ public class ActiveWindowsDialog extends ContentDialog {
         setTitle(activity.getString(R.string.active_windows));
         setIcon(R.drawable.icon_active_windows);
 
-        // Populate the list immediately
-        refreshWindowList();
+        // Fetch windows using the corrected recursive logic and populate views
+        ArrayList<Window> windows = collectActiveWindows();
+        loadWindowViews(windows);
     }
 
-    private void refreshWindowList() {
+    private ArrayList<Window> collectActiveWindows() {
         XServer xServer = activity.getXServer();
-        ArrayList<Window> activeWindows = new ArrayList<>();
+        ArrayList<Window> result = new ArrayList<>();
+        Set<Long> seenIds = new HashSet<>();
 
-        // Use a single lock for the entire collection process to prevent UI hanging
-        try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
-            collectVisibleWindows(xServer.windowManager.rootWindow, activeWindows);
+        // Lock the XServer to safely iterate the window tree
+        try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+            collectActiveWindows(xServer.windowManager.rootWindow, result, seenIds);
         }
-
-        loadWindowViews(activeWindows);
+        return result;
     }
 
-    private void collectVisibleWindows(Window parent, ArrayList<Window> result) {
-        if (parent == null) return;
+    private void collectActiveWindows(Window window, ArrayList<Window> result, Set<Long> seenIds) {
+        if (window == null) return;
 
-        for (Window child : parent.getChildren()) {
-            // Check if the window is actually 'Mapped' (Visible to the user)
-            // and has actual content to display
-            if (child.attributes.isMapped() && child.getContent() != null) {
-                String className = child.getClassName();
+        XServer xServer = activity.getXServer();
+
+        // Skip root window but process its children
+        if (window != xServer.windowManager.rootWindow) {
+            String className = window.getClassName();
+            
+            // Determine if the window is part of the desktop background/taskbar
+            boolean isDesktop = window.isDesktopWindow() || 
+                                (className != null && (className.equalsIgnoreCase("explorer.exe") ||
+                                                       className.equalsIgnoreCase("Progman") ||
+                                                       className.equalsIgnoreCase("Shell_TrayWnd")));
+
+            // A window is considered an active app if it is Mapped, not the desktop, 
+            // and either explicitly marked as an ApplicationWindow or has valid contents/children.
+            if (window.attributes.isMapped() && !isDesktop) {
+                boolean isAppWindow = window.isApplicationWindow();
+                boolean hasContent = window.getContent() != null;
+                boolean hasChildren = !window.getChildren().isEmpty();
                 
-                // Filter out system components that shouldn't be in a 'Task Switcher'
-                boolean isSystem = className != null && (
-                    className.equalsIgnoreCase("Shell_TrayWnd") || 
-                    className.equalsIgnoreCase("Progman") ||
-                    className.equalsIgnoreCase("Explorer.EXE")
-                );
+                if (isAppWindow || ((hasContent || hasChildren) && className != null && !className.isEmpty())) {
+                    long handle = window.getHandle();
+                    long uniqueId = handle != 0 ? handle : window.id;
 
-                if (!isSystem) {
-                    result.add(child);
+                    if (!seenIds.contains(uniqueId)) {
+                        seenIds.add(uniqueId);
+                        result.add(window);
+                    }
+                    
+                    // Critical: Once we find the main application window, STOP recursing down 
+                    // this specific branch so we don't list inner toolbars/buttons.
+                    return; 
                 }
             }
-            // Recurse to find child windows (some apps wrap their main view in a container)
-            collectVisibleWindows(child, result);
+        }
+
+        // Recurse into children to find deeply nested application wrappers
+        for (Window child : window.getChildren()) {
+            collectActiveWindows(child, result, seenIds);
         }
     }
 
@@ -92,44 +113,78 @@ public class ActiveWindowsDialog extends ContentDialog {
         int previewWidth = (int) UnitUtils.dpToPx(240.0f);
         int previewHeight = (int) UnitUtils.dpToPx(160.0f);
 
-        for (final Window window : windows) {
-            View itemView = inflater.inflate(R.layout.active_window_item, llWindowList, false);
+        // Grid-like layout: 2 items per row
+        LinearLayout currentRow = null;
+        for (int i = 0; i < windows.size(); i++) {
+            if (i % 2 == 0) {
+                currentRow = new LinearLayout(getContext());
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                
+                // Fix: Ensure layout params prevent the row from collapsing to 0 height
+                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+                currentRow.setLayoutParams(rowParams);
+                
+                llWindowList.addView(currentRow);
+            }
+
+            final Window window = windows.get(i);
+            View itemView = inflater.inflate(R.layout.active_window_item, currentRow, false);
             
+            // Adjust layout weight for equal distribution in the row
+            LinearLayout.LayoutParams itemParams = (LinearLayout.LayoutParams) itemView.getLayoutParams();
+            if (itemParams == null) {
+                itemParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+            } else {
+                itemParams.width = 0;
+                itemParams.weight = 1.0f;
+            }
+            itemView.setLayoutParams(itemParams);
+
             ImageView ivIcon = itemView.findViewById(R.id.ivIcon);
             final ImageView ivWindow = itemView.findViewById(R.id.ivWindow);
             TextView tvName = itemView.findViewById(R.id.tvName);
             TextView tvProcess = itemView.findViewById(R.id.tvProcess);
 
-            // Logic to get a readable name
-            String name = window.getName();
             String className = window.getClassName();
+            String title = window.getName();
             
-            tvName.setText((name != null && !name.isEmpty()) ? name : 
-                          (className != null ? className : "Application"));
-            tvProcess.setText(className != null ? className : "Unknown Process");
-
-            // Set Icon
-            try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
-                Bitmap icon = xServer.pixmapManager.getWindowIcon(window);
-                if (icon != null) ivIcon.setImageBitmap(icon);
+            // Fallback logic: if it lacks a title, use the class name (e.g., winefile.exe)
+            if (title == null || title.isEmpty()) {
+                title = className;
+            }
+            if (title == null || title.isEmpty()) {
+                title = "Unnamed Window";
             }
 
-            // Preview Screenshot
+            tvName.setText(title);
+            tvProcess.setText(className != null && !className.isEmpty() ? className : "Unknown");
+
+            // Set Icon safely
+            try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
+                PixmapManager pixmapManager = xServer.pixmapManager;
+                Bitmap icon = pixmapManager.getWindowIcon(window);
+                if (icon != null) {
+                    ivIcon.setImageBitmap(icon);
+                }
+            }
+
+            // Capture Screenshot for Preview
             renderer.captureScreenshot(window, previewWidth, previewHeight, (bitmap) -> {
                 if (bitmap != null) {
                     ivWindow.post(() -> ivWindow.setImageBitmap(bitmap));
                 }
             });
 
-            // Interaction
+            // Action: Bring to front and dismiss
             itemView.setOnClickListener(v -> {
                 WinHandler winHandler = activity.getWinHandler();
-                // We use className and Handle to tell the Windows side which one to focus
                 winHandler.bringToFront(window.getClassName(), window.getHandle());
                 dismiss();
             });
 
-            llWindowList.addView(itemView);
+            currentRow.addView(itemView);
         }
     }
 }
