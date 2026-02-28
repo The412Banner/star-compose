@@ -86,17 +86,33 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     /**
      * Initiates a window screenshot capture.
-     * Maps to the logic found in GLRenderer.smali.
      */
     public void captureScreenshot(Window window, int width, int height, ScreenshotCallback callback) {
-        Drawable content = window.getContent();
+        // Find the actual drawable, navigating down into children if the wrapper window lacks one
+        Drawable content = findDrawable(window);
         if (content != null && callback != null) {
             // Screenshots must be taken on the GL thread
             xServerView.queueEvent(() -> {
                 Bitmap bitmap = takeScreenshotInternal(content, width, height);
                 callback.onScreenshotTaken(bitmap);
             });
+        } else if (callback != null) {
+            callback.onScreenshotTaken(null);
         }
+    }
+
+    private Drawable findDrawable(Window window) {
+        if (window == null) return null;
+        if (window.getContent() != null) return window.getContent();
+        
+        // If the top-level window doesn't have a surface, recursively check its children
+        for (Window child : window.getChildren()) {
+            if (child.attributes.isMapped()) {
+                Drawable childContent = findDrawable(child);
+                if (childContent != null) return childContent;
+            }
+        }
+        return null;
     }
 
     private Bitmap takeScreenshotInternal(Drawable content, int width, int height) {
