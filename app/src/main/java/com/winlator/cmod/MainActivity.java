@@ -388,13 +388,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             final PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
 
             TextView tvWebpage = dialog.findViewById(R.id.TVWebpage);
-            tvWebpage.setText(Html.fromHtml("<a href=\"https://www.winlator.org\">winlator.org</a>", Html.FROM_HTML_MODE_LEGACY));
+            tvWebpage.setText(Html.fromHtml("<a href=\"https://sites.google.com/view/staremu\">star-emu</a>", Html.FROM_HTML_MODE_LEGACY));
             tvWebpage.setMovementMethod(LinkMovementMethod.getInstance());
 
             ((TextView) dialog.findViewById(R.id.TVAppVersion)).setText(getString(R.string.version) + " " + pInfo.versionName);
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
-                    "Modified by the star Emulator Team",
+                    "Made with ❤️ by the star Team.",
                     "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating Winlator bionic and to <a href=\"https://github.com/StevenMXZ\">StevenMXZ</a> for his useful changes.",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
@@ -449,6 +449,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem.setTitle(spanString);
     }
 }
+
 
 
 
