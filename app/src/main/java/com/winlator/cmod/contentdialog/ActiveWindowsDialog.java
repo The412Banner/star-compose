@@ -28,7 +28,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         this.activity = activity;
         setCancelable(true);
 
-        // Safe Title and Icon handling (prevents silent aborts if resources are missing)
         try {
             setTitle(activity.getString(R.string.active_windows));
         } catch (Exception e) {
@@ -36,10 +35,10 @@ public class ActiveWindowsDialog extends ContentDialog {
         }
 
         try {
-            // Using the raw integer from original smali as fallback, or standard ID
+            // Standard Winlator icon ID
             setIcon(0x7f08012d); 
         } catch (Exception e) {
-            // Ignore if icon fails to load
+            // Fallback handled by parent class
         }
 
         refreshWindowList();
@@ -50,11 +49,9 @@ public class ActiveWindowsDialog extends ContentDialog {
         ArrayList<Window> activeWindows = new ArrayList<>();
         ArrayList<Bitmap> activeIcons = new ArrayList<>();
 
-        // Lock both managers ONCE to prevent deadlocks and concurrent modification
+        // Lock both managers to safely traverse the tree and extract icons
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             findAppWindows(xServer.windowManager.rootWindow, activeWindows);
-            
-            // Gather icons while we hold the lock
             for (Window w : activeWindows) {
                 activeIcons.add(xServer.pixmapManager.getWindowIcon(w));
             }
@@ -65,7 +62,6 @@ public class ActiveWindowsDialog extends ContentDialog {
 
     private void findAppWindows(Window parent, ArrayList<Window> result) {
         if (parent == null) return;
-
         for (Window child : parent.getChildren()) {
             if (child.attributes.isMapped()) {
                 String className = child.getClassName();
@@ -73,6 +69,7 @@ public class ActiveWindowsDialog extends ContentDialog {
                 
                 if (className != null) {
                     String cls = className.toLowerCase();
+                    // Filter out desktop and system shells
                     if (cls.contains("progman") || cls.contains("shell_traywnd") || cls.equals("explorer.exe")) {
                         isSystem = true;
                     }
@@ -82,16 +79,13 @@ public class ActiveWindowsDialog extends ContentDialog {
                 boolean hasTitle = title != null && !title.isEmpty();
                 boolean hasClass = className != null && !className.isEmpty();
 
-                // If it's visible, not a taskbar/desktop, and has identity
                 if (!isSystem && (hasTitle || hasClass)) {
-                    // Check to avoid adding the invisible full-screen root desktop fallback
                     if (!isDesktopWindowFallback(child)) {
                         result.add(child);
-                        continue; // Stop searching this branch (prevents listing internal buttons/toolbars)
+                        continue; 
                     }
                 }
             }
-            // Recurse into children
             findAppWindows(child, result);
         }
     }
@@ -111,18 +105,20 @@ public class ActiveWindowsDialog extends ContentDialog {
         LinearLayout llWindowList = findViewById(R.id.llWindowList);
         TextView tvEmptyMessage = findViewById(R.id.tvEmptyMessage);
 
+        if (llWindowList == null) return;
         llWindowList.removeAllViews();
 
         if (windows.isEmpty()) {
-            tvEmptyMessage.setVisibility(View.VISIBLE);
+            if (tvEmptyMessage != null) tvEmptyMessage.setVisibility(View.VISIBLE);
             return;
         }
 
-        tvEmptyMessage.setVisibility(View.GONE);
+        if (tvEmptyMessage != null) tvEmptyMessage.setVisibility(View.GONE);
 
         GLRenderer renderer = activity.getXServer().getRenderer();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         
+        // Match the aspect ratio of the ImageView in XML
         int previewWidth = (int) UnitUtils.dpToPx(240.0f);
         int previewHeight = (int) UnitUtils.dpToPx(160.0f);
 
@@ -131,10 +127,9 @@ public class ActiveWindowsDialog extends ContentDialog {
             if (i % 2 == 0) {
                 currentRow = new LinearLayout(getContext());
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
-                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                currentRow.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, 
-                        LinearLayout.LayoutParams.WRAP_CONTENT);
-                currentRow.setLayoutParams(rowParams);
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
                 llWindowList.addView(currentRow);
             }
 
@@ -142,9 +137,7 @@ public class ActiveWindowsDialog extends ContentDialog {
             final Bitmap icon = icons.get(i);
             
             View itemView = inflater.inflate(R.layout.active_window_item, currentRow, false);
-            
-            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-            itemView.setLayoutParams(itemParams);
+            itemView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
 
             ImageView ivIcon = itemView.findViewById(R.id.ivIcon);
             final ImageView ivWindow = itemView.findViewById(R.id.ivWindow);
@@ -160,18 +153,19 @@ public class ActiveWindowsDialog extends ContentDialog {
             tvName.setText(title);
             tvProcess.setText(className != null && !className.isEmpty() ? className : "Application");
 
-            if (icon != null) {
-                ivIcon.setImageBitmap(icon);
-            }
+            if (icon != null) ivIcon.setImageBitmap(icon);
 
-            // Capture Screenshot for Preview
+            // OPTIMIZATION: Call capture on GL Thread, Update on UI Thread
             renderer.captureScreenshot(window, previewWidth, previewHeight, (bitmap) -> {
                 if (bitmap != null) {
-                    ivWindow.post(() -> ivWindow.setImageBitmap(bitmap));
+                    activity.runOnUiThread(() -> {
+                        ivWindow.setImageBitmap(bitmap);
+                        // Optional: Clear background if you have a placeholder
+                        ivWindow.setBackground(null); 
+                    });
                 }
             });
 
-            // Action: Bring to front and dismiss
             itemView.setOnClickListener(v -> {
                 WinHandler winHandler = activity.getWinHandler();
                 winHandler.bringToFront(window.getClassName(), window.getHandle());
@@ -180,7 +174,7 @@ public class ActiveWindowsDialog extends ContentDialog {
 
             currentRow.addView(itemView);
 
-            // Add dummy view if it's the last item and odd, so it doesn't stretch awkwardly
+            // Prevent single items from stretching to full width
             if (i == windows.size() - 1 && i % 2 == 0) {
                 View dummy = new View(getContext());
                 dummy.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1.0f));
