@@ -36,7 +36,7 @@ public class ActiveWindowsDialog extends ContentDialog {
 
         try {
             // Standard Winlator icon ID
-            setIcon(0x7f08012d); 
+            setIcon(0x7f080119); 
         } catch (Exception e) {
             // Fallback
         }
