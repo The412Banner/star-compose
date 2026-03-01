@@ -1,6 +1,7 @@
 package com.winlator.cmod.contentdialog;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -9,17 +10,15 @@ import android.widget.TextView;
 
 import com.winlator.cmod.R;
 import com.winlator.cmod.XServerDisplayActivity;
+import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.renderer.GLRenderer;
 import com.winlator.cmod.winhandler.WinHandler;
-import com.winlator.cmod.xserver.PixmapManager;
 import com.winlator.cmod.xserver.Window;
 import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 public class ActiveWindowsDialog extends ContentDialog {
     private final XServerDisplayActivity activity;
@@ -28,72 +27,87 @@ public class ActiveWindowsDialog extends ContentDialog {
         super(activity, R.layout.active_windows_dialog);
         this.activity = activity;
         setCancelable(true);
-        
-        setTitle(activity.getString(R.string.active_windows));
-        setIcon(R.drawable.icon_active_windows);
 
-        // Fetch windows using the corrected recursive logic and populate views
-        ArrayList<Window> windows = collectActiveWindows();
-        loadWindowViews(windows);
-    }
-
-    private ArrayList<Window> collectActiveWindows() {
-        XServer xServer = activity.getXServer();
-        ArrayList<Window> result = new ArrayList<>();
-        Set<Long> seenIds = new HashSet<>();
-
-        // Lock the XServer to safely iterate the window tree
-        try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
-            collectActiveWindows(xServer.windowManager.rootWindow, result, seenIds);
+        // Safe Title and Icon handling (prevents silent aborts if resources are missing)
+        try {
+            setTitle(activity.getString(R.string.active_windows));
+        } catch (Exception e) {
+            setTitle("Active Windows");
         }
-        return result;
+
+        try {
+            // Using the raw integer from original smali as fallback, or standard ID
+            setIcon(0x7f08012d); 
+        } catch (Exception e) {
+            // Ignore if icon fails to load
+        }
+
+        refreshWindowList();
     }
 
-    private void collectActiveWindows(Window window, ArrayList<Window> result, Set<Long> seenIds) {
-        if (window == null) return;
-
+    private void refreshWindowList() {
         XServer xServer = activity.getXServer();
+        ArrayList<Window> activeWindows = new ArrayList<>();
+        ArrayList<Bitmap> activeIcons = new ArrayList<>();
 
-        // Skip root window but process its children
-        if (window != xServer.windowManager.rootWindow) {
-            String className = window.getClassName();
+        // Lock both managers ONCE to prevent deadlocks and concurrent modification
+        try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+            findAppWindows(xServer.windowManager.rootWindow, activeWindows);
             
-            // Determine if the window is part of the desktop background/taskbar
-            boolean isDesktop = window.isDesktopWindow() || 
-                                (className != null && (className.equalsIgnoreCase("explorer.exe") ||
-                                                       className.equalsIgnoreCase("Progman") ||
-                                                       className.equalsIgnoreCase("Shell_TrayWnd")));
-
-            // A window is considered an active app if it is Mapped, not the desktop, 
-            // and either explicitly marked as an ApplicationWindow or has valid contents/children.
-            if (window.attributes.isMapped() && !isDesktop) {
-                boolean isAppWindow = window.isApplicationWindow();
-                boolean hasContent = window.getContent() != null;
-                boolean hasChildren = !window.getChildren().isEmpty();
-                
-                if (isAppWindow || ((hasContent || hasChildren) && className != null && !className.isEmpty())) {
-                    long handle = window.getHandle();
-                    long uniqueId = handle != 0 ? handle : window.id;
-
-                    if (!seenIds.contains(uniqueId)) {
-                        seenIds.add(uniqueId);
-                        result.add(window);
-                    }
-                    
-                    // Critical: Once we find the main application window, STOP recursing down 
-                    // this specific branch so we don't list inner toolbars/buttons.
-                    return; 
-                }
+            // Gather icons while we hold the lock
+            for (Window w : activeWindows) {
+                activeIcons.add(xServer.pixmapManager.getWindowIcon(w));
             }
         }
 
-        // Recurse into children to find deeply nested application wrappers
-        for (Window child : window.getChildren()) {
-            collectActiveWindows(child, result, seenIds);
+        loadWindowViews(activeWindows, activeIcons);
+    }
+
+    private void findAppWindows(Window parent, ArrayList<Window> result) {
+        if (parent == null) return;
+
+        for (Window child : parent.getChildren()) {
+            if (child.attributes.isMapped()) {
+                String className = child.getClassName();
+                boolean isSystem = false;
+                
+                if (className != null) {
+                    String cls = className.toLowerCase();
+                    if (cls.contains("progman") || cls.contains("shell_traywnd") || cls.equals("explorer.exe")) {
+                        isSystem = true;
+                    }
+                }
+
+                String title = child.getName();
+                boolean hasTitle = title != null && !title.isEmpty();
+                boolean hasClass = className != null && !className.isEmpty();
+
+                // If it's visible, not a taskbar/desktop, and has identity
+                if (!isSystem && (hasTitle || hasClass)) {
+                    // Check to avoid adding the invisible full-screen root desktop fallback
+                    if (!isDesktopWindowFallback(child)) {
+                        result.add(child);
+                        continue; // Stop searching this branch (prevents listing internal buttons/toolbars)
+                    }
+                }
+            }
+            // Recurse into children
+            findAppWindows(child, result);
         }
     }
 
-    private void loadWindowViews(ArrayList<Window> windows) {
+    private boolean isDesktopWindowFallback(Window window) {
+        XServer xServer = activity.getXServer();
+        if (window.getWidth() >= xServer.screenInfo.width && window.getHeight() >= xServer.screenInfo.height) {
+            if (window.getParent() == xServer.windowManager.rootWindow) {
+                String title = window.getName();
+                return title == null || title.isEmpty() || title.equalsIgnoreCase("Default - Wine desktop");
+            }
+        }
+        return false;
+    }
+
+    private void loadWindowViews(ArrayList<Window> windows, ArrayList<Bitmap> icons) {
         LinearLayout llWindowList = findViewById(R.id.llWindowList);
         TextView tvEmptyMessage = findViewById(R.id.tvEmptyMessage);
 
@@ -106,40 +120,30 @@ public class ActiveWindowsDialog extends ContentDialog {
 
         tvEmptyMessage.setVisibility(View.GONE);
 
-        XServer xServer = activity.getXServer();
-        GLRenderer renderer = xServer.getRenderer();
+        GLRenderer renderer = activity.getXServer().getRenderer();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         
         int previewWidth = (int) UnitUtils.dpToPx(240.0f);
         int previewHeight = (int) UnitUtils.dpToPx(160.0f);
 
-        // Grid-like layout: 2 items per row
         LinearLayout currentRow = null;
         for (int i = 0; i < windows.size(); i++) {
             if (i % 2 == 0) {
                 currentRow = new LinearLayout(getContext());
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
-                
-                // Fix: Ensure layout params prevent the row from collapsing to 0 height
                 LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, 
                         LinearLayout.LayoutParams.WRAP_CONTENT);
                 currentRow.setLayoutParams(rowParams);
-                
                 llWindowList.addView(currentRow);
             }
 
             final Window window = windows.get(i);
+            final Bitmap icon = icons.get(i);
+            
             View itemView = inflater.inflate(R.layout.active_window_item, currentRow, false);
             
-            // Adjust layout weight for equal distribution in the row
-            LinearLayout.LayoutParams itemParams = (LinearLayout.LayoutParams) itemView.getLayoutParams();
-            if (itemParams == null) {
-                itemParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-            } else {
-                itemParams.width = 0;
-                itemParams.weight = 1.0f;
-            }
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
             itemView.setLayoutParams(itemParams);
 
             ImageView ivIcon = itemView.findViewById(R.id.ivIcon);
@@ -150,24 +154,14 @@ public class ActiveWindowsDialog extends ContentDialog {
             String className = window.getClassName();
             String title = window.getName();
             
-            // Fallback logic: if it lacks a title, use the class name (e.g., winefile.exe)
-            if (title == null || title.isEmpty()) {
-                title = className;
-            }
-            if (title == null || title.isEmpty()) {
-                title = "Unnamed Window";
-            }
+            if (title == null || title.isEmpty()) title = className;
+            if (title == null || title.isEmpty()) title = "Unnamed Window";
 
             tvName.setText(title);
-            tvProcess.setText(className != null && !className.isEmpty() ? className : "Unknown");
+            tvProcess.setText(className != null && !className.isEmpty() ? className : "Application");
 
-            // Set Icon safely
-            try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
-                PixmapManager pixmapManager = xServer.pixmapManager;
-                Bitmap icon = pixmapManager.getWindowIcon(window);
-                if (icon != null) {
-                    ivIcon.setImageBitmap(icon);
-                }
+            if (icon != null) {
+                ivIcon.setImageBitmap(icon);
             }
 
             // Capture Screenshot for Preview
@@ -185,6 +179,13 @@ public class ActiveWindowsDialog extends ContentDialog {
             });
 
             currentRow.addView(itemView);
+
+            // Add dummy view if it's the last item and odd, so it doesn't stretch awkwardly
+            if (i == windows.size() - 1 && i % 2 == 0) {
+                View dummy = new View(getContext());
+                dummy.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1.0f));
+                currentRow.addView(dummy);
+            }
         }
     }
 }
