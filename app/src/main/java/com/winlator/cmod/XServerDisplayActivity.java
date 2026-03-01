@@ -2321,18 +2321,22 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
     private void showActiveWindowsDialog() {
-    runOnUiThread(() -> {
-        try {
-            ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
-            dialog.show();
-        } catch (Exception e) {
-            Log.e("XServerDisplayActivity", "Failed to show ActiveWindowsDialog", e);
-        }
-    });
+        runOnUiThread(() -> {
+            try {
+                ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
+                dialog.show();
+            } catch (Exception e) {
+                Log.e("XServerDisplayActivity", "Failed to show ActiveWindowsDialog", e);
+                // Make sure to import com.winlator.cmod.core.AppUtils at the top if missing
+                AppUtils.showToast(this, "Dialog failed to load: " + e.getMessage());
+            }
+        });
     }
 
 
+
 } // Closes the XServerDisplayActivity class
+
 
 
 
