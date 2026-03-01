@@ -120,56 +120,72 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private Bitmap takeScreenshotInternal(Drawable content, int width, int height) {
-        // Prevent 0 size crashes
-        width = Math.max(1, width);
-        height = Math.max(1, height);
+    width = Math.max(1, width);
+    height = Math.max(1, height);
 
-        synchronized (content.renderLock) {
-            Texture texture = content.getTexture();
-            texture.updateFromDrawable(content);
+    synchronized (content.renderLock) {
+        Texture texture = content.getTexture();
+        texture.updateFromDrawable(content);
 
-            int[] framebuffers = new int[1];
-            GLES20.glGenFramebuffers(1, framebuffers, 0);
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffers[0]);
+        int[] framebuffers = new int[1];
+        GLES20.glGenFramebuffers(1, framebuffers, 0);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffers[0]);
 
-            int[] textures = new int[1];
-            GLES20.glGenTextures(1, textures, 0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
-            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, textures[0], 0);
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, textures[0], 0);
 
-            GLES20.glViewport(0, 0, width, height);
-            GLES20.glClearColor(0, 0, 0, 0);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
-            windowMaterial.use();
-            quadVertices.bind(windowMaterial.programId);
-            GLES20.glUniform2f(windowMaterial.getUniformLocation("viewSize"), content.width, content.height);
-
-            float[] identity = XForm.getInstance();
-            XForm.identity(identity);
-            
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
-            GLES20.glUniform1i(windowMaterial.getUniformLocation("texture"), 0);
-            GLES20.glUniform1fv(windowMaterial.getUniformLocation("xform"), identity.length, identity, 0);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
-
-            ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
-            
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            bitmap.copyPixelsFromBuffer(buffer);
-
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-            GLES20.glDeleteFramebuffers(1, framebuffers, 0);
-            GLES20.glDeleteTextures(1, textures, 0);
-            viewportNeedsUpdate = true;
-
-            return bitmap;
+        // check if framebuffer is complete
+        if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.e("GLRenderer", "Framebuffer incomplete");
+            return null;
         }
+
+        GLES20.glViewport(0, 0, width, height);
+        GLES20.glClearColor(0, 0, 0, 1); // Set alpha to 1 to ensure it's not transparent
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+        windowMaterial.use();
+        quadVertices.bind(windowMaterial.programId);
+        
+        // Match the viewSize to the screenshot dimensions
+        GLES20.glUniform2f(windowMaterial.getUniformLocation("viewSize"), width, height);
+
+        float[] screenshotXForm = XForm.getInstance();
+        XForm.identity(screenshotXForm);
+        // Important: Scale to the size of our output buffer
+        XForm.scale(screenshotXForm, screenshotXForm, width, height);
+        
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
+        GLES20.glUniform1i(windowMaterial.getUniformLocation("texture"), 0);
+        GLES20.glUniform1fv(windowMaterial.getUniformLocation("xform"), screenshotXForm.length, screenshotXForm, 0);
+        
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
+        
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bitmap.copyPixelsFromBuffer(buffer);
+
+        // Flip the bitmap vertically because OpenGL is bottom-to-top
+        android.graphics.Matrix matrix = new android.graphics.Matrix();
+        matrix.preScale(1.0f, -1.0f);
+        Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
+        bitmap.recycle();
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        GLES20.glDeleteFramebuffers(1, framebuffers, 0);
+        GLES20.glDeleteTextures(1, textures, 0);
+        viewportNeedsUpdate = true; // Flag that we changed the viewport/state
+
+        return flippedBitmap;
     }
+}
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -440,3 +456,4 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         }
     }
 }
+
