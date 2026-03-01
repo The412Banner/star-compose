@@ -38,7 +38,7 @@ public class ActiveWindowsDialog extends ContentDialog {
             // Standard Winlator icon ID
             setIcon(0x7f08012d); 
         } catch (Exception e) {
-            // Fallback handled by parent class
+            // Fallback
         }
 
         refreshWindowList();
@@ -49,7 +49,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         ArrayList<Window> activeWindows = new ArrayList<>();
         ArrayList<Bitmap> activeIcons = new ArrayList<>();
 
-        // Lock both managers to safely traverse the tree and extract icons
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             findAppWindows(xServer.windowManager.rootWindow, activeWindows);
             for (Window w : activeWindows) {
@@ -69,7 +68,6 @@ public class ActiveWindowsDialog extends ContentDialog {
                 
                 if (className != null) {
                     String cls = className.toLowerCase();
-                    // Filter out desktop and system shells
                     if (cls.contains("progman") || cls.contains("shell_traywnd") || cls.equals("explorer.exe")) {
                         isSystem = true;
                     }
@@ -118,7 +116,6 @@ public class ActiveWindowsDialog extends ContentDialog {
         GLRenderer renderer = activity.getXServer().getRenderer();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         
-        // Match the aspect ratio of the ImageView in XML
         int previewWidth = (int) UnitUtils.dpToPx(240.0f);
         int previewHeight = (int) UnitUtils.dpToPx(160.0f);
 
@@ -155,16 +152,18 @@ public class ActiveWindowsDialog extends ContentDialog {
 
             if (icon != null) ivIcon.setImageBitmap(icon);
 
-            // OPTIMIZATION: Call capture on GL Thread, Update on UI Thread
-            renderer.captureScreenshot(window, previewWidth, previewHeight, (bitmap) -> {
-                if (bitmap != null) {
-                    activity.runOnUiThread(() -> {
-                        ivWindow.setImageBitmap(bitmap);
-                        // Optional: Clear background if you have a placeholder
-                        ivWindow.setBackground(null); 
-                    });
-                }
-            });
+            // MATCHING GLRenderer: Capture with a small delay for each item to prevent GL state flooding
+            final int index = i;
+            ivWindow.postDelayed(() -> {
+                renderer.captureScreenshot(window, previewWidth, previewHeight, (bitmap) -> {
+                    if (bitmap != null) {
+                        activity.runOnUiThread(() -> {
+                            ivWindow.setImageBitmap(bitmap);
+                            ivWindow.setBackground(null); 
+                        });
+                    }
+                });
+            }, i * 100L); // staggered by 100ms per window
 
             itemView.setOnClickListener(v -> {
                 WinHandler winHandler = activity.getWinHandler();
@@ -174,7 +173,6 @@ public class ActiveWindowsDialog extends ContentDialog {
 
             currentRow.addView(itemView);
 
-            // Prevent single items from stretching to full width
             if (i == windows.size() - 1 && i % 2 == 0) {
                 View dummy = new View(getContext());
                 dummy.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1.0f));
