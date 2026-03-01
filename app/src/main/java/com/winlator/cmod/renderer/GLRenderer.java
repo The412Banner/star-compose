@@ -85,27 +85,31 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     /**
-     * Initiates a window screenshot capture.
+     * Initiates a window screenshot capture safely on the GL thread.
      */
     public void captureScreenshot(Window window, int width, int height, ScreenshotCallback callback) {
-        // Find the actual drawable, navigating down into children if the wrapper window lacks one
-        Drawable content = findDrawable(window);
-        if (content != null && callback != null) {
-            // Screenshots must be taken on the GL thread
-            xServerView.queueEvent(() -> {
+        if (window == null || callback == null) return;
+        
+        xServerView.queueEvent(() -> {
+            Drawable content = null;
+            // Lock WINDOW_MANAGER to safely traverse the children hierarchy on the GL Thread
+            try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                content = findDrawable(window);
+            }
+
+            if (content != null) {
                 Bitmap bitmap = takeScreenshotInternal(content, width, height);
                 callback.onScreenshotTaken(bitmap);
-            });
-        } else if (callback != null) {
-            callback.onScreenshotTaken(null);
-        }
+            } else {
+                callback.onScreenshotTaken(null);
+            }
+        });
     }
 
     private Drawable findDrawable(Window window) {
         if (window == null) return null;
         if (window.getContent() != null) return window.getContent();
         
-        // If the top-level window doesn't have a surface, recursively check its children
         for (Window child : window.getChildren()) {
             if (child.attributes.isMapped()) {
                 Drawable childContent = findDrawable(child);
@@ -116,11 +120,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private Bitmap takeScreenshotInternal(Drawable content, int width, int height) {
+        // Prevent 0 size crashes
+        width = Math.max(1, width);
+        height = Math.max(1, height);
+
         synchronized (content.renderLock) {
             Texture texture = content.getTexture();
             texture.updateFromDrawable(content);
 
-            // Create a temporary framebuffer to render the window content at requested size
             int[] framebuffers = new int[1];
             GLES20.glGenFramebuffers(1, framebuffers, 0);
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffers[0]);
@@ -139,7 +146,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             quadVertices.bind(windowMaterial.programId);
             GLES20.glUniform2f(windowMaterial.getUniformLocation("viewSize"), content.width, content.height);
 
-            // Identity transform for the screenshot local space
             float[] identity = XForm.getInstance();
             XForm.identity(identity);
             
@@ -149,7 +155,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             GLES20.glUniform1fv(windowMaterial.getUniformLocation("xform"), identity.length, identity, 0);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
 
-            // Read pixels back to CPU
             ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4);
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
@@ -157,11 +162,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             bitmap.copyPixelsFromBuffer(buffer);
 
-            // Cleanup
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
             GLES20.glDeleteFramebuffers(1, framebuffers, 0);
             GLES20.glDeleteTextures(1, textures, 0);
-            viewportNeedsUpdate = true; // Flag for main renderer to reset viewport
+            viewportNeedsUpdate = true;
 
             return bitmap;
         }
