@@ -796,14 +796,23 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
-        if (icons[id] == null) {
-            Context context = getContext();
-            try (InputStream is = context.getAssets().open("inputcontrols/icons/"+id+".png")) {
+    if (icons[id] == null) {
+        Context context = getContext();
+        // 1. Try internal storage first (for custom icons)
+        java.io.File customIcon = new java.io.File(context.getExternalFilesDir(null), "inputcontrols/icons/" + id + ".png");
+        if (customIcon.exists()) {
+            icons[id] = BitmapFactory.decodeFile(customIcon.getAbsolutePath());
+        } 
+        // 2. Fallback to Assets (original logic)
+        else {
+            try (InputStream is = context.getAssets().open("inputcontrols/icons/" + id + ".png")) {
                 icons[id] = BitmapFactory.decodeStream(is);
-            }
-            catch (IOException e) {}
+            } catch (IOException e) {}
         }
-        return icons[id];
     }
+    return icons[id];
+  }
+
 }
+
 
