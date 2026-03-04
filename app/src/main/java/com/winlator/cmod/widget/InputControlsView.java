@@ -721,23 +721,34 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
-        if (!icons.containsKey(id)) {
-            Context context = getContext();
-            Bitmap icon = null;
-            // 1. Try internal storage first (for custom icons)
-            File customIcon = new File(context.getExternalFilesDir(null), "inputcontrols/icons/" + id + ".png");
-            if (customIcon.exists()) {
-                icon = BitmapFactory.decodeFile(customIcon.getAbsolutePath());
-            } 
-            // 2. Fallback to Assets
-            if (icon == null) {
-                try (InputStream is = context.getAssets().open("inputcontrols/icons/" + id + ".png")) {
-                    icon = BitmapFactory.decodeStream(is);
-                } catch (IOException e) {}
+    if (!icons.containsKey(id)) {
+        Context context = getContext();
+        Bitmap icon = null;
+        
+        // 1. Try internal storage
+        File customIcon = new File(context.getExternalFilesDir(null), "inputcontrols/icons/" + id + ".png");
+        if (customIcon.exists()) {
+            icon = BitmapFactory.decodeFile(customIcon.getAbsolutePath());
+        } 
+        
+        // 2. Fallback to Assets if internal failed or doesn't exist
+        if (icon == null) {
+            try (InputStream is = context.getAssets().open("inputcontrols/icons/" + id + ".png")) {
+                icon = BitmapFactory.decodeStream(is);
+            } catch (IOException e) {
+                // Log error or set a default empty bitmap to prevent repeated disk checks
             }
-            
-            if (icon != null) icons.put(id, icon);
         }
-        return icons.get(id);
+        
+        // Final safety: if both failed, don't put NULL into the map, or handle it
+        if (icon != null) {
+            icons.put(id, icon);
+        } else {
+            return null; // ControlElement.draw() should handle null
+        }
     }
+    return icons.get(id);
+   }
+
 }
+
