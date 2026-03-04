@@ -49,7 +49,7 @@ import java.util.Random;
 public class ControlsEditorActivity extends AppCompatActivity implements View.OnClickListener {
     private InputControlsView inputControlsView;
     private ControlsProfile profile;
-    private LinearLayout currentIconList; // Reference for refreshing
+    private LinearLayout currentIconList; // Reference for refreshing and saving state
 
     // Launcher for picking a custom icon image
     private final ActivityResultLauncher<String> pickImageLauncher =
@@ -195,8 +195,10 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         final EditText etCustomText = view.findViewById(R.id.ETCustomText);
         etCustomText.setText(element.getText());
         
-        // Setup Icon List and Add Button
+        // FIX: Assign to the class field immediately so loadIcons and DismissListener can use it safely
         this.currentIconList = view.findViewById(R.id.LLIconList);
+        
+        // Setup Add Custom Icon Button
         View btAddCustomIcon = view.findViewById(R.id.BTAddCustomIcon);
         if (btAddCustomIcon != null) {
             btAddCustomIcon.setOnClickListener(v -> pickImageLauncher.launch("image/*"));
@@ -209,11 +211,15 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         popupWindow.setOnDismissListener(() -> {
             String text = etCustomText.getText().toString().trim();
             byte iconId = 0;
-            for (int i = 0; i < currentIconList.getChildCount(); i++) {
-                View child = currentIconList.getChildAt(i);
-                if (child.isSelected()) {
-                    iconId = (byte)child.getTag();
-                    break;
+            
+            // Safety check to prevent crash if list wasn't initialized
+            if (currentIconList != null) {
+                for (int i = 0; i < currentIconList.getChildCount(); i++) {
+                    View child = currentIconList.getChildAt(i);
+                    if (child.isSelected()) {
+                        iconId = (byte)child.getTag();
+                        break;
+                    }
                 }
             }
 
@@ -221,7 +227,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             element.setIconId(iconId);
             profile.save();
             inputControlsView.invalidate();
-            currentIconList = null;
+            currentIconList = null; // Clear reference when popup is gone
         });
     }
 
@@ -230,7 +236,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             InputStream inputStream = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             
-            // Generate a random ID to avoid collision with standard assets
+            // Generate a random ID to avoid collision with standard assets (standard ends around 30)
             byte newId = (byte) (40 + new Random().nextInt(80));
             
             File iconDir = new File(getExternalFilesDir(null), "inputcontrols/icons/");
@@ -361,6 +367,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
     }
 
     private void loadIcons(final LinearLayout parent, byte selectedId) {
+        if (parent == null) return;
         parent.removeAllViews();
         ArrayList<Byte> iconIds = new ArrayList<>();
 
@@ -400,7 +407,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             imageView.setTag(id);
             imageView.setSelected(id == selectedId);
             
-            // Use the view's getIcon method which we updated to handle internal storage
+            // Use the view's getIcon method which handles both assets and storage
             imageView.setImageBitmap(inputControlsView.getIcon(id));
 
             imageView.setOnClickListener((v) -> {
