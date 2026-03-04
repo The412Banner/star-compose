@@ -1,6 +1,8 @@
 package com.winlator.cmod;
 
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.content.SharedPreferences;
 import android.view.LayoutInflater;
@@ -18,12 +20,13 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
 import com.winlator.cmod.R;
 import com.winlator.cmod.contentdialog.ContentDialog;
-
 import com.winlator.cmod.inputcontrols.Binding;
 import com.winlator.cmod.inputcontrols.ControlElement;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
@@ -35,13 +38,30 @@ import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.widget.NumberPicker;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Random;
 
 public class ControlsEditorActivity extends AppCompatActivity implements View.OnClickListener {
     private InputControlsView inputControlsView;
     private ControlsProfile profile;
+    private LinearLayout currentIconList; // Reference for refreshing
+
+    // Launcher for picking a custom icon image
+    private final ActivityResultLauncher<String> pickImageLauncher =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    saveCustomIcon(uri);
+                    if (currentIconList != null) {
+                        ControlElement element = inputControlsView.getSelectedElement();
+                        loadIcons(currentIconList, element != null ? element.getIconId() : 0);
+                    }
+                }
+            });
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -68,7 +88,6 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
     @Override
     protected void onResume() {
         super.onResume();
-        // Use a handler delay to ensure the activity is fully visible and interactive
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
             if (!prefs.getBoolean("mix_warning_shown_v4", false)) {
@@ -159,10 +178,8 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                     inputControlsView.invalidate();
                 }
             }
-
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
-
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
@@ -177,17 +194,23 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
 
         final EditText etCustomText = view.findViewById(R.id.ETCustomText);
         etCustomText.setText(element.getText());
-        final LinearLayout llIconList = view.findViewById(R.id.LLIconList);
-        loadIcons(llIconList, element.getIconId());
+        
+        // Setup Icon List and Add Button
+        this.currentIconList = view.findViewById(R.id.LLIconList);
+        View btAddCustomIcon = view.findViewById(R.id.BTAddCustomIcon);
+        if (btAddCustomIcon != null) {
+            btAddCustomIcon.setOnClickListener(v -> pickImageLauncher.launch("image/*"));
+        }
 
+        loadIcons(currentIconList, element.getIconId());
         updateLayout.run();
 
         PopupWindow popupWindow = AppUtils.showPopupWindow(anchorView, view, 340, 0);
         popupWindow.setOnDismissListener(() -> {
             String text = etCustomText.getText().toString().trim();
             byte iconId = 0;
-            for (int i = 0; i < llIconList.getChildCount(); i++) {
-                View child = llIconList.getChildAt(i);
+            for (int i = 0; i < currentIconList.getChildCount(); i++) {
+                View child = currentIconList.getChildAt(i);
                 if (child.isSelected()) {
                     iconId = (byte)child.getTag();
                     break;
@@ -198,7 +221,29 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             element.setIconId(iconId);
             profile.save();
             inputControlsView.invalidate();
+            currentIconList = null;
         });
+    }
+
+    private void saveCustomIcon(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            
+            // Generate a random ID to avoid collision with standard assets
+            byte newId = (byte) (40 + new Random().nextInt(80));
+            
+            File iconDir = new File(getExternalFilesDir(null), "inputcontrols/icons/");
+            if (!iconDir.exists()) iconDir.mkdirs();
+            
+            File iconFile = new File(iconDir, newId + ".png");
+            try (FileOutputStream out = new FileOutputStream(iconFile)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            }
+            AppUtils.showToast(this, "Icon added!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void loadTypeSpinner(final ControlElement element, Spinner spinner, Runnable callback) {
@@ -212,7 +257,6 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 callback.run();
                 inputControlsView.invalidate();
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
@@ -228,7 +272,6 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 profile.save();
                 inputControlsView.invalidate();
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
@@ -259,65 +302,41 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         Runnable update = () -> {
             String[] bindingEntries = null;
             switch (sBindingType.getSelectedItemPosition()) {
-                case 0:
-                    bindingEntries = Binding.keyboardBindingLabels();
-                    break;
-                case 1:
-                    bindingEntries = Binding.mouseBindingLabels();
-                    break;
-                case 2:
-                    bindingEntries = Binding.gamepadBindingLabels();
-                    break;
+                case 0: bindingEntries = Binding.keyboardBindingLabels(); break;
+                case 1: bindingEntries = Binding.mouseBindingLabels(); break;
+                case 2: bindingEntries = Binding.gamepadBindingLabels(); break;
             }
-
             sBinding.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, bindingEntries));
             AppUtils.setSpinnerSelectionFromValue(sBinding, element.getBindingAt(index).toString());
         };
 
         sBindingType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                update.run();
-            }
-
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { update.run(); }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
         Binding selectedBinding = element.getBindingAt(index);
-        if (selectedBinding.isKeyboard()) {
-            sBindingType.setSelection(0, false);
-        }
-        else if (selectedBinding.isMouse()) {
-            sBindingType.setSelection(1, false);
-        }
-        else if (selectedBinding.isGamepad()) {
-            sBindingType.setSelection(2, false);
-        }
+        if (selectedBinding.isKeyboard()) sBindingType.setSelection(0, false);
+        else if (selectedBinding.isMouse()) sBindingType.setSelection(1, false);
+        else if (selectedBinding.isGamepad()) sBindingType.setSelection(2, false);
 
         sBinding.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 Binding binding = Binding.NONE;
                 switch (sBindingType.getSelectedItemPosition()) {
-                    case 0:
-                        binding = Binding.keyboardBindingValues()[position];
-                        break;
-                    case 1:
-                        binding = Binding.mouseBindingValues()[position];
-                        break;
-                    case 2:
-                        binding = Binding.gamepadBindingValues()[position];
-                        break;
+                    case 0: binding = Binding.keyboardBindingValues()[position]; break;
+                    case 1: binding = Binding.mouseBindingValues()[position]; break;
+                    case 2: binding = Binding.gamepadBindingValues()[position]; break;
                 }
-
                 if (binding != element.getBindingAt(index)) {
                     element.setBindingAt(index, binding);
                     profile.save();
                     inputControlsView.invalidate();
                 }
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
@@ -336,24 +355,36 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 profile.save();
                 inputControlsView.invalidate();
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 
     private void loadIcons(final LinearLayout parent, byte selectedId) {
-        byte[] iconIds = new byte[0];
+        parent.removeAllViews();
+        ArrayList<Byte> iconIds = new ArrayList<>();
+
+        // 1. Scan Assets
         try {
             String[] filenames = getAssets().list("inputcontrols/icons/");
-            iconIds = new byte[filenames.length];
-            for (int i = 0; i < filenames.length; i++) {
-                iconIds[i] = Byte.parseByte(FileUtils.getBasename(filenames[i]));
+            if (filenames != null) {
+                for (String file : filenames) iconIds.add(Byte.parseByte(FileUtils.getBasename(file)));
+            }
+        } catch (IOException | NumberFormatException e) {}
+
+        // 2. Scan Internal Storage
+        File customIconDir = new File(getExternalFilesDir(null), "inputcontrols/icons/");
+        if (customIconDir.exists()) {
+            File[] files = customIconDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    try { iconIds.add(Byte.parseByte(FileUtils.getBasename(file.getName()))); }
+                    catch (NumberFormatException e) {}
+                }
             }
         }
-        catch (IOException e) {}
 
-        Arrays.sort(iconIds);
+        Collections.sort(iconIds);
 
         int size = (int)UnitUtils.dpToPx(40);
         int margin = (int)UnitUtils.dpToPx(2);
@@ -368,16 +399,14 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             imageView.setBackgroundResource(R.drawable.icon_background);
             imageView.setTag(id);
             imageView.setSelected(id == selectedId);
+            
+            // Use the view's getIcon method which we updated to handle internal storage
+            imageView.setImageBitmap(inputControlsView.getIcon(id));
+
             imageView.setOnClickListener((v) -> {
                 for (int i = 0; i < parent.getChildCount(); i++) parent.getChildAt(i).setSelected(false);
                 imageView.setSelected(true);
             });
-
-            try (InputStream is = getAssets().open("inputcontrols/icons/"+id+".png")) {
-                imageView.setImageBitmap(BitmapFactory.decodeStream(is));
-            }
-            catch (IOException e) {}
-
             parent.addView(imageView);
         }
     }
@@ -385,7 +414,6 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        overridePendingTransition(R.anim.slide_in_down, R.anim.slide_out_up);  // Custom slide animations for exiting
+        overridePendingTransition(R.anim.slide_in_down, R.anim.slide_out_up);
     }
-
 }
