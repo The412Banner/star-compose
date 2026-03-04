@@ -157,12 +157,13 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         });
 
         NumberPicker npColumns = view.findViewById(R.id.NPColumns);
-        npColumns.setValue(element.getBindingCount());
-        npColumns.setOnValueChangeListener((numberPicker, value) -> {
-            element.setBindingCount(value);
-            profile.save();
-            inputControlsView.invalidate();
-        });
+if (npColumns != null) { // Add this null check for safety
+    npColumns.setValue(element.getBindingCount());
+    npColumns.setOnValueChangeListener((numberPicker, value) -> {
+        element.setBindingCount(value);
+        profile.save();
+        inputControlsView.invalidate();
+    });
 
         final TextView tvScale = view.findViewById(R.id.TVScale);
         SeekBar sbScale = view.findViewById(R.id.SBScale);
@@ -424,3 +425,4 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         overridePendingTransition(R.anim.slide_in_down, R.anim.slide_out_up);
     }
 }
+
