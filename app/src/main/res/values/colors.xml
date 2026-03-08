@@ -8,10 +8,10 @@
     <color name="black">#000000</color>
 
     <!-- Dark Theme Colors -->
-    <color name="window_background_color_dark">#121212</color>
-    <color name="colorPrimaryDarkMode">#37474f</color>
-    <color name="colorPrimaryDarkModeDark">#263238</color>
-    <color name="colorAccentDark">#80d8ff</color>
+    <color name="window_background_color_dark">#000000</color>
+    <color name="colorPrimaryDarkMode">#262626</color>
+    <color name="colorPrimaryDarkModeDark">#262626</color>
+    <color name="colorAccentDark">#262626</color>
     <color name="white">#ffffff</color>
 
     <!-- Additional Colors for Dark Mode -->
@@ -136,3 +136,4 @@
     <color name="tooltip_background_light">#e6ffffff</color>
 
 </resources>
+
