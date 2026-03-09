@@ -32,6 +32,7 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.inputcontrols.Binding;
 import com.winlator.cmod.inputcontrols.ControlElement;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
+import com.winlator.cmod.inputcontrols.CustomIconManager;
 import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.ExternalControllerBinding;
 import com.winlator.cmod.inputcontrols.GamepadState;
@@ -41,10 +42,8 @@ import com.winlator.cmod.winhandler.WinHandler;
 import com.winlator.cmod.xserver.Pointer;
 import com.winlator.cmod.xserver.XServer;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -54,7 +53,6 @@ public class InputControlsView extends View {
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
-    private final ColorFilter colorFilter = new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN);
     private final Point cursor = new Point();
     private boolean readyToDraw = false;
     private boolean moveCursor = false;
@@ -66,19 +64,18 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
-    
-    // Changed from array to HashMap to prevent ArrayIndexOutOfBoundsException with custom IDs
-    private final HashMap<Byte, Bitmap> icons = new HashMap<>();
-    
+    private final Bitmap[] icons = new Bitmap[1024]; // Increased size for custom icons
+    private final CustomIconManager customIconManager;
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
 
-    private Handler timeoutHandler;
-    private Runnable hideControlsRunnable;
+    private Handler timeoutHandler; 
+    private Runnable hideControlsRunnable; 
+
     private SharedPreferences preferences;
     private ControlElement stickElement;
-    private boolean focusOnStick = false;
+    private boolean focusOnStick = false; 
 
     public boolean isFocusedOnStick() {
         return focusOnStick;
@@ -86,55 +83,50 @@ public class InputControlsView extends View {
 
     public void setFocusOnStick(boolean focus) {
         this.focusOnStick = focus;
-        invalidate();
+        invalidate(); 
     }
 
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
-        setClickable(true);
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        requestFocus();
-        setBackgroundColor(0x00000000);
-        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
-        setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        preferences = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+        this.customIconManager = new CustomIconManager(context);
+        initView();
     }
 
     @SuppressLint("ResourceType")
     public InputControlsView(Context context, Handler timeoutHandler, Runnable hideControlsRunnable) {
         super(context);
-        this.timeoutHandler = timeoutHandler;
-        this.hideControlsRunnable = hideControlsRunnable;
-        setClickable(true);
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        requestFocus();
-        setBackgroundColor(0x00000000);
-        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
-        setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        preferences = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+        this.customIconManager = new CustomIconManager(context);
+        this.timeoutHandler = timeoutHandler; 
+        this.hideControlsRunnable = hideControlsRunnable; 
+        initView();
     }
 
     public InputControlsView(Context context, boolean focusOnStick) {
         super(context);
-        setClickable(true);
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        requestFocus();
-        setBackgroundColor(0x00000000);
-        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
-
+        this.customIconManager = new CustomIconManager(context);
+        this.focusOnStick = focusOnStick;
+        initView();
+        
         if (focusOnStick) {
             setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         } else {
             setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
-
-        preferences = PreferenceManager.getDefaultSharedPreferences(this.getContext());
     }
 
+    private void initView() {
+        setClickable(true);
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        requestFocus(); 
+        setBackgroundColor(0x00000000);
+        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
+        if (getLayoutParams() == null) {
+            setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        preferences = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+    }
 
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
@@ -188,32 +180,30 @@ public class InputControlsView extends View {
         super.onDraw(canvas);
     }
 
-
     public void resetStickPosition() {
         if (stickElement != null) {
             Rect boundingBox = stickElement.getBoundingBox();
             float centerX = boundingBox.centerX();
             float centerY = boundingBox.centerY();
-
-            stickElement.setCurrentPosition(centerX, centerY);
-            invalidate();
+            stickElement.setCurrentPosition(centerX, centerY); 
+            invalidate(); 
         }
     }
 
     public void initializeStickElement(float x, float y, float scale) {
         stickElement = new ControlElement(this);
-        stickElement.setType(ControlElement.Type.STICK);
+        stickElement.setType(ControlElement.Type.STICK); 
         stickElement.setX((int) x);
         stickElement.setY((int) y);
         stickElement.setScale(scale);
-        invalidate();
+        invalidate(); 
     }
 
     public void updateStickPosition(float x, float y) {
         if (stickElement != null) {
-            stickElement.getCurrentPosition().x = x;
-            stickElement.getCurrentPosition().y = y;
-            invalidate();
+            stickElement.getCurrentPosition().x = x;  
+            stickElement.getCurrentPosition().y = y;  
+            invalidate(); 
         }
     }
 
@@ -352,7 +342,8 @@ public class InputControlsView extends View {
     }
 
     public ColorFilter getColorFilter() {
-        return colorFilter;
+        // Return a white tint filter for system icons
+        return new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN);
     }
 
     public TouchpadView getTouchpadView() {
@@ -405,7 +396,7 @@ public class InputControlsView extends View {
                         );
                     }
                 }
-            }, 0, 1000 / 60);
+            }, 0, 1000 / 60); 
         }
     }
 
@@ -453,18 +444,13 @@ public class InputControlsView extends View {
     private void processTriggerInput(ExternalController controller, float value, int keyCode, boolean sendUpdate) {
         ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
         if (binding != null) {
-            boolean isPressed = value > ControlElement.STICK_DEAD_ZONE;
+            boolean isPressed = value > ControlElement.STICK_DEAD_ZONE; 
             if (isPressed) {
                 handleInputEvent(controller, binding.getBinding(), true, value, sendUpdate);
             } else {
                 handleInputEvent(controller, binding.getBinding(), false, 0, sendUpdate);
             }
         }
-    }
-
-    @Override
-    public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        return super.dispatchGenericMotionEvent(event);
     }
 
     @Override
@@ -487,7 +473,6 @@ public class InputControlsView extends View {
         }
         return super.onGenericMotionEvent(event);
     }
-
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -585,7 +570,7 @@ public class InputControlsView extends View {
     private void resetTouchscreenTimeout() {
         if (timeoutHandler != null && hideControlsRunnable != null) {
             timeoutHandler.removeCallbacks(hideControlsRunnable);
-            timeoutHandler.postDelayed(hideControlsRunnable, 5000);
+            timeoutHandler.postDelayed(hideControlsRunnable, 5000); 
         }
     }
 
@@ -621,12 +606,10 @@ public class InputControlsView extends View {
         if (!firstBinding.isGamepad()) return;
         GamepadState state = profile.getGamepadState();
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
-        
         boolean isLeftStick = firstBinding == Binding.GAMEPAD_LEFT_THUMB_UP || 
                              firstBinding == Binding.GAMEPAD_LEFT_THUMB_DOWN ||
                              firstBinding == Binding.GAMEPAD_LEFT_THUMB_LEFT ||
                              firstBinding == Binding.GAMEPAD_LEFT_THUMB_RIGHT;
-        
         if (isLeftStick) {
             state.thumbLX = deltaX;
             state.thumbLY = deltaY;
@@ -634,7 +617,9 @@ public class InputControlsView extends View {
             state.thumbRX = deltaX;
             state.thumbRY = deltaY;
         }
-        if (winHandler != null) winHandler.sendGamepadState();
+        if (winHandler != null) {
+            winHandler.sendGamepadState();
+        }
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
@@ -680,8 +665,10 @@ public class InputControlsView extends View {
             }
 
             if (winHandler != null && sendUpdate) {
-                if (controller != null) winHandler.sendGamepadState(controller);
-                else winHandler.sendGamepadState();
+                if (controller != null)
+                    winHandler.sendGamepadState(controller);
+                else
+                    winHandler.sendGamepadState();
             }
         }
         else {
@@ -721,34 +708,23 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
-    if (!icons.containsKey(id)) {
-        Context context = getContext();
-        Bitmap icon = null;
-        
-        // 1. Try internal storage
-        File customIcon = new File(context.getExternalFilesDir(null), "inputcontrols/icons/" + id + ".png");
-        if (customIcon.exists()) {
-            icon = BitmapFactory.decodeFile(customIcon.getAbsolutePath());
-        } 
-        
-        // 2. Fallback to Assets if internal failed or doesn't exist
-        if (icon == null) {
-            try (InputStream is = context.getAssets().open("inputcontrols/icons/" + id + ".png")) {
-                icon = BitmapFactory.decodeStream(is);
-            } catch (IOException e) {
-                // Log error or set a default empty bitmap to prevent repeated disk checks
+        int index = id & 0xFF; // Convert signed byte to unsigned int (0-255)
+        if (index >= icons.length) return null;
+
+        if (icons[index] == null) {
+            // Check if it's a custom icon (ID >= 100)
+            if (index >= CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
+                icons[index] = customIconManager.loadIcon((short) index);
+            } else {
+                // Built-in icon from assets
+                Context context = getContext();
+                try (InputStream is = context.getAssets().open("inputcontrols/icons/" + index + ".png")) {
+                    icons[index] = BitmapFactory.decodeStream(is);
+                } catch (IOException e) {
+                    Log.e("InputControlsView", "Failed to load asset icon: " + index);
+                }
             }
         }
-        
-        // Final safety: if both failed, don't put NULL into the map, or handle it
-        if (icon != null) {
-            icons.put(id, icon);
-        } else {
-            return null; // ControlElement.draw() should handle null
-        }
+        return icons[index];
     }
-    return icons.get(id);
-   }
-
 }
-
