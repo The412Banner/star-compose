@@ -19,6 +19,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
     private final CheckBox cbShowBatteryVoltage;
     private final SeekBar sbHUDScale;
     private final TextView tvHUDScaleValue;
+    private final SeekBar sbHUDTransparency; // New
+    private final TextView tvHUDTransparencyValue; // New
 
     public FPSCounterConfigDialog(Context context, String configString) {
         super(context, R.layout.fps_counter_config_dialog);
@@ -33,6 +35,8 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowBatteryVoltage = findViewById(R.id.CBShowBatteryVoltage);
         sbHUDScale = findViewById(R.id.SBHUDScale);
         tvHUDScaleValue = findViewById(R.id.TVHUDScaleValue);
+        sbHUDTransparency = findViewById(R.id.SBHUDTransparency); // New
+        tvHUDTransparencyValue = findViewById(R.id.TVHUDTransparencyValue); // New
 
         // Parse and set initial state
         HashMap<String, String> config = parseConfig(configString);
@@ -44,7 +48,7 @@ public class FPSCounterConfigDialog extends ContentDialog {
         cbShowBatteryTemp.setChecked(config.getOrDefault("showBatteryTemp", "0").equals("1"));
         cbShowBatteryVoltage.setChecked(config.getOrDefault("showBatteryVoltage", "0").equals("1"));
 
-        // Initialize SeekBar for HUD Scale (Range 50-150, default 100)
+        // Initialize HUD Scale (Range 50-150, default 100)
         int initialScale = Integer.parseInt(config.getOrDefault("hudScale", "100"));
         sbHUDScale.setProgress(initialScale);
         tvHUDScaleValue.setText(initialScale + "%");
@@ -52,19 +56,32 @@ public class FPSCounterConfigDialog extends ContentDialog {
         sbHUDScale.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                // Enforce minimum value of 50
                 int finalValue = Math.max(50, progress);
                 tvHUDScaleValue.setText(finalValue + "%");
             }
-
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
-
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                // If user releases below 50, snap it back to 50
                 if (seekBar.getProgress() < 50) seekBar.setProgress(50);
             }
+        });
+
+        // Initialize HUD Transparency (Range 0-50, default 0)
+        int initialTrans = Integer.parseInt(config.getOrDefault("hudTransparency", "0"));
+        sbHUDTransparency.setMax(50);
+        sbHUDTransparency.setProgress(initialTrans);
+        tvHUDTransparencyValue.setText(String.valueOf(initialTrans));
+
+        sbHUDTransparency.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                tvHUDTransparencyValue.setText(String.valueOf(progress));
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
     }
 
@@ -82,9 +99,9 @@ public class FPSCounterConfigDialog extends ContentDialog {
             config.put("showBatteryTemp", dialog.cbShowBatteryTemp.isChecked() ? "1" : "0");
             config.put("showBatteryVoltage", dialog.cbShowBatteryVoltage.isChecked() ? "1" : "0");
             
-            // Save scale value (ensure min 50)
-            int scaleValue = Math.max(50, dialog.sbHUDScale.getProgress());
-            config.put("hudScale", String.valueOf(scaleValue));
+            // Save Scale and Transparency values
+            config.put("hudScale", String.valueOf(Math.max(50, dialog.sbHUDScale.getProgress())));
+            config.put("hudTransparency", String.valueOf(dialog.sbHUDTransparency.getProgress()));
             
             anchorView.setTag(toConfigString(config));
         });
