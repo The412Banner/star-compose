@@ -399,6 +399,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",
+                    "Official social media of star emulator (please follow it for more news about Star Emulator development!):",
+                    "Discord (<a href=\"https://discord.gg/Q74CNHJnq2\">dsc.gg/staremul</a>)",
+                    "Telegram (<a href=\"https://t.me/staremul\">t.me/staremul</a>)",
+                    "YouTube (for more testing gameplay in star emulator) (<a href=\"https://youtube.com/@starwindowsemulator?si=Scup37Opu65PFBai\">youtube.com/@StarWindowsEmulator</a>)",
+                    "---",
                     "Termux Package(<a href=\"https://github.com/termux/termux-packages\">github.com/termux/termux-package</a>)",
                     "Wine (<a href=\"https://www.winehq.org\">winehq.org</a>)",
                     "Box64 (<a href=\"https://github.com/ptitSeb/box64\">github.com/ptitSeb/box64</a>)",
@@ -449,6 +454,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem.setTitle(spanString);
     }
 }
+
 
 
 
