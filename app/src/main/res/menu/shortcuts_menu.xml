@@ -48,7 +48,7 @@
         android:id="@+id/change_layout"
         android:title="Change Layout"
         android:icon="@drawable/icon_reset"
-        android:color="#FFFFFF"
+        android:color="#000000"
         app:showAsAction="ifRoom">
         <menu>
             <item
