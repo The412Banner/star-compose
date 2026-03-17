@@ -243,6 +243,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             configChangedCallback = null;
         }
     }
+    
+    private float pickHighestRefreshRate() {
+    	android.view.Display display = getWindowManager().getDefaultDisplay();
+    	android.view.Display.Mode[] modes = display.getSupportedModes();
+    	
+    	float maxRefresh = 0f;
+    	
+    	for (android.view.Display.Mode mode : modes) {
+			if (mode.getRefreshRate() > maxRefresh)
+    	    	maxRefresh = mode.getRefreshRate();
+    	}
+
+    	Log.d("XServerDisplayActivity", "Picking refresh rate " + maxRefresh);
+
+    	return maxRefresh;
+    }
 
 
     @Override
@@ -250,6 +266,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         super.onCreate(savedInstanceState);
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
+               
+        android.view.WindowManager.LayoutParams params = getWindow().getAttributes();
+        params.preferredRefreshRate = pickHighestRefreshRate();
+        getWindow().setAttributes(params);
+        
         setContentView(R.layout.xserver_display_activity);
 
         preloaderDialog = new PreloaderDialog(this);
@@ -1842,8 +1863,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
-            if (wineInfo.isArm64EC() && !GPUInformation.getRenderer(null,null).contains("Mali"))
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls" + ".tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
         }
 
         if (adrenoToolsDriverId != "System") {
@@ -1860,7 +1879,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
 
         String gpuName = graphicsDriverConfig.get("gpuName");
-        if (!gpuName.equals("Device")) {
+        String dxvkVersion = dxwrapperConfig.get("version");
+        if (!gpuName.equals("Device") && !dxvkVersion.equals("1.11.1-sarek")) {
             envVars.put("WRAPPER_DEVICE_NAME", gpuName);
             envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
             envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
@@ -1985,6 +2005,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             String dxvkWrapper = dxwrapper.split(";")[0];
             String vkd3dWrapper = dxwrapper.split(";")[1];
             String ddrawrapper = dxwrapper.split(";")[2];
+            
             ContentProfile dxvkProfile = contentsManager.getProfileByEntryName(dxvkWrapper);
             if (dxvkProfile != null) {
                 Log.d(TAG, "Applying user-defined DXVK content profile: " + dxvkWrapper);
