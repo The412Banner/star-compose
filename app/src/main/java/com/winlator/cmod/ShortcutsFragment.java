@@ -182,11 +182,14 @@ public class ShortcutsFragment extends Fragment {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), spanCount));
         } else {
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            recyclerView.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
+            if (recyclerView.getItemDecorationCount() == 0) {
+                recyclerView.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
+            }
         }
     }
 
     public void loadShortcutsList() {
+        if (manager == null) manager = new ContainerManager(getContext());
         ArrayList<Shortcut> shortcuts = manager.loadShortcuts();
         SharedPreferences playtimePrefs = getContext().getSharedPreferences("playtime_stats", Context.MODE_PRIVATE);
 
@@ -203,7 +206,7 @@ public class ShortcutsFragment extends Fragment {
             case 5 -> shortcuts.sort((s1, s2) -> Long.compare(playtimePrefs.getLong(s2.path + "_play_date", 0), playtimePrefs.getLong(s1.path + "_play_date", 0)));
         }
 
-        shortcuts.removeIf(shortcut -> shortcut == null || shortcut.file == null || shortcut.file.getName().isEmpty());
+        shortcuts.removeIf(shortcut -> shortcut == null || shortcut.file == null || !shortcut.file.exists());
 
         adapter = new ShortcutsAdapter(shortcuts);
         recyclerView.setAdapter(adapter);
@@ -222,37 +225,82 @@ public class ShortcutsFragment extends Fragment {
     }
 
     private void handleManualShortcutAddition(Uri selectedFile) {
-        String path = selectedFile.getPath().toLowerCase();
-        if (path.endsWith(".exe") && path.contains("/document/")) {
+        String fileName = queryName(getContext().getContentResolver(), selectedFile);
+        if (fileName.toLowerCase().endsWith(".exe")) {
             if (shortcutContainer == null) return;
-            String driveLetter = path.contains("primary:") ? "D:" : (path.contains("/imagefs/") ? "Z:" : null);
-            if (driveLetter == null) {
-                AppUtils.showToast(getContext(), "Wrong path! Can't detect drive!");
-                return;
+
+            String uriPath = selectedFile.getPath();
+            String relativePath = "";
+            String driveLetter = "D:";
+            String linuxDrivePrefix = "/home/xuser/.wine/dosdevices/d:";
+
+            // Detect drive based on Android path
+            if (uriPath.contains("Download")) {
+                driveLetter = "D:";
+                linuxDrivePrefix = "/home/xuser/.wine/dosdevices/d:";
+                if (uriPath.contains("Download/")) relativePath = uriPath.split("Download/")[1];
+                else relativePath = fileName;
+            } else if (uriPath.contains("primary:") || uriPath.contains("/storage/emulated/0")) {
+                driveLetter = "F:";
+                linuxDrivePrefix = "/home/xuser/.wine/dosdevices/f:";
+                if (uriPath.contains("primary:")) relativePath = uriPath.split("primary:")[1];
+                else if (uriPath.contains("/0/")) relativePath = uriPath.split("/0/")[1];
+                else relativePath = fileName;
+            } else if (uriPath.contains("imagefs")) {
+                driveLetter = "Z:";
+                linuxDrivePrefix = "/home/xuser/.wine/dosdevices/z:";
+                relativePath = uriPath.split("imagefs")[1];
+            } else {
+                relativePath = fileName;
             }
 
-            String fileName = queryName(getContext().getContentResolver(), selectedFile);
-            String nameWoutExe = fileName.substring(0, fileName.length() - 4);
-            String desktopContent = "[Desktop Entry]\nName=" + nameWoutExe + "\nExec=wine " + driveLetter + "\\\\" + fileName + "\nType=Application";
+            if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
             
-            try (FileWriter writer = new FileWriter(new File(shortcutContainer.getDesktopDir(), nameWoutExe + ".desktop"))) {
-                writer.write(desktopContent);
-                loadShortcutsList();
-                AppUtils.showToast(getContext(), "Shortcut created!");
+            String windowsPath = relativePath.replace("/", "\\\\\\\\");
+            String dirPart = relativePath.contains("/") ? relativePath.substring(0, relativePath.lastIndexOf("/")) : "";
+            String linuxDirPath = linuxDrivePrefix + (dirPart.isEmpty() ? "" : "/" + dirPart);
+
+            String nameWoutExe = fileName.substring(0, fileName.length() - 4);
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append("[Desktop Entry]\n");
+            sb.append("Name=").append(nameWoutExe).append("\n");
+            sb.append("Exec=env WINEPREFIX=\"/data/user/0/").append(getContext().getPackageName()).append("/files/imagefs/home/xuser/.wine\" wine ").append(driveLetter).append("\\\\\\\\").append(windowsPath).append("\n");
+            sb.append("Type=Application\n");
+            sb.append("StartupNotify=true\n");
+            sb.append("Path=").append(linuxDirPath).append("\n");
+
+            File desktopDir = shortcutContainer.getDesktopDir();
+            if (!desktopDir.exists()) desktopDir.mkdirs();
+
+            File desktopFile = new File(desktopDir, nameWoutExe + ".desktop");
+            
+            try (FileWriter writer = new FileWriter(desktopFile)) {
+                writer.write(sb.toString());
+                writer.flush();
+                
+                getActivity().runOnUiThread(() -> {
+                    loadShortcutsList();
+                    AppUtils.showToast(getContext(), "Shortcut created!");
+                });
             } catch (IOException e) {
                 Log.e("ShortcutsFragment", "Creation failed", e);
+                AppUtils.showToast(getContext(), "Failed to create shortcut file.");
             }
-        } else AppUtils.showToast(getContext(), "Please select an .exe file!");
+        } else {
+            AppUtils.showToast(getContext(), "Please select an .exe file!");
+        }
     }
 
     private String queryName(ContentResolver resolver, Uri uri) {
-        Cursor cursor = resolver.query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
-        if (cursor != null && cursor.moveToFirst()) {
-            String name = cursor.getString(0);
-            cursor.close();
-            return name;
+        try (Cursor cursor = resolver.query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getString(0);
+            }
+        } catch (Exception e) {
+            Log.e("ShortcutsFragment", "Query name failed", e);
         }
-        return "Unknown";
+        return "Unknown.exe";
     }
 
     private class ShortcutsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -279,6 +327,7 @@ public class ShortcutsFragment extends Fragment {
             final Shortcut item = data.get(position);
             if (holder instanceof ListViewHolder vh) {
                 if (item.icon != null) vh.imageView.setImageBitmap(item.icon);
+                else vh.imageView.setImageResource(R.drawable.icon_shortcut);
                 vh.title.setText(item.name);
                 vh.subtitle.setText(item.container.getName());
                 vh.menuButton.setOnClickListener(v -> showListItemMenu(v, item));
@@ -286,6 +335,7 @@ public class ShortcutsFragment extends Fragment {
                 applyListSizeConstraints(vh);
             } else if (holder instanceof GridViewHolder vh) {
                 if (item.icon != null) vh.imageView.setImageBitmap(item.icon);
+                else vh.imageView.setImageResource(R.drawable.icon_shortcut);
                 vh.title.setText(item.name);
                 vh.subtitle.setText(item.container.getName());
                 vh.itemView.setOnClickListener(v -> runFromShortcut(item));
@@ -351,7 +401,7 @@ public class ShortcutsFragment extends Fragment {
                     });
                 } else if (id == R.id.shortcut_add_to_home_screen) {
                     if (shortcut.getExtra("uuid").isEmpty()) shortcut.genUUID();
-                    addShortcutToScreen(shortcut);
+                    addShortcut_to_HomeScreen(shortcut);
                 } else if (id == R.id.shortcut_export) exportShortcut(shortcut);
                 else if (id == R.id.shortcut_properties) showShortcutProperties(shortcut);
                 return true;
@@ -368,6 +418,12 @@ public class ShortcutsFragment extends Fragment {
 
     private void runFromShortcut(Shortcut shortcut) {
         Activity activity = getActivity();
+        if (shortcut.file == null || !shortcut.file.exists()) {
+            AppUtils.showToast(getContext(), "Shortcut file is missing!");
+            loadShortcutsList();
+            return;
+        }
+        
         if (!XrActivity.isEnabled(getContext())) {
             Intent intent = new Intent(activity, XServerDisplayActivity.class);
             intent.putExtra("container_id", shortcut.container.id);
@@ -431,7 +487,7 @@ public class ShortcutsFragment extends Fragment {
         return new ShortcutInfo.Builder(getActivity(), uuid).setShortLabel(label).setLongLabel(longLabel).setIcon(icon).setIntent(intent).build();
     }
 
-    private void addShortcutToScreen(Shortcut shortcut) {
+    private void addShortcut_to_HomeScreen(Shortcut shortcut) {
         ShortcutManager sm = getSystemService(requireContext(), ShortcutManager.class);
         if (sm != null && sm.isRequestPinShortcutSupported()) {
             sm.requestPinShortcut(buildScreenShortCut(shortcut.name, shortcut.name, shortcut.container.id, shortcut.file.getPath(), Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid")), null);
