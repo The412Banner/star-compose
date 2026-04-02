@@ -1832,93 +1832,122 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void extractGraphicsDriverFiles() {
-        String adrenoToolsDriverId = graphicsDriverConfig.get("version");
+    // 1. Retrieve the selected driver name from the config
+    String selectedDriver = graphicsDriverConfig.get("graphicsDriver");
+    if (selectedDriver == null) selectedDriver = graphicsDriverConfig.get("graphics_driver");
+    
+    String adrenoToolsDriverId = graphicsDriverConfig.get("version");
 
-        Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
+    Log.d("GraphicsDriverExtraction", "Selected Driver from Config: " + selectedDriver);
+    Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
 
-        File rootDir = imageFs.getRootDir();
+    File rootDir = imageFs.getRootDir();
 
-        if (dxwrapper.contains("dxvk")) {
-            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            String version = dxwrapperConfig.get("version");
-            if (version.equals("1.11.1-sarek")) {
-                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
-                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
-            }
+    // Perform wrapper extraction based on selected version
+    if (graphicsDriver.startsWith("wrapper-original")) {
+        Log.d("GraphicsDriverExtraction", "Extracting: graphics_driver/wrapper-original.tzst");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-original.tzst", rootDir);
+    } 
+    else if (graphicsDriver.startsWith("wrapper-leegao")) {
+        Log.d("GraphicsDriverExtraction", "Extracting: graphics_driver/wrapper-leegao.tzst");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-leegao.tzst", rootDir);
+    } 
+    else if (graphicsDriver.startsWith("wrapper-legacy")) {
+        Log.d("GraphicsDriverExtraction", "Extracting: graphics_driver/wrapper-legacy.tzst");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-legacy.tzst", rootDir);
+    }
+    else if (graphicsDriver.startsWith("wrapper-gamenative")) {
+        Log.d("GraphicsDriverExtraction", "Extracting: graphics_driver/wrapper-gamenative.tzst");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper-gamenative.tzst", rootDir);
+    }
+
+    // Original logic for DXWrapper and environment variables
+    if (dxwrapper.contains("dxvk")) {
+        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+        String version = dxwrapperConfig.get("version");
+        if (version != null && version.equals("1.11.1-sarek")) {
+            Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
+            envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
         }
-        else {
-            WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        }
+    }
+    else {
+        WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+    }
 
-        boolean useDRI3 = preferences.getBoolean("use_dri3", true);
-        if (!useDRI3) {
-            envVars.put("MESA_VK_WSI_DEBUG", "sw");
-        }
+    boolean useDRI3 = preferences.getBoolean("use_dri3", true);
+    if (!useDRI3) {
+        envVars.put("MESA_VK_WSI_DEBUG", "sw");
+    }
 
-        envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
-        envVars.put("GALLIUM_DRIVER", "zink");
+    envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
+    envVars.put("GALLIUM_DRIVER", "zink");
 
-        if (firstTimeBoot) {
-            Log.d("XServerDisplayActivity", "First time container boot, re-extracting libs");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
-        }
+    // 2. SHARED LIBS EXTRACTION (First Time Boot Only)
+    if (firstTimeBoot) {
+        Log.d("XServerDisplayActivity", "First time container boot, re-extracting layers and extra_libs");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
+    }
 
-        if (adrenoToolsDriverId != "System") {
-            AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
-            adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
-        }
+    // 3. Adrenotools Integration
+    if (adrenoToolsDriverId != null && !adrenoToolsDriverId.equals("System")) {
+        AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
+        adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
+    }
 
-        String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
-        String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
-        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
-        envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
+    // --- Environment Variable Setup ---
+    String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
+    String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
+    vulkanVersion = (vulkanVersion != null ? vulkanVersion : "1.3") + "." + vulkanVersionPatch;
+    envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
 
-        String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
-        envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
+    String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
+    envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions != null ? blacklistedExtensions : "");
 
-        String gpuName = graphicsDriverConfig.get("gpuName");
-        String dxvkVersion = dxwrapperConfig.get("version");
-        if (!gpuName.equals("Device") && !dxvkVersion.equals("1.11.1-sarek")) {
-            envVars.put("WRAPPER_DEVICE_NAME", gpuName);
-            envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
-            envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
-        }
+    String gpuName = graphicsDriverConfig.get("gpuName");
+    String dxvkVersion = dxwrapperConfig.get("version");
+    if (gpuName != null && !gpuName.equals("Device") && dxvkVersion != null && !dxvkVersion.equals("1.11.1-sarek")) {
+        envVars.put("WRAPPER_DEVICE_NAME", gpuName);
+        envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
+        envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
+    }
 
-        String maxDeviceMemory = graphicsDriverConfig.get("maxDeviceMemory");
-        if (maxDeviceMemory != null && Integer.parseInt(maxDeviceMemory) > 0)
-            envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
-        
-        String presentMode = graphicsDriverConfig.get("presentMode");
+    String maxDeviceMemory = graphicsDriverConfig.get("maxDeviceMemory");
+    if (maxDeviceMemory != null && Integer.parseInt(maxDeviceMemory) > 0)
+        envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
+    
+    String presentMode = graphicsDriverConfig.get("presentMode");
+    if (presentMode != null) {
         if (presentMode.contains("immediate")) {
             envVars.put("WRAPPER_MAX_IMAGE_COUNT", "1");
         }
         envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
+    }
 
-        String resourceType = graphicsDriverConfig.get("resourceType");
-        envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
+    String resourceType = graphicsDriverConfig.get("resourceType");
+    if (resourceType != null) envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
 
-        String syncFrame = graphicsDriverConfig.get("syncFrame");
-        if (syncFrame.equals("1"))
-            envVars.put("MESA_VK_WSI_DEBUG", "forcesync");
+    String syncFrame = graphicsDriverConfig.get("syncFrame");
+    if (syncFrame != null && syncFrame.equals("1"))
+        envVars.put("MESA_VK_WSI_DEBUG", "forcesync");
 
-        String disablePresentWait = graphicsDriverConfig.get("disablePresentWait");
-        envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
+    String disablePresentWait = graphicsDriverConfig.get("disablePresentWait");
+    if (disablePresentWait != null) envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
 
-        String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
-        String bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType");
+    String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
+    String bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType");
 
+    if (bcnEmulation != null) {
         switch (bcnEmulation) {
             case "auto" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if ("compute".equals(bcnEmulationType) && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "1");
                 }
                 envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
             case "full" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                if ("compute".equals(bcnEmulationType) && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "0");
                 }
@@ -1927,15 +1956,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
             default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
         }
-
-        String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
-        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
-
-        if (!vkbasaltConfig.isEmpty()) {
-            envVars.put("ENABLE_VKBASALT", "1");
-            envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
-        }
     }
+
+    String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
+    if (bcnEmulationCache != null) envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
+
+    if (vkbasaltConfig != null && !vkbasaltConfig.isEmpty()) {
+        envVars.put("ENABLE_VKBASALT", "1");
+        envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
+    }
+}
+    
     
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
