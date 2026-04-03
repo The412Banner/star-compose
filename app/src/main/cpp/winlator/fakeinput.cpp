@@ -1,4 +1,3 @@
-#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -20,6 +19,10 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/uio.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
 #include <sys/syscall.h>
@@ -31,6 +34,7 @@
 std::unordered_map<int, const char *> controller_map;
 static bool initialized = false;
 static const char *hook_dir = nullptr;
+static bool vibration_enabled = true;
 volatile sig_atomic_t stop_flag = 0;
 
 static int (*my_open)(const char *, int, ...) = nullptr;
@@ -40,6 +44,7 @@ static int (*my_fstat)(int fd, struct stat *buf) = nullptr;
 static int (*my_scandir)(const char *, struct dirent***, int(*)(const struct dirent *), int(*)(const struct dirent**, const struct dirent**));
 static int (*my_inotify_add_watch)(int, const char *, uint32_t);
 static int (*my_close)(int);
+static ssize_t (*my_write)(int, const void *, size_t) = nullptr;
 
 namespace Logger {
 	int log_enabled;
@@ -72,11 +77,44 @@ void setup_signal_handler() {
     }
 }
 
+static std::unordered_map<int, struct ff_effect> ff_effects;
+static int next_ff_id = 0;
+
+void send_vibration(int strong, int weak, uint16_t duration_ms, uint16_t slot) {
+  if (!vibration_enabled)
+    return;
+
+  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock < 0)
+    return;
+
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  const char *name = "winlator_vibration";
+  memcpy(addr.sun_path + 1, name, strlen(name));
+  socklen_t addrlen = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(name);
+
+  if (connect(sock, (struct sockaddr *)&addr, addrlen) < 0) {
+    syscall(SYS_close, sock);
+    return;
+  }
+
+  uint16_t data[4];
+  data[0] = (uint16_t)strong;
+  data[1] = (uint16_t)weak;
+  data[2] = duration_ms;
+  data[3] = slot;
+  send(sock, data, sizeof(data), 0);
+  syscall(SYS_close, sock);
+}
+
 __attribute__((constructor))
 static void library_init() {
 	if (!hook_dir)
 		hook_dir = getenv("FAKE_EVDEV_DIR") ? getenv("FAKE_EVDEV_DIR") : "/data/data/com.termux/files/home/fake-input";
 
+	vibration_enabled = getenv("FAKE_EVDEV_VIBRATION") && atoi(getenv("FAKE_EVDEV_VIBRATION"));
 	Logger::init();
 }
   
@@ -364,11 +402,37 @@ EXPORT int ioctl(int fd, int op, ...) {
     	return 0;
     }
     else if (type == 0x45 && number == 0x35) {
-    	Logger::log("Hooking ioctl EVIOCGBIT(EV_FF, len) for event %s\n", event);
-    	char bitmask[FF_MAX / 8] = {0};
-    	bitmask[FF_RUMBLE / 8] |= 0;
-    	bitmask[FF_SINE / 8] |= 0;
-    	return 0;
+        Logger::log("Hooking ioctl EVIOCGBIT(EV_FF, len) for event %s\n", event);
+        char bitmask[FF_MAX / 8] = {0};
+        bitmask[FF_RUMBLE / 8] |= (1 << (FF_RUMBLE % 8));
+        bitmask[FF_PERIODIC / 8] |= (1 << (FF_PERIODIC % 8));
+        memcpy(argp, (void *)&bitmask, sizeof(bitmask));
+        return 0;
+    }
+    else if (type == 0x45 && number == 0x80) {
+        struct ff_effect *effect = (struct ff_effect *)argp;
+        if (effect->id == -1) {
+            effect->id = next_ff_id++;
+        }
+        ff_effects[effect->id] = *effect;
+
+        uint16_t duration = effect->replay.length;
+        if (effect->type == FF_RUMBLE) {
+            send_vibration(effect->u.rumble.strong_magnitude, effect->u.rumble.weak_magnitude, duration, (uint16_t)event_number);
+        } else if (effect->type == FF_PERIODIC) {
+            send_vibration(effect->u.periodic.magnitude, effect->u.periodic.magnitude, duration, (uint16_t)event_number);
+        }
+        return 0;
+    }
+    else if (type == 0x45 && number == 0x81) {
+        int id = (intptr_t)argp;
+        ff_effects.erase(id);
+        return 0;
+    }
+    else if (type == 0x45 && number == 0x84) {
+        int max_effects = 16;
+        memcpy(argp, &max_effects, sizeof(int));
+        return 0;
     }
     else if (type == 0x45 && number >= 0x40 && number <= 0x51) {
     	Logger::log("Hooking ioctl EVIOCGABS(ABS) for event %s\n", event);
@@ -446,4 +510,53 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
     	return bytes_read;
     }
     return syscall(SYS_read, fd, buf, count);
+}
+
+static void check_ff_event(const struct input_event *ev, uint16_t slot) {
+  if (ev->type == EV_FF) {
+    int id = ev->code;
+    int value = ev->value;
+    if (value > 0) {
+      auto it = ff_effects.find(id);
+      if (it != ff_effects.end()) {
+        uint16_t duration = it->second.replay.length;
+        if (it->second.type == FF_RUMBLE) {
+          send_vibration(it->second.u.rumble.strong_magnitude,
+                         it->second.u.rumble.weak_magnitude, duration, slot);
+        } else if (it->second.type == FF_PERIODIC) {
+          send_vibration(it->second.u.periodic.magnitude,
+                         it->second.u.periodic.magnitude, duration, slot);
+        }
+      }
+    } else {
+      send_vibration(0, 0, 0, slot);
+    }
+  }
+}
+
+EXPORT ssize_t write(int fd, const void *buf, size_t count) {
+  if (!my_write)
+    *(void **)&my_write = dlsym(RTLD_NEXT, "write");
+
+  auto controller = controller_map.find(fd);
+  if (controller != controller_map.end()) {
+    if (count == sizeof(struct input_event)) {
+      uint16_t slot = (uint16_t)get_event_number(controller->second);
+      check_ff_event((const struct input_event *)buf, slot);
+    }
+  }
+  return my_write(fd, buf, count);
+}
+
+EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+  auto controller = controller_map.find(fd);
+  if (controller != controller_map.end()) {
+    uint16_t slot = (uint16_t)get_event_number(controller->second);
+    for (int i = 0; i < iovcnt; i++) {
+        if (iov[i].iov_len == sizeof(struct input_event)) {
+            check_ff_event((const struct input_event *)iov[i].iov_base, slot);
+        }
+    }
+  }
+  return syscall(SYS_writev, fd, iov, iovcnt);
 }
