@@ -334,18 +334,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         Log.d("GuestLauncher", "fakeinputSrc exists: " + fakeinputSrc.exists());
         Log.d("GuestLauncher", "fakeinputDest: " + fakeinputDest.getAbsolutePath());
 
-        if (!fakeinputDest.exists()) {
-            try {
-                if (fakeinputSrc.exists()) {
-                    FileUtils.copy(fakeinputSrc, fakeinputDest);
-                    Log.d("GuestLauncher", "Copied libfakeinput.so to imagefs");
-                } else {
-                    Log.e("GuestLauncher", "libfakeinput.so NOT FOUND in APK: " + fakeinputSrc.getAbsolutePath());
-                }
-            } catch (Exception e) {
-                Log.e("GuestLauncher", "Failed to copy libfakeinput.so: " + e.getMessage());
-                e.printStackTrace();
+        try {
+            if (fakeinputSrc.exists()) {
+                FileUtils.copy(fakeinputSrc, fakeinputDest);
+                Log.d("GuestLauncher", "Copied libfakeinput.so to imagefs");
+            } else {
+                Log.e("GuestLauncher", "libfakeinput.so NOT FOUND in APK: " + fakeinputSrc.getAbsolutePath());
             }
+        } catch (Exception e) {
+            Log.e("GuestLauncher", "Failed to copy libfakeinput.so: " + e.getMessage());
+            e.printStackTrace();
         }
 
         Log.d("GuestLauncher", "fakeinputDest exists after copy: " + fakeinputDest.exists());
@@ -362,6 +360,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
 
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
+        envVars.put("FAKE_EVDEV_VIBRATION", "1");
 
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);
