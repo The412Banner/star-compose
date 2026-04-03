@@ -283,6 +283,8 @@
     <string name="startup_selection">Startup Selection</string>
     <string name="wine_debug_channel">Wine Debug Channel</string>
     <string name="game_controller">Game Controller</string>
+    <string name="vibration">Vibration</string>
+    <string name="vibration_slot">Slot %1$d</string>
 
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Based On</string>
@@ -454,6 +456,7 @@
     <string name="enable_touchscreen_haptics">Enable Touchscreen Haptic Feedback</string>
     <string name="help_steamgrid">SteamGrid API Key</string>
     <string name="disable_xinput_for_shortcut">Disable Xinput (For Exclusive M/KB Control)</string>
+    <string name="num_controllers">Number of Controllers</string>
     <string name="fullscreen_stretched">Enable Fullscreen (Stretched)</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
