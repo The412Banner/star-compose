@@ -579,7 +579,18 @@
                             style="@style/HelpButton"
                             android:layout_gravity="center" />
                     </LinearLayout>
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/num_controllers" />
 
+                    <Spinner
+                        style="@style/ComboBox"
+                        android:id="@+id/SNumControllers"
+                        android:layout_width="match_parent"
+                        android:entries="@array/num_controllers_entries" />
                 </LinearLayout>
 
                 <TextView
