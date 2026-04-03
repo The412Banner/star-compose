@@ -342,6 +342,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
         // Set the initial value based on the shortcut extras
         boolean isXInputDisabled = shortcut.getExtra("disableXinput", "0").equals("1");
         cbDisabledXInput.setChecked(isXInputDisabled);
+        
+        final Spinner sNumControllers = findViewById(R.id.SNumControllers);
+        int numControllers = Integer.parseInt(shortcut.getExtra("numControllers", "1"));
+        sNumControllers.setSelection(Math.max(0, Math.min(numControllers - 1, 3)), false);
 
         final CheckBox cbSimTouchScreen = findViewById(R.id.CBTouchscreenMode);
         String isTouchScreenMode = shortcut.getExtra("simTouchScreen");
@@ -468,6 +472,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
                 boolean touchscreenMode = cbSimTouchScreen.isChecked();
                 shortcut.putExtra("simTouchScreen", touchscreenMode ? "1" : "0");
+                
+                int selectedNumControllers = sNumControllers.getSelectedItemPosition() + 1;
+                shortcut.putExtra("numControllers", String.valueOf(selectedNumControllers));
 
                 String execArgs = etExecArgs.getText().toString();
                 shortcut.putExtra("execArgs", !execArgs.isEmpty() ? execArgs : null);
@@ -615,6 +622,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sFEXCorePreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sFEXCoreVersion.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sStartupSelection.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
+        Spinner sNumControllers = view.findViewById(R.id.SNumControllers);
+        sNumControllers.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
 //        EditText etLC_ALL = view.findViewById(R.id.ETlcall);
         EditText etExecArgs = view.findViewById(R.id.ETExecArgs);
