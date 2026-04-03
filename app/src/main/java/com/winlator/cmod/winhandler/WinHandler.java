@@ -19,6 +19,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
 import android.os.Handler;
+import android.net.LocalServerSocket;
+import android.net.LocalSocket;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -70,6 +74,9 @@ public class WinHandler {
     private Map<Integer, Integer> deviceToSlot = new HashMap<>();
     private Set<Integer> usedSlots = new HashSet<>();
     private String fakeInputBasePath;
+    private LocalServerSocket vibrationServer;
+    private volatile boolean vibrationRunning = false;
+    private boolean[] vibrationEnabledSlots = new boolean[MAX_CONTROLLERS]; // per-slot vibration toggle
 
     private boolean xinputDisabled;
     private boolean xinputDisabledInitialized = false;
@@ -97,6 +104,11 @@ public class WinHandler {
         inputManager.registerInputDeviceListener(inputDeviceListener, null);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
+
+        // Load per-slot vibration preferences (default: enabled)
+        for (int i = 0; i < MAX_CONTROLLERS; i++) {
+            vibrationEnabledSlots[i] = preferences.getBoolean("vibration_slot_" + i, true);
+        }
     }
 
     private boolean sendPacket(int port) {
@@ -308,6 +320,104 @@ public class WinHandler {
         }
     }
 
+    public void startVibrationListener() {
+        if (vibrationRunning)
+            return;
+        vibrationRunning = true;
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                vibrationServer = new LocalServerSocket("winlator_vibration");
+                Log.d("WinHandler", "Vibration listener started on abstract socket: winlator_vibration");
+
+                while (vibrationRunning) {
+                    LocalSocket client = vibrationServer.accept();
+                    try {
+                        java.io.InputStream is = client.getInputStream();
+                        byte[] buf = new byte[8];
+                        int read = is.read(buf);
+                        if (read == 8) {
+                            int strong = (buf[0] & 0xFF) | ((buf[1] & 0xFF) << 8);
+                            int weak = (buf[2] & 0xFF) | ((buf[3] & 0xFF) << 8);
+                            int durationMs = (buf[4] & 0xFF) | ((buf[5] & 0xFF) << 8);
+                            int slot = (buf[6] & 0xFF) | ((buf[7] & 0xFF) << 8);
+                            triggerVibration(strong, weak, durationMs, slot);
+                        }
+                        client.close();
+                    } catch (IOException e) {
+                        Log.e("WinHandler", "Vibration client error: " + e.getMessage());
+                    }
+                }
+            } catch (IOException e) {
+                if (vibrationRunning) {
+                    Log.e("WinHandler", "Vibration listener error: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void triggerVibration(int strong, int weak, int durationMs, int slot) {
+        // Check if vibration is enabled for this slot
+        if (slot >= 0 && slot < MAX_CONTROLLERS && !vibrationEnabledSlots[slot])
+            return;
+
+        Vibrator vibrator = null;
+
+        // Find which deviceId owns this slot
+        Integer deviceId = null;
+        for (Map.Entry<Integer, Integer> entry : deviceToSlot.entrySet()) {
+            if (entry.getValue() == slot) {
+                deviceId = entry.getKey();
+                break;
+            }
+        }
+
+        if (deviceId != null && deviceId == OSC_DEVICE_ID) {
+            // OSC is mapped to this slot — use the phone vibrator
+            vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        } else if (deviceId != null) {
+            // Physical controller — use its own vibrator
+            android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+            if (device != null) {
+                vibrator = device.getVibrator();
+            }
+        }
+
+        if (vibrator == null || !vibrator.hasVibrator())
+            return;
+
+        if (strong > 0 || weak > 0) {
+            int intensity = Math.max(strong, weak);
+            int amplitude = Math.min(255, Math.max(1, (int) ((intensity / 65535.0f) * 255)));
+            int duration = Math.max(1, durationMs);
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude));
+            } else {
+                vibrator.vibrate(duration);
+            }
+        } else {
+            vibrator.cancel();
+        }
+    }
+
+    public boolean isVibrationEnabledForSlot(int slot) {
+        if (slot >= 0 && slot < MAX_CONTROLLERS)
+            return vibrationEnabledSlots[slot];
+        return false;
+    }
+
+    public void setVibrationEnabledForSlot(int slot, boolean enabled) {
+        if (slot >= 0 && slot < MAX_CONTROLLERS) {
+            vibrationEnabledSlots[slot] = enabled;
+            preferences.edit().putBoolean("vibration_slot_" + slot, enabled).apply();
+        }
+    }
+
+    public int getMaxControllers() {
+        return MAX_CONTROLLERS;
+    }
+
     private void handleRequest(byte requestCode, final int port) {
         switch (requestCode) {
             case RequestCodes.INIT: {
@@ -421,7 +531,6 @@ public class WinHandler {
             releaseSlot(OSC_DEVICE_ID);
         }
 
-
     }
 
     public void sendGamepadState(ExternalController controller) {
@@ -436,7 +545,8 @@ public class WinHandler {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
                 // If bindings are present, use the remappedState from the controller
-                // This reverts the single-slot consolidation where the no-arg sendGamepadState()
+                // This reverts the single-slot consolidation where the no-arg
+                // sendGamepadState()
                 // was solely responsible for sending remapped states.
                 int slot = assignSlot(controller.getDeviceId());
                 if (slot >= 0 && writers[slot] != null) {
@@ -506,6 +616,7 @@ public class WinHandler {
         if (fakeInputPath != null && !fakeInputPath.isEmpty()) {
             this.fakeInputBasePath = fakeInputPath;
             Log.d("WinHandler", "FakeInputWriter base path set: " + fakeInputPath);
+            startVibrationListener();
         }
     }
 
@@ -522,6 +633,15 @@ public class WinHandler {
         deviceToSlot.clear();
         usedSlots.clear();
         controllers.clear();
+
+        vibrationRunning = false;
+        if (vibrationServer != null) {
+            try {
+                vibrationServer.close();
+            } catch (IOException e) {
+            }
+            vibrationServer = null;
+        }
     }
 
     private ExternalController getController(int deviceId) {
