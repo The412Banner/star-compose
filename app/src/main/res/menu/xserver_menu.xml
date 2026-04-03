@@ -34,6 +34,10 @@
             android:id="@+id/main_menu_fsr_control"
             android:title="Graphic Engine"/>
         <item
+            android:icon="@drawable/icon_input_controls"
+            android:id="@+id/main_menu_vibration"
+            android:title="@string/vibration" />
+        <item
             android:icon="@drawable/icon_fullscreen"
             android:id="@+id/main_menu_toggle_fullscreen"
             android:title="@string/toggle_fullscreen" />
