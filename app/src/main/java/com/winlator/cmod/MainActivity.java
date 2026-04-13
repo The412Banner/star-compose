@@ -47,6 +47,9 @@ import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.core.WineThemeManager;
 import com.winlator.cmod.saves.Save;
 import com.winlator.cmod.saves.SaveManager;
+import com.winlator.cmod.store.GogMainActivity;
+import com.winlator.cmod.store.EpicMainActivity;
+import com.winlator.cmod.store.AmazonMainActivity;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import java.io.File;
@@ -337,6 +340,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.main_menu_saves:
                 show(new SavesFragment(), false);  // Forward animation
                 break;
+            case R.id.main_menu_gog:
+                startActivity(new Intent(this, GogMainActivity.class));
+                break;
+            case R.id.main_menu_epic:
+                startActivity(new Intent(this, EpicMainActivity.class));
+                break;
+            case R.id.main_menu_amazon:
+                startActivity(new Intent(this, AmazonMainActivity.class));
+                break;
             case R.id.main_menu_settings:
                 show(new SettingsFragment(), false);  // Forward animation
                 break;
@@ -452,6 +464,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         SpannableString spanString = new SpannableString(menuItem.getTitle());
         spanString.setSpan(new ForegroundColorSpan(color), 0, spanString.length(), 0);
         menuItem.setTitle(spanString);
+    }
+
+    public void doPermissionsFlow() {
+        // Standard runtime permissions (WRITE_EXTERNAL_STORAGE etc.)
+        requestAppPermissions();
+
+        // API 30+ (Android 11+): Request MANAGE_EXTERNAL_STORAGE
+        if (Build.VERSION.SDK_INT >= 30 /* Build.VERSION_CODES.R */) {
+            if (!Environment.isExternalStorageManager()) {
+                showAllFilesAccessDialog();
+            }
+        }
+
+        // API 33+ (Android 13+): Request POST_NOTIFICATIONS
+        if (Build.VERSION.SDK_INT >= 33 /* Build.VERSION_CODES.TIRAMISU */) {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    "android.permission.POST_NOTIFICATIONS"
+            ) != 0 /* PackageManager.PERMISSION_GRANTED */) {
+                requestPermissions(
+                    new String[]{"android.permission.POST_NOTIFICATIONS"},
+                    1 /* request code */
+                );
+            }
+        }
     }
 }
 
