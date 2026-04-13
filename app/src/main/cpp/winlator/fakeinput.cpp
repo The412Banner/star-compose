@@ -541,8 +541,15 @@ EXPORT ssize_t write(int fd, const void *buf, size_t count) {
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     if (count == sizeof(struct input_event)) {
+      const struct input_event *ev = (const struct input_event *)buf;
       uint16_t slot = (uint16_t)get_event_number(controller->second);
-      check_ff_event((const struct input_event *)buf, slot);
+      check_ff_event(ev, slot);
+      // EV_FF events are FF control commands sent by Wine to the fake device.
+      // Writing them to the fake evdev file causes Wine to read them back as
+      // input events, corrupting controller state and blocking input. Consume
+      // them here and return success without writing to the file.
+      if (ev->type == EV_FF)
+        return (ssize_t)count;
     }
   }
   return my_write(fd, buf, count);
@@ -552,11 +559,22 @@ EXPORT ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
   auto controller = controller_map.find(fd);
   if (controller != controller_map.end()) {
     uint16_t slot = (uint16_t)get_event_number(controller->second);
+    // Separate FF control events from regular input events.
+    // FF events must not be written to the fake evdev file (see write() above).
+    struct iovec filtered[iovcnt];
+    int filtered_count = 0;
     for (int i = 0; i < iovcnt; i++) {
-        if (iov[i].iov_len == sizeof(struct input_event)) {
-            check_ff_event((const struct input_event *)iov[i].iov_base, slot);
-        }
+      if (iov[i].iov_len == sizeof(struct input_event)) {
+        const struct input_event *ev = (const struct input_event *)iov[i].iov_base;
+        check_ff_event(ev, slot);
+        if (ev->type == EV_FF)
+          continue;
+      }
+      filtered[filtered_count++] = iov[i];
     }
+    if (filtered_count == 0)
+      return (ssize_t)(iovcnt * sizeof(struct input_event));
+    return syscall(SYS_writev, fd, filtered, filtered_count);
   }
   return syscall(SYS_writev, fd, iov, iovcnt);
 }
