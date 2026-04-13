@@ -81,6 +81,8 @@ public class WinHandler {
     private boolean xinputDisabled;
     private boolean xinputDisabledInitialized = false;
 
+    private int fallbackSlot = -1;
+
     private final InputManager inputManager;
     private final InputManager.InputDeviceListener inputDeviceListener;
 
@@ -376,10 +378,19 @@ public class WinHandler {
             // OSC is mapped to this slot — use the phone vibrator
             vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
         } else if (deviceId != null) {
-            // Physical controller — use its own vibrator
+            // Physical controller
             android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
             if (device != null) {
                 vibrator = device.getVibrator();
+                // Check if the physical controller has vibration capabilities
+                if (vibrator == null || !vibrator.hasVibrator()) {
+                    // Fallback to phone vibrator if OSC is off and no other controller has fallen back
+                    if (!deviceToSlot.containsKey(OSC_DEVICE_ID) && (fallbackSlot == -1 || fallbackSlot == slot)) {
+                        vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+                        fallbackSlot = slot;
+                    }
+                    else vibrator = null;
+                }
             }
         }
 
@@ -590,6 +601,7 @@ public class WinHandler {
     private void releaseSlot(int deviceId) {
         Integer slot = deviceToSlot.remove(deviceId);
         if (slot != null) {
+            if (fallbackSlot == slot) fallbackSlot = -1;
             if (writers[slot] != null) {
                 // Use softRelease instead of destroy to keep the event file
                 // This allows games to reconnect without losing the file descriptor
@@ -633,6 +645,7 @@ public class WinHandler {
         deviceToSlot.clear();
         usedSlots.clear();
         controllers.clear();
+        fallbackSlot = -1;
 
         vibrationRunning = false;
         if (vibrationServer != null) {
