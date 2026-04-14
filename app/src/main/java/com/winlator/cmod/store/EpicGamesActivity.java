@@ -516,7 +516,7 @@ public class EpicGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("epic_exe_" + game.appName, null);
-                if (exe != null) pendingLaunchExe(game.title, exe);
+                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artCover != null && !game.artCover.isEmpty() ? game.artCover : game.artSquare);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -739,7 +739,7 @@ public class EpicGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("epic_exe_" + game.appName, null);
-                if (exe != null) pendingLaunchExe(game.title, exe);
+                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artCover != null && !game.artCover.isEmpty() ? game.artCover : game.artSquare);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -1100,9 +1100,7 @@ public class EpicGamesActivity extends Activity {
 
     // ── Launch ────────────────────────────────────────────────────────────────
 
-    private void pendingLaunchExe(String gameName, String absPath) {
-        LudashiLaunchBridge.addToLauncher(this, gameName, absPath);
-    }
+    // pendingLaunchExe replaced by direct LudashiLaunchBridge.addToLauncher calls above
 
     // ── Cache ─────────────────────────────────────────────────────────────────
 
