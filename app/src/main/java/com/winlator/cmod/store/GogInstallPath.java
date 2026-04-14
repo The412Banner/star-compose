@@ -14,7 +14,7 @@ public final class GogInstallPath {
      * Path: {filesDir}/gog_games/{dirName}
      */
     public static File getInstallDir(Context ctx, String dirName) {
-        return new File(new File(ctx.getFilesDir(), "gog_games"), dirName);
+        return new File(new File(ctx.getFilesDir(), "imagefs/gog_games"), dirName);
     }
 
     /**
