@@ -895,7 +895,7 @@ public class EpicGamesActivity extends Activity {
                 // Install directory: getFilesDir()/epic_games/{sanitized title}
                 String sanitized = game.title.replaceAll("[^a-zA-Z0-9 \\-_]", "").trim();
                 if (sanitized.isEmpty()) sanitized = "epic_" + game.appName.hashCode();
-                File installDir = new File(new File(getFilesDir(), "epic_games"), sanitized);
+                File installDir = new File(new File(getFilesDir(), "imagefs/epic_games"), sanitized);
                 prefs.edit().putString("epic_dir_" + game.appName,
                         installDir.getAbsolutePath()).apply();
 
