@@ -10,6 +10,7 @@ package com.winlator.cmod.store;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -40,6 +41,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +66,7 @@ public class EpicGamesActivity extends Activity {
     private static final String PREFS_NAME    = "bh_epic_prefs";
     private static final String CACHE_KEY     = "epic_cache";
     private static final String VIEW_MODE_KEY = "epic_view_mode";
+    private static final int REQ_GAME_DETAIL  = 1001;
 
     // Epic brand colours
     private static final int COLOR_ACCENT  = 0xFF0078F0;  // Epic blue — install btn / title
@@ -181,6 +185,26 @@ public class EpicGamesActivity extends Activity {
         refreshBtn.setOnClickListener(v -> startSync(true));
         header.addView(refreshBtn, new LinearLayout.LayoutParams(-2, dp(40)));
 
+        Button freeBtn = new Button(this);
+        freeBtn.setText("FREE");
+        freeBtn.setTextColor(0xFF00C853);
+        GradientDrawable freeBtnBg = new GradientDrawable();
+        freeBtnBg.setColor(0xFF00330F);
+        freeBtnBg.setCornerRadius(dp(4));
+        freeBtnBg.setStroke(dp(1), 0xFF00C853);
+        freeBtn.setBackground(freeBtnBg);
+        freeBtn.setTextSize(11f);
+        freeBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+        freeBtn.setPadding(dp(10), 0, dp(10), 0);
+        LinearLayout.LayoutParams freeBtnLp = new LinearLayout.LayoutParams(-2, dp(40));
+        freeBtnLp.leftMargin = dp(4);
+        freeBtn.setOnFocusChangeListener((v, hasFocus) -> {
+            freeBtnBg.setColor(hasFocus ? 0xFF005518 : 0xFF00330F);
+            freeBtnBg.setStroke(hasFocus ? dp(2) : dp(1), hasFocus ? 0xFFFFD700 : 0xFF00C853);
+        });
+        freeBtn.setOnClickListener(v -> startActivity(new Intent(this, EpicFreeGamesActivity.class)));
+        header.addView(freeBtn, freeBtnLp);
+
         root.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
         // Search bar
@@ -264,6 +288,10 @@ public class EpicGamesActivity extends Activity {
             int done  = 0;
             for (EpicGame game : games) {
                 EpicApiClient.enrichFromCatalog(token, game);
+                // Cache release date
+                if (!game.releaseDate.isEmpty()) {
+                    prefs.edit().putString("epic_release_" + game.appName, game.releaseDate).apply();
+                }
                 done++;
                 if (done % 5 == 0) {
                     final int d = done;
@@ -271,11 +299,31 @@ public class EpicGamesActivity extends Activity {
                 }
             }
 
-            // Filter: skip DLC from top-level display
+            // Filter: skip DLC from top-level display; store DLC→base associations in prefs
             List<EpicGame> mainGames = new ArrayList<>();
+            Map<String, JSONArray> epicDlcMap = new HashMap<>();
             for (EpicGame g : games) {
-                if (!g.isDLC) mainGames.add(g);
+                if (!g.isDLC) {
+                    mainGames.add(g);
+                } else if (!g.baseGameCatalogItemId.isEmpty()) {
+                    JSONArray arr = epicDlcMap.get(g.baseGameCatalogItemId);
+                    if (arr == null) { arr = new JSONArray(); epicDlcMap.put(g.baseGameCatalogItemId, arr); }
+                    try {
+                        JSONObject dlcObj = new JSONObject();
+                        dlcObj.put("app",   g.appName);
+                        dlcObj.put("ns",    g.namespace);
+                        dlcObj.put("cat",   g.catalogItemId);
+                        dlcObj.put("title", g.title);
+                        arr.put(dlcObj);
+                    } catch (Exception ignored) {}
+                }
             }
+            // Write DLC lists to prefs (overwrite each time so lists stay fresh)
+            SharedPreferences.Editor dlcEd = prefs.edit();
+            for (Map.Entry<String, JSONArray> e : epicDlcMap.entrySet()) {
+                dlcEd.putString("epic_dlcs_" + e.getKey(), e.getValue().toString());
+            }
+            dlcEd.apply();
             if (mainGames.isEmpty()) mainGames = games;
 
             Collections.sort(mainGames, (a, b) -> a.title.compareToIgnoreCase(b.title));
@@ -516,7 +564,7 @@ public class EpicGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("epic_exe_" + game.appName, null);
-                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artCover != null && !game.artCover.isEmpty() ? game.artCover : game.artSquare);
+                if (exe != null) pendingLaunchExe(exe);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -593,12 +641,7 @@ public class EpicGamesActivity extends Activity {
 
         card.setOnClickListener(v -> {
             if (expandSection.getVisibility() == View.VISIBLE) {
-                showDetailDialog(game, checkmark, actionBtn, () -> {
-                    checkmark.setVisibility(View.GONE);
-                    collapsedCheckTV.setVisibility(View.GONE);
-                    actionBtn.setText("Install");
-                    actionBtn.setBackgroundColor(COLOR_ACCENT);
-                });
+                openDetailScreen(game);
             } else {
                 if (expandedSection != null) {
                     expandedSection.setVisibility(View.GONE);
@@ -739,7 +782,7 @@ public class EpicGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("epic_exe_" + game.appName, null);
-                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artCover != null && !game.artCover.isEmpty() ? game.artCover : game.artSquare);
+                if (exe != null) pendingLaunchExe(exe);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -806,11 +849,7 @@ public class EpicGamesActivity extends Activity {
         });
 
         tile.setOnLongClickListener(v -> {
-            showDetailDialog(game, checkTV, actionBtn, () -> {
-                checkTV.setVisibility(View.GONE);
-                actionBtn.setText("Install");
-                actionBtn.setBackgroundColor(COLOR_ACCENT);
-            });
+            openDetailScreen(game);
             return true;
         });
 
@@ -856,7 +895,7 @@ public class EpicGamesActivity extends Activity {
                 // Install directory: getFilesDir()/epic_games/{sanitized title}
                 String sanitized = game.title.replaceAll("[^a-zA-Z0-9 \\-_]", "").trim();
                 if (sanitized.isEmpty()) sanitized = "epic_" + game.appName.hashCode();
-                File installDir = new File(new File(getFilesDir(), "imagefs/epic_games"), sanitized);
+                File installDir = new File(new File(getFilesDir(), "epic_games"), sanitized);
                 prefs.edit().putString("epic_dir_" + game.appName,
                         installDir.getAbsolutePath()).apply();
 
@@ -985,6 +1024,28 @@ public class EpicGamesActivity extends Activity {
         }
     }
 
+    // ── Full-screen detail ────────────────────────────────────────────────────
+
+    private void openDetailScreen(EpicGame game) {
+        Intent intent = new Intent(this, EpicGameDetailActivity.class);
+        intent.putExtra("app_name",        game.appName);
+        intent.putExtra("title",           game.title);
+        intent.putExtra("description",     game.description);
+        intent.putExtra("developer",       game.developer);
+        intent.putExtra("art_cover",       game.artCover);
+        intent.putExtra("namespace",       game.namespace);
+        intent.putExtra("catalog_item_id", game.catalogItemId);
+        startActivityForResult(intent, REQ_GAME_DETAIL);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_GAME_DETAIL && resultCode == EpicGameDetailActivity.RESULT_REFRESH) {
+            applyFilter(searchBar != null ? searchBar.getText().toString() : "");
+        }
+    }
+
     private void showDetailDialog(EpicGame game, View checkmark, Button actionBtn, Runnable onUninstalled) {
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -1100,7 +1161,15 @@ public class EpicGamesActivity extends Activity {
 
     // ── Launch ────────────────────────────────────────────────────────────────
 
-    // pendingLaunchExe replaced by direct LudashiLaunchBridge.addToLauncher calls above
+    private void pendingLaunchExe(String absPath) {
+        prefs.edit().putString("pending_epic_exe", absPath).apply();
+        android.content.Intent intent = new android.content.Intent();
+        intent.setClassName(getPackageName(),
+                "com.xj.landscape.launcher.ui.main.LandscapeLauncherMainActivity");
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+    }
 
     // ── Cache ─────────────────────────────────────────────────────────────────
 
