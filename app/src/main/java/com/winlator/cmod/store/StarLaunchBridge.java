@@ -151,7 +151,9 @@ public final class StarLaunchBridge {
                         + "Exec=wine Z:\\\\\\\\" + windowsPath + "\n"
                         + "Icon=\n"
                         + "Type=Application\n"
-                        + "StartupWMClass=explorer\n";
+                        + "StartupWMClass=explorer\n"
+                        + "\n"
+                        + "[Extra Data]\n";
 
                 try (FileWriter fw = new FileWriter(shortcutFile)) {
                     fw.write(content);
