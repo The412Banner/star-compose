@@ -166,6 +166,32 @@
             android:name="com.winlator.cmod.store.AmazonGamesActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.cmod.store.GogGameDetailActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.cmod.store.EpicGameDetailActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.cmod.store.EpicFreeGamesActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.cmod.store.AmazonGameDetailActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.cmod.store.FolderPickerActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+
 
         <receiver
             android:name=".ShortcutBroadcastReceiver"
