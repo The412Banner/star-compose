@@ -4,7 +4,7 @@ import android.content.Context;
 
 import java.io.File;
 
-/** Static helper that resolves the install directory for a GOG game. */
+/** Static helper that resolves install paths for GOG games. */
 public final class GogInstallPath {
 
     private GogInstallPath() {}
@@ -12,9 +12,23 @@ public final class GogInstallPath {
     /**
      * Returns the install directory for a game.
      * Path: {filesDir}/gog_games/{dirName}
-     * Mirrors the layout used by BannerHub 5.3.5.
      */
     public static File getInstallDir(Context ctx, String dirName) {
         return new File(new File(ctx.getFilesDir(), "gog_games"), dirName);
+    }
+
+    /**
+     * Converts an absolute Android path under imagefs/ to a Wine Z: path.
+     * Winlator maps Z: → {filesDir}/imagefs, so we strip that prefix and
+     * replace forward slashes with backslashes.
+     *
+     * e.g. .../imagefs/gog_games/Game/game.exe → Z:\gog_games\Game\game.exe
+     */
+    public static String toWinePath(Context ctx, String absExePath) {
+        String imageFsRoot = new File(ctx.getFilesDir(), "imagefs").getAbsolutePath();
+        String rel = absExePath.startsWith(imageFsRoot)
+                ? absExePath.substring(imageFsRoot.length())
+                : absExePath;
+        return "Z:" + rel.replace("/", "\\");
     }
 }
