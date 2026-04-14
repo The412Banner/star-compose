@@ -50,6 +50,7 @@ import com.winlator.cmod.saves.SaveManager;
 import com.winlator.cmod.store.GogMainActivity;
 import com.winlator.cmod.store.EpicMainActivity;
 import com.winlator.cmod.store.AmazonMainActivity;
+import com.winlator.cmod.store.SteamMainActivity;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import java.io.File;
@@ -348,6 +349,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.main_menu_amazon:
                 startActivity(new Intent(this, AmazonMainActivity.class));
+                break;
+            case R.id.main_menu_steam:
+                startActivity(new Intent(this, SteamMainActivity.class));
                 break;
             case R.id.main_menu_settings:
                 show(new SettingsFragment(), false);  // Forward animation
