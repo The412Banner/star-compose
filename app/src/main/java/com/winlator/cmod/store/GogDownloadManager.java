@@ -238,6 +238,8 @@ public final class GogDownloadManager {
 
             JSONObject manifest = new JSONObject(manifestStr);
             String installDir = manifest.optString("installDirectory", game.title);
+            String manifestClientId     = manifest.optString("clientId", null);
+            String manifestClientSecret = manifest.optString("clientSecret", null);
             JSONArray depots  = manifest.optJSONArray("depots");
             if (depots == null)
                 return "no depots in manifest; keys=" + manifest.keys().toString();
@@ -365,7 +367,11 @@ public final class GogDownloadManager {
                             ok = true;
                             for (DepotFile.ChunkRef chunk : df.chunks) {
                                 if (cancelled.get()) return null;
-                                String chunkUrl = fCdnBase + "/" + buildCdnPath(chunk.hash);
+                                String chunkPath = buildCdnPath(chunk.hash);
+                                int qIdx = fCdnBase.indexOf('?');
+                                String chunkUrl = qIdx >= 0
+                                        ? fCdnBase.substring(0, qIdx) + "/" + chunkPath + fCdnBase.substring(qIdx)
+                                        : fCdnBase + "/" + chunkPath;
                                 byte[] chunkRaw = fetchBytes(chunkUrl, null);
                                 if (chunkRaw == null) { ok = false; break; }
                                 fileBytes += chunkRaw.length;
@@ -432,9 +438,18 @@ public final class GogDownloadManager {
 
             cb.onProgress("Install complete!", 100);
 
-            // Save install dir before exe resolution (needed if onSelectExe is async)
+            // Save install dir + build ID + client ID before exe resolution
             SharedPreferences.Editor ed0 = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
             ed0.putString("gog_dir_" + game.gameId, installDir);
+            if (buildId != null && !buildId.isEmpty()) {
+                ed0.putString("gog_build_" + game.gameId, buildId);
+            }
+            if (manifestClientId != null && !manifestClientId.isEmpty()) {
+                ed0.putString("gog_client_id_" + game.gameId, manifestClientId);
+            }
+            if (manifestClientSecret != null && !manifestClientSecret.isEmpty()) {
+                ed0.putString("gog_client_secret_" + game.gameId, manifestClientSecret);
+            }
             ed0.apply();
 
             // Find exe — prefer temp_executable hint from manifest
@@ -1196,6 +1211,67 @@ public final class GogDownloadManager {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Install size (public, called during library sync and from detail page)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns the total uncompressed install size (bytes) by fetching the
+     * Gen 2 top-level manifest and summing depot.size for en/all depots.
+     * Returns -1 on failure. Runs on the calling thread — call from a bg thread.
+     */
+    public static long fetchInstallSizeBytes(String gameId, String token) {
+        try {
+            String buildsUrl = "https://content-system.gog.com/products/" + gameId
+                    + "/os/windows/builds?generation=2";
+            String buildsJson = httpGet(buildsUrl, null);
+            if (buildsJson == null) buildsJson = httpGet(buildsUrl, token);
+            if (buildsJson == null) return -1;
+
+            JSONObject builds = new JSONObject(buildsJson);
+            JSONArray items = builds.optJSONArray("items");
+            if (items == null || items.length() == 0) return -1;
+
+            String manifestUrl = null;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.getJSONObject(i);
+                if ("windows".equals(item.optString("os"))) {
+                    manifestUrl = item.optString("link");
+                    if (manifestUrl == null || manifestUrl.isEmpty())
+                        manifestUrl = item.optString("meta_url");
+                    break;
+                }
+            }
+            if (manifestUrl == null || manifestUrl.isEmpty()) return -1;
+
+            byte[] raw = fetchBytes(manifestUrl, token);
+            if (raw == null) return -1;
+            String manifestStr = decompressBytes(raw);
+            if (manifestStr == null) return -1;
+
+            JSONObject manifest = new JSONObject(manifestStr);
+            JSONArray depots = manifest.optJSONArray("depots");
+            if (depots == null) return -1;
+
+            long total = 0;
+            for (int i = 0; i < depots.length(); i++) {
+                JSONObject depot = depots.getJSONObject(i);
+                JSONArray langs = depot.optJSONArray("languages");
+                boolean ok = (langs == null || langs.length() == 0);
+                if (!ok) {
+                    String ls = langs.toString();
+                    ok = ls.contains("*") || ls.contains("en-US")
+                            || ls.contains("\"en\"") || ls.contains("english");
+                }
+                if (ok) total += depot.optLong("size", 0);
+            }
+            return total > 0 ? total : -1;
+        } catch (Exception e) {
+            Log.w(TAG, "fetchInstallSizeBytes " + gameId + ": " + e.getMessage());
+            return -1;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Copy to Downloads (public, called from GogGamesActivity)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1292,5 +1368,65 @@ public final class GogDownloadManager {
             int n;
             while ((n = fis.read(buf)) != -1) fos.write(buf, 0, n);
         }
+    }
+
+    /**
+     * Returns the Galaxy clientId for a game (needed for cloudstorage.gog.com URLs).
+     * Checks bh_gog_prefs first; if missing, fetches the Gen2 builds endpoint,
+     * downloads + decompresses the top-level manifest, extracts clientId, and caches it.
+     * Falls back to gameId if everything fails.
+     */
+    public static String getOrFetchClientId(Context ctx, String gameId, String token) {
+        SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
+        String cached = prefs.getString("gog_client_id_" + gameId, null);
+        String cachedSecret = prefs.getString("gog_client_secret_" + gameId, null);
+        // Only skip the fetch if BOTH clientId and clientSecret are cached
+        if (cached != null && !cached.isEmpty()
+                && cachedSecret != null && !cachedSecret.isEmpty()) return cached;
+
+        Log.d(TAG, "clientId or clientSecret not cached for " + gameId + ", fetching from builds API");
+        try {
+            String buildsUrl = "https://content-system.gog.com/products/" + gameId
+                    + "/os/windows/builds?generation=2";
+            String buildsJson = httpGet(buildsUrl, token);
+            if (buildsJson == null) {
+                Log.w(TAG, "builds API returned null for " + gameId);
+                return gameId;
+            }
+            JSONObject builds = new JSONObject(buildsJson);
+            JSONArray items = builds.optJSONArray("items");
+            if (items == null || items.length() == 0) return gameId;
+
+            String manifestUrl = null;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.optJSONObject(i);
+                if (item == null) continue;
+                manifestUrl = item.optString("link");
+                if (manifestUrl == null || manifestUrl.isEmpty())
+                    manifestUrl = item.optString("meta_url");
+                if (manifestUrl != null && !manifestUrl.isEmpty()) break;
+            }
+            if (manifestUrl == null || manifestUrl.isEmpty()) return gameId;
+
+            byte[] manifestRaw = fetchBytes(manifestUrl, token);
+            if (manifestRaw == null) return gameId;
+            String manifestStr = decompressBytes(manifestRaw);
+            if (manifestStr == null) return gameId;
+
+            JSONObject manifest = new JSONObject(manifestStr);
+            String clientId     = manifest.optString("clientId", null);
+            String clientSecret = manifest.optString("clientSecret", null);
+            if (clientId != null && !clientId.isEmpty()) {
+                SharedPreferences.Editor ed = prefs.edit().putString("gog_client_id_" + gameId, clientId);
+                if (clientSecret != null && !clientSecret.isEmpty())
+                    ed.putString("gog_client_secret_" + gameId, clientSecret);
+                ed.apply();
+                Log.d(TAG, "fetched and cached clientId=" + clientId + " for " + gameId);
+                return clientId;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "getOrFetchClientId failed for " + gameId, e);
+        }
+        return gameId; // last resort fallback
     }
 }
