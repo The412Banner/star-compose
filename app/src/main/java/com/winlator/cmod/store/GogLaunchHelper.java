@@ -1,24 +1,56 @@
 package com.winlator.cmod.store;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
+import android.util.Log;
 
 /**
- * Launch bridge for GOG games.
- * Delegates to LudashiLaunchBridge, forwarding the game's cover art URL
- * so the shortcut shows artwork in the Shortcuts screen.
+ * Bridges GogGamesActivity (separate Activity) back to LandscapeLauncherMainActivity
+ * so that EditImportedGameInfoDialog is fired automatically after a GOG game installs.
+ *
+ * Flow:
+ *   1. GogGamesActivity.onComplete() calls triggerLaunch(activity, exePath)
+ *      → saves pending_gog_exe to SharedPrefs + calls activity.finish()
+ *   2. LandscapeLauncherMainActivity.onResume() calls checkPendingLaunch(activity)
+ *      → reads pending_gog_exe, invokes g3(exePath) via reflection, clears pref
+ *      → g3() opens EditImportedGameInfoDialog with the exe path pre-filled
  */
 public final class GogLaunchHelper {
 
+    private static final String TAG = "BannerHub";
+    private static final String PREF_PENDING = "pending_gog_exe";
+
     private GogLaunchHelper() {}
 
-    /** Add a GOG game to the launcher with cover art. */
-    public static void addToLauncher(Activity activity, String gameName,
-                                     String exePath, String coverArtUrl) {
-        LudashiLaunchBridge.addToLauncher(activity, gameName, exePath, coverArtUrl);
+    /**
+     * Called from GogGamesActivity when a game finishes installing.
+     * Stores the exe path for pickup by LandscapeLauncherMainActivity.onResume()
+     * and returns to the main activity.
+     */
+    public static void triggerLaunch(Activity activity, String exePath) {
+        activity.getSharedPreferences("bh_gog_prefs", 0)
+                .edit()
+                .putString(PREF_PENDING, exePath)
+                .apply();
+        activity.finish();
     }
 
-    /** Backwards-compatible overload without cover art. */
-    public static void addToLauncher(Activity activity, String gameName, String exePath) {
-        LudashiLaunchBridge.addToLauncher(activity, gameName, exePath, null);
+    /**
+     * Called from LandscapeLauncherMainActivity.onResume() via smali injection.
+     * If a pending exe path is stored, invokes g3(exePath) to open
+     * EditImportedGameInfoDialog with the path pre-filled, then clears the pref.
+     */
+    public static void checkPendingLaunch(Activity activity) {
+        SharedPreferences prefs = activity.getSharedPreferences("bh_gog_prefs", 0);
+        String exe = prefs.getString(PREF_PENDING, null);
+        if (exe == null || exe.isEmpty()) return;
+
+        prefs.edit().remove(PREF_PENDING).apply();
+        try {
+            activity.getClass().getMethod("B3", String.class).invoke(activity, exe);
+            Log.d(TAG, "GogLaunchHelper: B3 called with " + exe);
+        } catch (Exception e) {
+            Log.e(TAG, "GogLaunchHelper: B3 call failed", e);
+        }
     }
 }
