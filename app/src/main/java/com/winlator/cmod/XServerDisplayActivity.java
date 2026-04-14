@@ -87,6 +87,7 @@ import com.winlator.cmod.core.WineInfo;
 import com.winlator.cmod.core.WineRegistryEditor;
 import com.winlator.cmod.core.WineRequestHandler;
 import com.winlator.cmod.core.WineStartMenuCreator;
+import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.WineThemeManager;
 import com.winlator.cmod.core.WineUtils;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
@@ -181,6 +182,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private final EnvVars envVars = new EnvVars();
     private boolean firstTimeBoot = false;
     private SharedPreferences preferences;
+    private Callback<String> wineDebugLogCallback;
+    private java.io.PrintWriter wineDebugWriter;
     private OnExtractFileListener onExtractFileListener;
     private WinHandler winHandler;
     private WineRequestHandler wineRequestHandler;
@@ -884,6 +887,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (wineDebugLogCallback != null) {
+            ProcessHelper.removeDebugCallback(wineDebugLogCallback);
+            wineDebugLogCallback = null;
+        }
+        if (wineDebugWriter != null) {
+            wineDebugWriter.close();
+            wineDebugWriter = null;
+        }
     }
 
     @Override
@@ -1424,10 +1435,49 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         boolean enableWineDebug = preferences.getBoolean("enable_wine_debug", false);
         String wineDebugChannels = preferences.getString("wine_debug_channels", SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS);
-        envVars.put("WINEDEBUG", enableWineDebug && !wineDebugChannels.isEmpty()
-                ? "+" + wineDebugChannels.replace(",", ",+")
-                : "-all"
-        );
+        // Always include +err,+warn so the debug log captures crash info even when verbose debug is off.
+        // Prepend them to whatever the user has selected; "-all" baseline is dropped so errors surface.
+        String wineDebugValue;
+        if (enableWineDebug && !wineDebugChannels.isEmpty()) {
+            wineDebugValue = "+" + wineDebugChannels.replace(",", ",+");
+        } else {
+            wineDebugValue = "+err,+warn,+fixme,-all";
+        }
+        envVars.put("WINEDEBUG", wineDebugValue);
+
+        // ── Wine debug file log ────────────────────────────────────────────────
+        // Writes all Wine stdout/stderr to a readable file.
+        // Path: /sdcard/Android/data/com.winlator.cmod/files/wine_debug.log
+        try {
+            File logDir = getExternalFilesDir(null);
+            if (logDir != null) {
+                logDir.mkdirs();
+                File logFile = new File(logDir, "wine_debug.log");
+                wineDebugWriter = new java.io.PrintWriter(
+                        new java.io.BufferedWriter(new java.io.FileWriter(logFile, false)), true);
+                // Header: print context that helps diagnose the crash
+                wineDebugWriter.println("=== Wine Debug Log ===");
+                wineDebugWriter.println("WINEDEBUG: " + wineDebugValue);
+                wineDebugWriter.println("WINEPREFIX: " + imageFs.wineprefix);
+                wineDebugWriter.println("Container ID: " + (container != null ? container.id : "null"));
+                if (shortcut != null) {
+                    wineDebugWriter.println("Shortcut file: " + shortcut.file.getPath());
+                    wineDebugWriter.println("Shortcut path (resolved): " + shortcut.path);
+                } else {
+                    wineDebugWriter.println("Shortcut: null (launching Wine File Manager)");
+                }
+                wineDebugWriter.println("=== Wine output below ===");
+                wineDebugLogCallback = line -> {
+                    if (wineDebugWriter != null) {
+                        wineDebugWriter.println(line);
+                    }
+                };
+                ProcessHelper.addDebugCallback(wineDebugLogCallback);
+                Log.d("WineDebug", "Wine debug log → " + logFile.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            Log.e("WineDebug", "Failed to open wine debug log file", e);
+        }
 
         // Clear any temporary directory
         String rootPath = imageFs.getRootDir().getPath();
