@@ -144,9 +144,9 @@ public final class StarLaunchBridge {
                 // produces a valid Z:\path\to\game.exe after two unescape passes.
                 String windowsPath = relPath.replace("/", "\\\\\\\\");
 
-                // WINEPREFIX points to the Wine home inside imagefs
-                String winePrefix = "/data/user/0/" + activity.getPackageName()
-                        + "/files/imagefs/home/xuser/.wine";
+                // WINEPREFIX derived from the selected container's root dir —
+                // container.getRootDir() returns e.g. .../imagefs/home/xuser-1
+                String winePrefix = container.getRootDir().getAbsolutePath() + "/.wine";
 
                 String content = "[Desktop Entry]\n"
                         + "Name=" + gameName + "\n"
