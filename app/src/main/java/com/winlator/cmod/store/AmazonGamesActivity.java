@@ -877,7 +877,7 @@ public class AmazonGamesActivity extends Activity {
 
             String sanitized = game.title.replaceAll("[^a-zA-Z0-9 \\-_]", "").trim();
             if (sanitized.isEmpty()) sanitized = "game_" + game.productId.hashCode();
-            File installDir = new File(new File(getFilesDir(), "Amazon"), sanitized);
+            File installDir = new File(new File(getFilesDir(), "imagefs/Amazon"), sanitized);
 
             // Store install dir in prefs for uninstall
             prefs.edit().putString("amazon_dir_" + game.productId,
