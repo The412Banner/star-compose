@@ -550,7 +550,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) pendingLaunchExe(exe);
+                if (exe != null) StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
                 return;
             }
 
@@ -771,7 +771,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) pendingLaunchExe(exe);
+                if (exe != null) StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -1150,15 +1150,7 @@ public class AmazonGamesActivity extends Activity {
 
     // ── Launch ────────────────────────────────────────────────────────────────
 
-    private void pendingLaunchExe(String absPath) {
-        prefs.edit().putString("pending_amazon_exe", absPath).apply();
-        android.content.Intent intent = new android.content.Intent();
-        intent.setClassName(getPackageName(),
-                "com.xj.landscape.launcher.ui.main.LandscapeLauncherMainActivity");
-        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        startActivity(intent);
-    }
+    // pendingLaunchExe replaced by StarLaunchBridge.addToLauncher() calls above
 
     // ── Cache ─────────────────────────────────────────────────────────────────
 
