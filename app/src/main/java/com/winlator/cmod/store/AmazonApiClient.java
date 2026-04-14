@@ -122,6 +122,15 @@ public class AmazonApiClient {
             game.title         = product.optString("title", "Unknown");
             game.productSku    = product.optString("sku", "");
 
+            // DLC detection — try several possible field names
+            String productType = product.optString("productType", "");
+            if (productType.isEmpty()) {
+                productType = product.optString("type", "");
+            }
+            String parentId = product.optString("parentProductId", "");
+            if (parentId.isEmpty()) parentId = product.optString("baseProductId", "");
+            if (parentId.isEmpty()) parentId = product.optString("parentId", "");
+
             JSONObject detail = product.optJSONObject("productDetail");
             if (detail != null) {
                 game.artUrl = detail.optString("iconUrl", "");
@@ -136,8 +145,22 @@ public class AmazonApiClient {
                     }
                     game.developer = details.optString("developer", "");
                     game.publisher = details.optString("publisher", "");
+                    if (productType.isEmpty()) {
+                        productType = details.optString("productType", "");
+                    }
+                    if (parentId.isEmpty()) parentId = details.optString("parentProductId", "");
                 }
             }
+
+            // Mark as DLC if productType is not GAME (or if parent product found)
+            boolean typeIsDlc = !productType.isEmpty()
+                    && !productType.equalsIgnoreCase("GAME")
+                    && !productType.equalsIgnoreCase("game");
+            if (typeIsDlc || !parentId.isEmpty()) {
+                game.isDLC = true;
+                game.parentProductId = parentId;
+            }
+
             return game;
         } catch (Exception ex) {
             Log.e(TAG, "parseEntitlement failed", ex);
