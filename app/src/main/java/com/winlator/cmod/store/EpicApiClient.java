@@ -137,6 +137,12 @@ public class EpicApiClient {
 
             // DLC detection
             game.isDLC = item.has("mainGameItem");
+            if (game.isDLC) {
+                JSONObject mainGameItem = item.optJSONObject("mainGameItem");
+                if (mainGameItem != null) {
+                    game.baseGameCatalogItemId = mainGameItem.optString("id", "");
+                }
+            }
 
             // Key images
             JSONArray keyImages = item.optJSONArray("keyImages");
@@ -164,6 +170,11 @@ public class EpicApiClient {
                     game.canRunOffline = !"false".equalsIgnoreCase(offlineAttr.optString("value", "true"));
                 }
             }
+
+            // Release date
+            String rd = item.optString("viewableDate", "");
+            if (rd.isEmpty()) rd = item.optString("effectiveDate", "");
+            if (!rd.isEmpty()) game.releaseDate = rd;
 
             return true;
 
@@ -203,6 +214,10 @@ public class EpicApiClient {
             // Return as a wrapper with top-level "manifests" key that EpicDownloadManager expects
             JSONObject wrapper = new JSONObject();
             wrapper.put("manifests", firstElement.optJSONArray("manifests"));
+            // buildVersion is the version identifier in the assets/v2 response
+            String ver = firstElement.optString("buildVersion", "");
+            if (ver.isEmpty()) ver = firstElement.optString("versionId", ""); // fallback
+            wrapper.put("versionId", ver);
             return wrapper.toString();
 
         } catch (Exception e) {
