@@ -2,6 +2,7 @@ package com.winlator.cmod.store;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -33,7 +34,9 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -50,6 +53,7 @@ public class AmazonGamesActivity extends Activity {
     private static final String PREFS_NAME   = "bh_amazon_prefs";
     private static final String CACHE_KEY    = "amazon_library_cache";
     private static final String VIEW_MODE_KEY = "amazon_view_mode";
+    private static final int REQ_GAME_DETAIL  = 1001;
 
     // Amazon brand colours
     private static final int COLOR_ACCENT   = 0xFFFF9900;   // orange — install btn / title
@@ -242,13 +246,39 @@ public class AmazonGamesActivity extends Activity {
             if (token == null) { setSync("Token refresh failed"); enableRefresh(); return; }
 
             if (showProgress) setSync("Fetching game list…");
-            List<AmazonGame> games = AmazonApiClient.getEntitlements(token, creds.deviceSerial);
+            List<AmazonGame> allEntitlements = AmazonApiClient.getEntitlements(token, creds.deviceSerial);
 
-            if (games == null || games.isEmpty()) {
+            if (allEntitlements == null || allEntitlements.isEmpty()) {
                 setSync("No games found in Amazon library");
                 enableRefresh();
                 return;
             }
+
+            // Separate DLCs from base games; store DLC→base associations in prefs
+            List<AmazonGame> games = new ArrayList<>();
+            Map<String, JSONArray> amazonDlcMap = new HashMap<>();
+            for (AmazonGame g : allEntitlements) {
+                if (g.isDLC && !g.parentProductId.isEmpty()) {
+                    JSONArray arr = amazonDlcMap.get(g.parentProductId);
+                    if (arr == null) { arr = new JSONArray(); amazonDlcMap.put(g.parentProductId, arr); }
+                    try {
+                        JSONObject dlcObj = new JSONObject();
+                        dlcObj.put("eid",   g.entitlementId);
+                        dlcObj.put("pid",   g.productId);
+                        dlcObj.put("title", g.title);
+                        arr.put(dlcObj);
+                    } catch (Exception ignored) {}
+                } else {
+                    games.add(g);
+                }
+            }
+            SharedPreferences.Editor dlcEd = prefs.edit();
+            for (Map.Entry<String, JSONArray> e : amazonDlcMap.entrySet()) {
+                dlcEd.putString("amazon_dlcs_" + e.getKey(), e.getValue().toString());
+            }
+            dlcEd.apply();
+
+            if (games.isEmpty()) games = allEntitlements; // fallback: show everything if no base games detected
 
             Collections.sort(games, (a, b) -> a.title.compareToIgnoreCase(b.title));
 
@@ -520,7 +550,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
+                if (exe != null) pendingLaunchExe(exe);
                 return;
             }
 
@@ -598,12 +628,7 @@ public class AmazonGamesActivity extends Activity {
 
         card.setOnClickListener(v -> {
             if (expandSection.getVisibility() == View.VISIBLE) {
-                showDetailDialog(game, checkmark, actionBtn, () -> {
-                    checkmark.setVisibility(View.GONE);
-                    collapsedCheckTV.setVisibility(View.GONE);
-                    actionBtn.setText("Install");
-                    actionBtn.setBackgroundColor(COLOR_ACCENT);
-                });
+                openDetailScreen(game);
             } else {
                 if (expandedSection != null) {
                     expandedSection.setVisibility(View.GONE);
@@ -746,7 +771,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
+                if (exe != null) pendingLaunchExe(exe);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -813,11 +838,7 @@ public class AmazonGamesActivity extends Activity {
         });
 
         tile.setOnLongClickListener(v -> {
-            showDetailDialog(game, checkTV, actionBtn, () -> {
-                checkTV.setVisibility(View.GONE);
-                actionBtn.setText("Install");
-                actionBtn.setBackgroundColor(COLOR_ACCENT);
-            });
+            openDetailScreen(game);
             return true;
         });
 
@@ -856,7 +877,7 @@ public class AmazonGamesActivity extends Activity {
 
             String sanitized = game.title.replaceAll("[^a-zA-Z0-9 \\-_]", "").trim();
             if (sanitized.isEmpty()) sanitized = "game_" + game.productId.hashCode();
-            File installDir = new File(new File(getFilesDir(), "imagefs/Amazon"), sanitized);
+            File installDir = new File(new File(getFilesDir(), "Amazon"), sanitized);
 
             // Store install dir in prefs for uninstall
             prefs.edit().putString("amazon_dir_" + game.productId,
@@ -995,6 +1016,28 @@ public class AmazonGamesActivity extends Activity {
         }
     }
 
+    // ── Full-screen detail ────────────────────────────────────────────────────
+
+    private void openDetailScreen(AmazonGame game) {
+        Intent intent = new Intent(this, AmazonGameDetailActivity.class);
+        intent.putExtra("product_id",    game.productId);
+        intent.putExtra("entitlement_id", game.entitlementId);
+        intent.putExtra("title",         game.title);
+        intent.putExtra("developer",     game.developer);
+        intent.putExtra("publisher",     game.publisher);
+        intent.putExtra("art_url",       game.artUrl);
+        intent.putExtra("product_sku",   game.productSku);
+        startActivityForResult(intent, REQ_GAME_DETAIL);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_GAME_DETAIL && resultCode == AmazonGameDetailActivity.RESULT_REFRESH) {
+            applyFilter(searchBar != null ? searchBar.getText().toString() : "");
+        }
+    }
+
     private void showDetailDialog(AmazonGame game, View checkmark, Button actionBtn, Runnable onUninstalled) {
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -1107,7 +1150,15 @@ public class AmazonGamesActivity extends Activity {
 
     // ── Launch ────────────────────────────────────────────────────────────────
 
-    // pendingLaunchExe replaced by direct LudashiLaunchBridge.addToLauncher calls above
+    private void pendingLaunchExe(String absPath) {
+        prefs.edit().putString("pending_amazon_exe", absPath).apply();
+        android.content.Intent intent = new android.content.Intent();
+        intent.setClassName(getPackageName(),
+                "com.xj.landscape.launcher.ui.main.LandscapeLauncherMainActivity");
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+    }
 
     // ── Cache ─────────────────────────────────────────────────────────────────
 
