@@ -3,119 +3,156 @@ package com.winlator.cmod.store;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
+
+import com.winlator.cmod.container.Container;
+import com.winlator.cmod.container.ContainerManager;
+import com.winlator.cmod.container.Shortcut;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.lang.reflect.Method;
-import java.util.List;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 
 /**
- * Launch bridge for Ludashi-plus store integrations.
+ * Launch bridge for store integrations (GOG / Epic / Amazon).
  *
- * Uses reflection to access ContainerManager so this class compiles against
- * android.jar alone — no Ludashi stubs needed.
+ * Presents a container picker dialog after a game is downloaded, writes a
+ * .desktop shortcut into the chosen Wine container's desktop directory, and
+ * optionally downloads + saves the game's cover art so the shortcut shows
+ * artwork in the Shortcuts screen.
  *
- * Call addToLauncher() when a store game is ready to add. It shows a dialog
- * listing all Wine containers, then writes a .desktop shortcut file into the
- * selected container's desktop directory. The shortcut then appears in
- * Ludashi's Shortcuts list where the user can launch and configure it.
+ * Shortcut format (Winlator .desktop):
+ *   [Desktop Entry]
+ *   Name=<game name>
+ *   Exec=wine <Z:\path\to\game.exe>
+ *   Icon=
+ *   Type=Application
+ *   StartupWMClass=explorer
+ *
+ *   [Extra Data]
+ *   customCoverArtPath=<absolute path to PNG>
  */
 public final class LudashiLaunchBridge {
 
+    private static final String TAG = "BH_BRIDGE";
+
     private LudashiLaunchBridge() {}
 
+    // ── Public API ─────────────────────────────────────────────────────────────
+
     /**
-     * Show a container picker dialog, then write a .desktop shortcut file
-     * into the chosen container's Wine desktop directory.
+     * Show a container picker, write a shortcut, then download cover art.
+     *
+     * @param activity     calling Activity
+     * @param gameName     display name (used as shortcut filename and title)
+     * @param exePath      absolute Android path to the .exe (under imagefs/)
+     * @param coverArtUrl  URL of the game's cover art image, or null to skip
      */
-    public static void addToLauncher(Activity activity, String gameName, String exePath) {
+    public static void addToLauncher(Activity activity,
+                                     String gameName,
+                                     String exePath,
+                                     String coverArtUrl) {
+        Handler h = new Handler(Looper.getMainLooper());
         new Thread(() -> {
-            Handler h = new Handler(Looper.getMainLooper());
             try {
-                Class<?> cmClass = Class.forName("com.winlator.cmod.container.ContainerManager");
-                Object manager = cmClass.getConstructor(Context.class).newInstance(activity);
-                Method getContainers = cmClass.getMethod("getContainers");
-                List<?> containers = (List<?>) getContainers.invoke(manager);
+                ContainerManager manager = new ContainerManager(activity);
+                ArrayList<Container> containers = manager.getContainers();
 
                 if (containers == null || containers.isEmpty()) {
                     h.post(() -> Toast.makeText(activity,
-                            "No Wine container found. Create one first.",
+                            "No Wine container found — create one first in the Containers screen.",
                             Toast.LENGTH_LONG).show());
                     return;
                 }
 
-                // Build display names for the picker
                 String[] names = new String[containers.size()];
                 for (int i = 0; i < containers.size(); i++) {
-                    Object c = containers.get(i);
-                    try {
-                        Method getName = c.getClass().getMethod("getName");
-                        names[i] = (String) getName.invoke(c);
-                    } catch (Exception ignored) {}
-                    if (names[i] == null || names[i].isEmpty()) names[i] = "Container " + i;
+                    String n = containers.get(i).getName();
+                    names[i] = (n != null && !n.isEmpty()) ? n : "Container " + (i + 1);
                 }
 
                 h.post(() -> new AlertDialog.Builder(activity)
-                        .setTitle("Select container for \"" + gameName + "\"")
+                        .setTitle("Add \"" + gameName + "\" to…")
                         .setItems(names, (dialog, which) ->
-                                writeShortcut(activity, containers.get(which), gameName, exePath, h))
+                                writeShortcut(activity, containers.get(which),
+                                        gameName, exePath, coverArtUrl, h))
                         .setNegativeButton("Cancel", null)
                         .show());
 
             } catch (Exception e) {
+                Log.e(TAG, "addToLauncher failed", e);
                 h.post(() -> Toast.makeText(activity,
                         "Error loading containers: " + e.getMessage(),
                         Toast.LENGTH_LONG).show());
             }
-        }).start();
+        }, "store-launcher-picker").start();
     }
 
-    private static void writeShortcut(Activity activity, Object container,
-                                      String gameName, String exePath, Handler h) {
+    /**
+     * Convenience overload without cover art.
+     */
+    public static void addToLauncher(Activity activity, String gameName, String exePath) {
+        addToLauncher(activity, gameName, exePath, null);
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    private static void writeShortcut(Activity activity,
+                                      Container container,
+                                      String gameName,
+                                      String exePath,
+                                      String coverArtUrl,
+                                      Handler h) {
         new Thread(() -> {
             try {
-                Method getDesktopDir = container.getClass().getMethod("getDesktopDir");
-                File desktopDir = (File) getDesktopDir.invoke(container);
-
+                File desktopDir = container.getDesktopDir();
                 if (desktopDir == null) {
                     h.post(() -> Toast.makeText(activity,
                             "Container desktop directory not found.",
                             Toast.LENGTH_LONG).show());
                     return;
                 }
-
                 if (!desktopDir.exists() && !desktopDir.mkdirs()) {
                     h.post(() -> Toast.makeText(activity,
-                            "Could not create desktop directory.",
+                            "Could not create container desktop directory.",
                             Toast.LENGTH_LONG).show());
                     return;
                 }
 
-                // Sanitize game name for use as a filename
+                // Sanitise game name → safe filename
                 String safeName = gameName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
                 if (safeName.isEmpty()) safeName = "game";
 
                 File shortcutFile = new File(desktopDir, safeName + ".desktop");
 
-                // Z: = imagefs root. Convert Android path → Z:\gog_games\...\game.exe
-                // Shortcut.java unescape() expects each \ encoded as \\\\ (4 chars) in file.
-                String winPath = GogInstallPath.toWinePath(activity, exePath);
-                String escapedWinPath = winPath.replace("\\", "\\\\\\\\");
+                // Convert Android abs path → Wine Z: path, escape \ as \\ for .desktop
+                String winePath = GogInstallPath.toWinePath(activity, exePath);
+                String escapedWinePath = winePath.replace("\\", "\\\\");
 
                 String content = "[Desktop Entry]\n"
                         + "Name=" + gameName + "\n"
-                        + "Exec=wine " + escapedWinPath + "\n"
+                        + "Exec=wine " + escapedWinePath + "\n"
                         + "Icon=\n"
                         + "Type=Application\n"
-                        + "StartupWMClass=explorer\n"
-                        + "\n"
-                        + "[Extra Data]\n";
+                        + "StartupWMClass=explorer\n";
 
                 try (FileWriter fw = new FileWriter(shortcutFile)) {
                     fw.write(content);
+                }
+
+                Log.d(TAG, "Wrote shortcut: " + shortcutFile.getPath());
+
+                // Download and save cover art
+                if (coverArtUrl != null && !coverArtUrl.isEmpty()) {
+                    saveCoverArt(activity, container, shortcutFile, safeName, coverArtUrl);
                 }
 
                 h.post(() -> Toast.makeText(activity,
@@ -124,10 +161,51 @@ public final class LudashiLaunchBridge {
                         Toast.LENGTH_LONG).show());
 
             } catch (Exception e) {
+                Log.e(TAG, "writeShortcut failed for " + gameName, e);
                 h.post(() -> Toast.makeText(activity,
                         "Failed to add shortcut: " + e.getMessage(),
                         Toast.LENGTH_LONG).show());
             }
-        }).start();
+        }, "store-write-shortcut").start();
+    }
+
+    /**
+     * Downloads cover art from {@code url} and saves it via
+     * {@link Shortcut#saveCustomCoverArt(Bitmap)} so the Shortcuts screen
+     * shows the artwork immediately.
+     */
+    private static void saveCoverArt(Context ctx, Container container,
+                                     File shortcutFile, String safeName,
+                                     String url) {
+        try {
+            Log.d(TAG, "Downloading cover art: " + url);
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(15_000);
+            conn.setReadTimeout(20_000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                Log.w(TAG, "Cover art HTTP " + code + " for " + url);
+                conn.disconnect();
+                return;
+            }
+            Bitmap bmp;
+            try (InputStream is = conn.getInputStream()) {
+                bmp = BitmapFactory.decodeStream(is);
+            }
+            conn.disconnect();
+            if (bmp == null) {
+                Log.w(TAG, "Cover art decode returned null for " + url);
+                return;
+            }
+
+            // Construct the Shortcut model to call saveCustomCoverArt
+            Shortcut shortcut = new Shortcut(container, shortcutFile);
+            shortcut.saveCustomCoverArt(bmp);
+            Log.d(TAG, "Cover art saved for " + safeName);
+        } catch (Exception e) {
+            // Non-fatal: shortcut still works, just no art
+            Log.w(TAG, "Cover art save failed for " + safeName + ": " + e.getMessage());
+        }
     }
 }
