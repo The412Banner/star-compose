@@ -30,5 +30,7 @@ public class EpicGame {
     public String installPath   = "";
     public long   installSize   = 0L;
     public boolean canRunOffline = true;
-    public boolean isDLC        = false;
+    public boolean isDLC                 = false;
+    public String  baseGameCatalogItemId = "";  // catalog ID of the base game (set when isDLC=true)
+    public String  releaseDate           = "";  // ISO date from catalog viewableDate / effectiveDate
 }
