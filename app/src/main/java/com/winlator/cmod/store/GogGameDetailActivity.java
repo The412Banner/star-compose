@@ -252,7 +252,7 @@ public class GogGameDetailActivity extends Activity {
         launchBtn = makeBtn("Launch", 0xFF2E7D32);
         launchBtn.setOnClickListener(v -> {
             String exe = prefs.getString("gog_exe_" + gameId, null);
-            if (exe != null) GogLaunchHelper.addToLauncher(this, game.title, exe, game.imageUrl);
+            if (exe != null) GogLaunchHelper.addToLauncher(this, title, exe, imageUrl);
         });
         card.addView(launchBtn, btnLp());
 
