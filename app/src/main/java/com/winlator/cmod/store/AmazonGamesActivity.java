@@ -520,7 +520,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) pendingLaunchExe(game.title, exe);
+                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
                 return;
             }
 
@@ -746,7 +746,7 @@ public class AmazonGamesActivity extends Activity {
             }
             if ("Add to Launcher".equals(lbl) || "Add Game".equals(lbl)) {
                 String exe = prefs.getString("amazon_exe_" + game.productId, null);
-                if (exe != null) pendingLaunchExe(game.title, exe);
+                if (exe != null) LudashiLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -1107,9 +1107,7 @@ public class AmazonGamesActivity extends Activity {
 
     // ── Launch ────────────────────────────────────────────────────────────────
 
-    private void pendingLaunchExe(String gameName, String absPath) {
-        LudashiLaunchBridge.addToLauncher(this, gameName, absPath);
-    }
+    // pendingLaunchExe replaced by direct LudashiLaunchBridge.addToLauncher calls above
 
     // ── Cache ─────────────────────────────────────────────────────────────────
 
