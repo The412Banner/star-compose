@@ -133,13 +133,25 @@ public final class StarLaunchBridge {
 
                 File shortcutFile = new File(desktopDir, safeName + ".desktop");
 
-                // Convert Android abs path → Wine Z: path, escape \ as \\ for .desktop
-                String winePath = GogInstallPath.toWinePath(activity, exePath);
-                String escapedWinePath = winePath.replace("\\", "\\\\");
+                // Derive path relative to imagefs root (forward slashes)
+                String imageFsRoot = new java.io.File(activity.getFilesDir(), "imagefs").getAbsolutePath();
+                String relPath = exePath.startsWith(imageFsRoot)
+                        ? exePath.substring(imageFsRoot.length()) : exePath;
+                if (relPath.startsWith("/")) relPath = relPath.substring(1);
+
+                // Convert to Windows path using 4 backslashes per separator —
+                // matching Winlator's own shortcut format so StringUtils.unescape()
+                // produces a valid Z:\path\to\game.exe after two unescape passes.
+                String windowsPath = relPath.replace("/", "\\\\\\\\");
+
+                // WINEPREFIX points to the Wine home inside imagefs
+                String winePrefix = "/data/user/0/" + activity.getPackageName()
+                        + "/files/imagefs/home/xuser/.wine";
 
                 String content = "[Desktop Entry]\n"
                         + "Name=" + gameName + "\n"
-                        + "Exec=wine " + escapedWinePath + "\n"
+                        + "Exec=env WINEPREFIX=\"" + winePrefix + "\" wine Z:\\\\\\\\"
+                        + windowsPath + "\n"
                         + "Icon=\n"
                         + "Type=Application\n"
                         + "StartupWMClass=explorer\n";
