@@ -26,6 +26,8 @@ public class AmazonGame {
     public String versionId      = "";
     public long   downloadSize   = 0L;
     public long   installSize    = 0L;
+    public boolean isDLC         = false;
+    public String parentProductId = "";  // set when isDLC=true
 
     public AmazonGame() {}
 
