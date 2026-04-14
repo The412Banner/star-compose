@@ -188,6 +188,13 @@ public class AmazonDownloadManager {
             // Step 5: Cache manifest and mark installed
             cacheManifest(ctx, game.productId, manifestBytes);
 
+            // Store versionId for update checker
+            if (spec.versionId != null && !spec.versionId.isEmpty()) {
+                ctx.getSharedPreferences("bh_amazon_prefs", 0).edit()
+                        .putString("amazon_manifest_version_" + game.productId, spec.versionId)
+                        .apply();
+            }
+
             new File(installDir, IN_PROGRESS_MARKER).delete();
             new File(installDir, COMPLETE_MARKER).createNewFile();
 
@@ -361,6 +368,30 @@ public class AmazonDownloadManager {
             conn.disconnect();
         }
         return true;
+    }
+
+    // ── Install size (no download) ────────────────────────────────────────────
+
+    /**
+     * Fetches the total install size (bytes) by downloading and parsing
+     * the manifest.proto only. Does NOT download any game files.
+     * Returns -1 on failure. Call from a background thread.
+     */
+    public static long fetchInstallSizeBytes(String accessToken, String entitlementId) {
+        try {
+            AmazonApiClient.GameDownloadSpec spec =
+                    AmazonApiClient.getGameDownload(accessToken, entitlementId);
+            if (spec == null) return -1;
+            String manifestUrl = AmazonApiClient.appendPath(spec.downloadUrl, "manifest.proto");
+            byte[] bytes = AmazonApiClient.getBytes(manifestUrl, accessToken);
+            if (bytes == null) return -1;
+            AmazonManifest.ParsedManifest manifest = AmazonManifest.parse(bytes);
+            return (manifest != null && manifest.totalInstallSize > 0)
+                    ? manifest.totalInstallSize : -1;
+        } catch (Exception e) {
+            Log.w(TAG, "fetchInstallSizeBytes Amazon: " + e.getMessage());
+            return -1;
+        }
     }
 
     // ── Speed formatting ─────────────────────────────────────────────────────
