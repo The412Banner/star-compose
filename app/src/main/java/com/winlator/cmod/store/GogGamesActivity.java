@@ -3,6 +3,7 @@ package com.winlator.cmod.store;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -37,7 +38,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -62,6 +65,7 @@ public class GogGamesActivity extends Activity {
     private static final String TAG = "BH_GOG";
     private static final String CACHE_KEY = "gog_library_cache";
     private static final String VIEW_MODE_KEY = "view_mode";
+    private static final int REQ_GAME_DETAIL = 1001;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private TextView syncText;
@@ -75,6 +79,8 @@ public class GogGamesActivity extends Activity {
     private View expandedSection = null;
     private TextView expandedArrow = null;
     private String viewMode; // "list" or "grid"
+    // DLC accumulator — written to prefs after sync completes
+    private final Map<String, List<String[]>> gogDlcBuffer = new HashMap<>();
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -282,6 +288,9 @@ public class GogGamesActivity extends Activity {
                 } catch (Exception ignored) {}
             }
 
+            // Write DLC associations collected during parallel fetch
+            saveDlcBuffer();
+
             saveCachedGames(games);
 
             final List<GogGame> finalGames = games;
@@ -310,7 +319,10 @@ public class GogGamesActivity extends Activity {
 
             JSONObject prod = new JSONObject(productJson);
             if (prod.optBoolean("is_secret", false)) return null;
-            if ("dlc".equals(prod.optString("game_type"))) return null;
+            if ("dlc".equals(prod.optString("game_type"))) {
+                storeDlcInBuffer(id, prod);
+                return null;
+            }
 
             JSONObject titleObj = prod.optJSONObject("title");
             String titleStr = titleObj != null ? titleObj.optString("*") : null;
@@ -354,11 +366,73 @@ public class GogGamesActivity extends Activity {
             } catch (Exception ignored) {}
 
             prefs.edit().putInt("gog_gen_" + id, generation).apply();
+
+            // Cache release date + rating
+            String releaseDate = prod.optString("release_date", "");
+            if (releaseDate != null && !releaseDate.isEmpty()) {
+                prefs.edit().putString("gog_release_" + id, releaseDate).apply();
+            }
+            int rating = prod.optInt("rating", -1);
+            if (rating >= 0) {
+                prefs.edit().putInt("gog_rating_" + id, rating).apply();
+            }
+
+            // Cache install size if not already stored
+            if (prefs.getLong("gog_size_" + id, -1) <= 0) {
+                long size = GogDownloadManager.fetchInstallSizeBytes(id, token);
+                if (size > 0) prefs.edit().putLong("gog_size_" + id, size).apply();
+            }
+
             return new GogGame(id, titleStr, imageUrl, desc, developer, category, generation);
         } catch (Exception e) {
             Log.w(TAG, "fetchGame " + id + " error: " + e.getMessage());
             return null;
         }
+    }
+
+    /** Called from fetchGame() when game_type == "dlc". Thread-safe via synchronized. */
+    private synchronized void storeDlcInBuffer(String dlcId, JSONObject prod) {
+        try {
+            String dlcTitle = "";
+            JSONObject titleObj = prod.optJSONObject("title");
+            if (titleObj != null) dlcTitle = titleObj.optString("*", "");
+            if (dlcTitle.isEmpty()) dlcTitle = prod.optString("title", "");
+            if (dlcTitle.isEmpty()) dlcTitle = "Unknown DLC";
+
+            // Resolve base game ID from required_game or requiredGames
+            String baseId = "";
+            JSONObject reqGame = prod.optJSONObject("required_game");
+            if (reqGame != null) baseId = reqGame.optString("id", "");
+            if (baseId.isEmpty()) {
+                JSONArray reqArr = prod.optJSONArray("requiredGames");
+                if (reqArr != null && reqArr.length() > 0)
+                    baseId = reqArr.optString(0, "");
+            }
+            if (baseId.isEmpty()) return; // can't associate without a base game
+
+            List<String[]> list = gogDlcBuffer.get(baseId);
+            if (list == null) { list = new ArrayList<>(); gogDlcBuffer.put(baseId, list); }
+            list.add(new String[]{dlcId, dlcTitle});
+        } catch (Exception e) {
+            Log.w(TAG, "storeDlcInBuffer failed: " + e.getMessage());
+        }
+    }
+
+    /** Write all accumulated DLC associations to prefs, then clear the buffer. */
+    private synchronized void saveDlcBuffer() {
+        for (Map.Entry<String, List<String[]>> entry : gogDlcBuffer.entrySet()) {
+            try {
+                JSONArray arr = new JSONArray();
+                for (String[] dlc : entry.getValue()) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("id",    dlc[0]);
+                    obj.put("title", dlc[1]);
+                    arr.put(obj);
+                }
+                prefs.edit().putString("gog_dlcs_" + entry.getKey(), arr.toString()).apply();
+            } catch (Exception ignored) {}
+        }
+        gogDlcBuffer.clear();
     }
 
     private void showGames(List<GogGame> games) {
@@ -620,7 +694,7 @@ public class GogGamesActivity extends Activity {
             }
             if ("Add Game".equals(btnLabel) || "Add to Launcher".equals(btnLabel)) {
                 String exePath = prefs.getString("gog_exe_" + game.gameId, null);
-                if (exePath != null) GogLaunchHelper.addToLauncher(this, game.title, exePath, game.imageUrl);
+                if (exePath != null) GogLaunchHelper.triggerLaunch(this, exePath);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -697,12 +771,7 @@ public class GogGamesActivity extends Activity {
 
         card.setOnClickListener(v -> {
             if (expandSection.getVisibility() == View.VISIBLE) {
-                showDetailDialog(game, checkmark, actionBtn, () -> {
-                    checkmark.setVisibility(View.GONE);
-                    collapsedCheckTV.setVisibility(View.GONE);
-                    actionBtn.setText("Install");
-                    actionBtn.setBackgroundColor(0xFF7033FF);
-                });
+                openDetailScreen(game);
             } else {
                 if (expandedSection != null) {
                     expandedSection.setVisibility(View.GONE);
@@ -887,7 +956,7 @@ public class GogGamesActivity extends Activity {
             }
             if ("Add Game".equals(lbl) || "Add to Launcher".equals(lbl)) {
                 String exe = prefs.getString("gog_exe_" + game.gameId, null);
-                if (exe != null) GogLaunchHelper.addToLauncher(this, game.title, exe, game.imageUrl);
+                if (exe != null) GogLaunchHelper.triggerLaunch(this, exe);
                 return;
             }
             showInstallConfirm(game, () -> {
@@ -959,11 +1028,7 @@ public class GogGamesActivity extends Activity {
         });
 
         tile.setOnLongClickListener(v -> {
-            showDetailDialog(game, checkTV, actionBtn, () -> {
-                checkTV.setVisibility(View.GONE);
-                actionBtn.setText("Install");
-                actionBtn.setBackgroundColor(0xFF5533CC);
-            });
+            openDetailScreen(game);
             return true;
         });
 
@@ -1027,7 +1092,7 @@ public class GogGamesActivity extends Activity {
         if (isInstalled) {
             b.setPositiveButton("Add to Launcher", (d, w) -> {
                 String exe = prefs.getString("gog_exe_" + game.gameId, null);
-                if (exe != null) GogLaunchHelper.addToLauncher(this, game.title, exe, game.imageUrl);
+                if (exe != null) GogLaunchHelper.triggerLaunch(this, exe);
             });
             b.setNeutralButton("Uninstall", (d, w) -> {
                 String dirName = prefs.getString("gog_dir_" + game.gameId, null);
@@ -1098,7 +1163,7 @@ public class GogGamesActivity extends Activity {
                             customInstall.setEnabled(true);
                             dialog.setCancelable(true);
                             customInstall.setOnClickListener(vv -> {
-                                GogLaunchHelper.addToLauncher(GogGamesActivity.this, game.title, exePath, game.imageUrl);
+                                GogLaunchHelper.triggerLaunch(GogGamesActivity.this, exePath);
                                 dialog.dismiss();
                             });
                             // Rebuild grid to show ✓ on tile
@@ -1139,6 +1204,28 @@ public class GogGamesActivity extends Activity {
         }
 
         b.show();
+    }
+
+    // ── Full-screen detail ────────────────────────────────────────────────────
+
+    private void openDetailScreen(GogGame game) {
+        Intent intent = new Intent(this, GogGameDetailActivity.class);
+        intent.putExtra("game_id",     game.gameId);
+        intent.putExtra("title",       game.title);
+        intent.putExtra("image_url",   game.imageUrl);
+        intent.putExtra("description", game.description);
+        intent.putExtra("developer",   game.developer);
+        intent.putExtra("category",    game.category);
+        intent.putExtra("generation",  game.generation);
+        startActivityForResult(intent, REQ_GAME_DETAIL);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_GAME_DETAIL && resultCode == GogGameDetailActivity.RESULT_REFRESH) {
+            applyFilter(searchBar != null ? searchBar.getText().toString() : "");
+        }
     }
 
     // ── Dialogs (list view detail) ────────────────────────────────────────────
