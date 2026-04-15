@@ -14,6 +14,7 @@
         <item android:icon="@drawable/icon_open" android:id="@+id/main_menu_steam" android:title="Steam" />
         <item android:icon="@drawable/icon_settings" android:id="@+id/main_menu_settings" android:title="@string/settings" />
         <item android:icon="@drawable/icon_about" android:id="@+id/main_menu_about" android:title="@string/about" />
+        <item android:icon="@drawable/icon_help" android:id="@+id/main_menu_contact_us" android:title="@string/contact_us" />
     </group>
 
 </menu>
