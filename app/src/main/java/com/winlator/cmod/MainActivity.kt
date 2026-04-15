@@ -120,24 +120,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!editInputControls) {
-            requestAppPermissions()
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                showAllFilesDialog.value = true
+            val willInstall = splashViewModel.installIfNeeded(this)
+            if (!willInstall) {
+                // Already installed — request permissions immediately
+                requestAppPermissions()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                    showAllFilesDialog.value = true
+                }
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+                }
             }
-
-            if (Build.VERSION.SDK_INT >= 33 &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-            }
+            // If willInstall == true: permissions are requested after user taps Proceed
         }
 
         setContent {
             WinlatorTheme {
                 val isInstalling by splashViewModel.isInstalling.collectAsState()
                 val installProgress by splashViewModel.progress.collectAsState()
+                val showProceed by splashViewModel.showProceed.collectAsState()
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     AppShell(
@@ -159,7 +163,29 @@ class MainActivity : AppCompatActivity() {
                     )
 
                     if (isInstalling) {
-                        SplashScreen(progress = installProgress)
+                        SplashScreen(
+                            progress = installProgress,
+                            showProceed = showProceed,
+                            onProceed = {
+                                splashViewModel.dismissSplash()
+                                requestAppPermissions()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                                    !Environment.isExternalStorageManager()
+                                ) {
+                                    showAllFilesDialog.value = true
+                                }
+                                if (Build.VERSION.SDK_INT >= 33 &&
+                                    ContextCompat.checkSelfPermission(
+                                        this@MainActivity,
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    requestPermissions(
+                                        arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0
+                                    )
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -183,20 +209,14 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE.toInt()) {
-            splashViewModel.installIfNeeded(this)
-        }
+        // Install runs independently now; nothing to do after storage permission result.
     }
 
     private fun requestAppPermissions() {
         val hasWrite = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         val hasRead = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         val storageReady = hasWrite && hasRead || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-
-        if (storageReady) {
-            splashViewModel.installIfNeeded(this)
-            return
-        }
+        if (storageReady) return  // Already granted; install was already started separately.
 
         requestPermissions(
             arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE),

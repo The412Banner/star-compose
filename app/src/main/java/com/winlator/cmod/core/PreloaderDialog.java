@@ -41,7 +41,7 @@ public class PreloaderDialog {
         ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
         ImageView customIcon = dialog.findViewById(R.id.CustomIcon);
         customIcon.setImageResource(R.drawable.icon_wine);
-        customIcon.setColorFilter(Color.BLACK);
+        customIcon.setColorFilter(Color.WHITE);
         dialog.show();
     }
 
@@ -53,7 +53,7 @@ public class PreloaderDialog {
         ImageView customIcon = dialog.findViewById(R.id.CustomIcon);
         if (icon == null) {
             customIcon.setImageResource(R.drawable.icon_wine);
-            customIcon.setColorFilter(Color.BLACK);
+            customIcon.setColorFilter(Color.WHITE);
         } else
             customIcon.setImageBitmap(icon);
         dialog.show();

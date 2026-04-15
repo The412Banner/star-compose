@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,11 +27,15 @@ import com.winlator.cmod.R
 
 /**
  * Full-screen overlay shown while the system image is being installed on first launch.
- * Displayed on top of the main app shell; disappears when [progress] is no longer relevant
- * (controlled by [SplashViewModel.isInstalling]).
+ * Once installation reaches 100% a Proceed button appears; tapping it triggers
+ * file-access permission requests and dismisses the overlay.
  */
 @Composable
-fun SplashScreen(progress: Int) {
+fun SplashScreen(
+    progress: Int,
+    showProceed: Boolean = false,
+    onProceed: () -> Unit = {},
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -85,6 +92,18 @@ fun SplashScreen(progress: Int) {
                 fontSize = 13.sp,
                 color = Color(0xFFAAAAAA),
             )
+
+            if (showProceed) {
+                Spacer(Modifier.height(32.dp))
+                Button(
+                    onClick = onProceed,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B6BE0)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Proceed", color = Color.White, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }

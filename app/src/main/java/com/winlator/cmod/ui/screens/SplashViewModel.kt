@@ -16,6 +16,10 @@ class SplashViewModel(app: Application) : AndroidViewModel(app) {
     private val _progress = MutableStateFlow(0)
     val progress: StateFlow<Int> = _progress
 
+    /** True once installation reaches 100% — show the Proceed button. */
+    private val _showProceed = MutableStateFlow(false)
+    val showProceed: StateFlow<Boolean> = _showProceed
+
     /**
      * Check whether the system image needs (re)installation.
      * Returns true if an install was triggered; the caller should show the install overlay.
@@ -35,10 +39,16 @@ class SplashViewModel(app: Application) : AndroidViewModel(app) {
                 _progress.value = pct
             },
             {
-                // Called on UI thread after install completes
-                _isInstalling.value = false
+                // Install complete — show Proceed button instead of hiding splash immediately.
+                _showProceed.value = true
             },
         )
         return true
+    }
+
+    /** Called when user taps Proceed; hides the splash overlay. */
+    fun dismissSplash() {
+        _showProceed.value = false
+        _isInstalling.value = false
     }
 }

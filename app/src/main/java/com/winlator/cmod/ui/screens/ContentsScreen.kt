@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -65,7 +66,6 @@ import com.winlator.cmod.contentdialog.ContentUntrustedDialog
 import com.winlator.cmod.contents.ContentProfile
 import com.winlator.cmod.contents.ContentsManager
 import com.winlator.cmod.core.AppUtils
-import com.winlator.cmod.core.PreloaderDialog
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
@@ -101,13 +101,20 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri -> launchInstall(context, uri, vm) }
+            result.data?.data?.let { uri ->
+                launchInstall(context, uri, vm,
+                    onLoading = { text -> loadingText = text },
+                    onDone = { loadingText = null },
+                )
+            }
         }
     }
 
-    // Confirm dialogs
+    // Confirm dialogs / info state / loading overlay
     var confirmInstallPrompt by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf<ContentProfile?>(null) }
+    var showInfoFor by remember { mutableStateOf<ContentProfile?>(null) }
+    var loadingText by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -171,10 +178,13 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         isDownloading = isDownloading,
                         onDownload = {
                             vm.downloadRemote(profile, context.cacheDir) { uri ->
-                                launchInstall(context, uri, vm)
+                                launchInstall(context, uri, vm,
+                                    onLoading = { text -> loadingText = text },
+                                    onDone = { loadingText = null },
+                                )
                             }
                         },
-                        onInfo = { ContentInfoDialog(context, profile).show() },
+                        onInfo = { showInfoFor = profile },
                         onRemove = { confirmRemove = profile },
                     )
                     Divider(color = DividerColor)
@@ -209,6 +219,68 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                 TextButton(onClick = { confirmInstallPrompt = false }) {
                     Text(context.getString(android.R.string.cancel))
                 }
+            },
+        )
+    }
+
+    // ── Installing content overlay ────────────────────────────────────────────
+    loadingText?.let { msg ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.material3.Surface(
+                color = Color(0xFF2A2A2A),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(32.dp),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp),
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF8B6BE0))
+                    Spacer(Modifier.height(16.dp))
+                    Text(msg, color = Color.White)
+                }
+            }
+        }
+    }
+
+    // ── Content info dialog (Compose replacement for ContentInfoDialog) ───────
+    showInfoFor?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { showInfoFor = null },
+            containerColor = Color(0xFF2A2A2A),
+            title = { Text("Content Info", color = Color.White) },
+            text = {
+                Column {
+                    Text(
+                        "Version: ${profile.verName}  (code ${profile.verCode})",
+                        color = Color(0xFFAAAAAA),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!profile.fileList.isNullOrEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Files:", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.labelMedium)
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            androidx.compose.foundation.lazy.items(profile.fileList) { file ->
+                                Text(
+                                    text = "• ${file.path}",
+                                    color = Color(0xFFCCCCCC),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showInfoFor = null }) { Text("Close", color = Color(0xFF8B6BE0)) }
             },
         )
     }
@@ -333,28 +405,35 @@ private fun ContentItem(
 // ---------------------------------------------------------------------------
 // Install pipeline (ported from ContentsFragment.onActivityResult)
 // ---------------------------------------------------------------------------
-private fun launchInstall(context: Context, uri: Uri, vm: ContentsViewModel) {
-    val preloader = PreloaderDialog(context as Activity)
-    preloader.showOnUiThread(R.string.installing_content)
+private fun launchInstall(
+    context: Context,
+    uri: Uri,
+    vm: ContentsViewModel,
+    onLoading: (String?) -> Unit,
+    onDone: () -> Unit,
+) {
+    val activity = context as Activity
+    activity.runOnUiThread { onLoading(context.getString(R.string.installing_content)) }
 
     val callback = object : ContentsManager.OnInstallFinishedCallback {
         private var isExtracting = true
 
         override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
             val msgId = when (reason) {
-                ContentsManager.InstallFailedReason.ERROR_BADTAR      -> R.string.file_cannot_be_recognied
-                ContentsManager.InstallFailedReason.ERROR_NOPROFILE   -> R.string.profile_not_found_in_content
-                ContentsManager.InstallFailedReason.ERROR_BADPROFILE  -> R.string.profile_cannot_be_recognized
-                ContentsManager.InstallFailedReason.ERROR_EXIST       -> R.string.content_already_exist
-                ContentsManager.InstallFailedReason.ERROR_MISSINGFILES -> R.string.content_is_incomplete
+                ContentsManager.InstallFailedReason.ERROR_BADTAR        -> R.string.file_cannot_be_recognied
+                ContentsManager.InstallFailedReason.ERROR_NOPROFILE     -> R.string.profile_not_found_in_content
+                ContentsManager.InstallFailedReason.ERROR_BADPROFILE    -> R.string.profile_cannot_be_recognized
+                ContentsManager.InstallFailedReason.ERROR_EXIST         -> R.string.content_already_exist
+                ContentsManager.InstallFailedReason.ERROR_MISSINGFILES  -> R.string.content_is_incomplete
                 ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> R.string.content_cannot_be_trusted
                 else -> R.string.unable_to_install_content
             }
-            context.runOnUiThread {
+            activity.runOnUiThread {
+                onDone()
                 ContentDialog.alert(
                     context,
                     "${context.getString(R.string.install_failed)}: ${context.getString(msgId)}",
-                    preloader::closeOnUiThread,
+                    null,
                 )
             }
         }
@@ -362,7 +441,8 @@ private fun launchInstall(context: Context, uri: Uri, vm: ContentsViewModel) {
         override fun onSucceed(profile: ContentProfile) {
             if (isExtracting) {
                 val self = this
-                context.runOnUiThread {
+                activity.runOnUiThread {
+                    // Show Compose content-info dialog by reusing ContentInfoDialog
                     val infoDialog = ContentInfoDialog(context, profile)
                     (infoDialog.findViewById<android.widget.TextView>(R.id.BTConfirm))
                         .setText(R.string._continue)
@@ -371,7 +451,7 @@ private fun launchInstall(context: Context, uri: Uri, vm: ContentsViewModel) {
                         val untrusted = vm.manager.getUnTrustedContentFiles(profile)
                         if (untrusted.isNotEmpty()) {
                             val untrustedDialog = ContentUntrustedDialog(context, untrusted)
-                            untrustedDialog.setOnCancelCallback { preloader.closeOnUiThread() }
+                            untrustedDialog.setOnCancelCallback { activity.runOnUiThread { onDone() } }
                             untrustedDialog.setOnConfirmCallback {
                                 vm.manager.finishInstallContent(profile, self)
                             }
@@ -380,12 +460,12 @@ private fun launchInstall(context: Context, uri: Uri, vm: ContentsViewModel) {
                             vm.manager.finishInstallContent(profile, self)
                         }
                     }
-                    infoDialog.setOnCancelCallback { preloader.closeOnUiThread() }
+                    infoDialog.setOnCancelCallback { activity.runOnUiThread { onDone() } }
                     infoDialog.show()
                 }
             } else {
-                preloader.closeOnUiThread()
-                context.runOnUiThread {
+                activity.runOnUiThread {
+                    onDone()
                     ContentDialog.alert(context, R.string.content_installed_success, null)
                     vm.manager.syncContents()
                     vm.setFilter(profile.type)

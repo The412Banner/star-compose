@@ -277,7 +277,7 @@ public class ContainerDetailFragment extends Fragment {
         final View view = inflater.inflate(R.layout.container_detail_fragment, root, false);
 
         // Determine if dark mode is enabled
-        isDarkMode = preferences.getBoolean("dark_mode", true); // Adjust this based on how you store theme info
+        isDarkMode = true; // WinlatorTheme (Compose host) is always dark; force dark styles throughout
 
         // Apply dynamic styles
         applyDynamicStyles(view, isDarkMode);
@@ -477,11 +477,11 @@ vFPSCounterConfig.setOnClickListener((v) -> FPSCounterConfigDialog.show(context,
 
         TabLayout tabLayout = view.findViewById(R.id.TabLayout);
 
-        if (isDarkMode) {
-            tabLayout.setBackgroundResource(R.drawable.tab_layout_background_dark);
-        } else {
-            tabLayout.setBackgroundResource(R.drawable.tab_layout_background);
-        }
+        tabLayout.setBackgroundResource(R.drawable.tab_layout_background_dark);
+        tabLayout.setTabTextColors(
+            android.graphics.Color.parseColor("#AAAAAA"),
+            android.graphics.Color.WHITE);
+        tabLayout.setSelectedTabIndicatorColor(android.graphics.Color.WHITE);
 
         // Set up confirm button
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {

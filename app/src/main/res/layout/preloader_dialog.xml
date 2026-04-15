@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
             android:textSize="20sp"
-            android:textColor="@color/colorPrimaryDark" />
+            android:textColor="#FFFFFF" />
 
         <ProgressBar
             android:layout_width="32dp"
