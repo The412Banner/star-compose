@@ -108,10 +108,9 @@ jobs:
           gather_jar "ktor-network-tls-jvm-*.jar"           "../app/libs/steam/ktor-network-tls.jar"
           gather_jar "kotlinx-serialization-json-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-json.jar"
           gather_jar "kotlinx-serialization-core-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-core.jar"
-          gather_jar "okio-jvm-*.jar"                       "../app/libs/steam/okio.jar"
-          gather_jar "okhttp-jvm-*.jar"                     "../app/libs/steam/okhttp.jar"
-          gather_jar "okhttp-coroutines-*.jar"              "../app/libs/steam/okhttp-coroutines.jar"
           gather_jar "kotlinx-io-core-jvm-*.jar"            "../app/libs/steam/kotlinx-io-core.jar"
+          # okio and okhttp are declared as Gradle deps in app/build.gradle;
+          # do NOT copy them here or checkDuplicateClasses will fail.
         fi
 
         # --- kotlin-compat.jar ---
