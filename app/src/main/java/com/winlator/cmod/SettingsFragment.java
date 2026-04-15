@@ -135,6 +135,9 @@ public class SettingsFragment extends Fragment {
 
         // Initialize the Dark Mode checkbox
         cbDarkMode = view.findViewById(R.id.CBDarkMode);
+        // Detach listener before setChecked() to prevent programmatic change
+        // from firing the listener and triggering an infinite recreate() loop.
+        cbDarkMode.setOnCheckedChangeListener(null);
         cbDarkMode.setChecked(preferences.getBoolean("dark_mode", false));
 
         cbDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
