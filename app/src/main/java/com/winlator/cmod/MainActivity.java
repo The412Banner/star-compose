@@ -359,6 +359,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.main_menu_about:
                 showAboutDialog();
                 break;
+            case R.id.main_menu_contact_us:
+                showContactUsDialog();
+                break;
         }
         return true;
     }
@@ -411,14 +414,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
                     "Made with ❤️ by the star Team.",
-                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating Winlator bionic and to <a href=\"https://github.com/StevenMXZ\">StevenMXZ</a> for his useful changes.",
+                    "Big shoutouts to <a href=\"https://github.com/coffincolors/winlator\">coffincolors</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Pipetto-crypto</a> for creating Winlator bionic and to <a href=\"https://github.com/StevenMXZ\">StevenMXZ</a> for his useful changes. And also big shout outs to <a href=\"https://github.com/The412Banner\">The412Banner</a> for helping us implementing game stores in this version",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
-                    "---",
-                    "Official social media of star emulator (please follow it for more news about Star Emulator development!):",
-                    "Discord (<a href=\"https://discord.gg/Q74CNHJnq2\">dsc.gg/staremul</a>)",
-                    "Telegram (<a href=\"https://t.me/staremul\">t.me/staremul</a>)",
-                    "YouTube (for more testing gameplay in star emulator) (<a href=\"https://youtube.com/@starwindowsemulator?si=Scup37Opu65PFBai\">youtube.com/@StarWindowsEmulator</a>)",
                     "---",
                     "Termux Package(<a href=\"https://github.com/termux/termux-packages\">github.com/termux/termux-package</a>)",
                     "Wine (<a href=\"https://www.winehq.org\">winehq.org</a>)",
@@ -444,6 +442,42 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             tvGlibcExpVersionFork.setMovementMethod(LinkMovementMethod.getInstance());
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
+        }
+
+        dialog.show();
+    }
+    
+    private void showContactUsDialog() {
+        ContentDialog dialog = new ContentDialog(this, R.layout.contact_us_dialog);
+        dialog.findViewById(R.id.LLBottomBar).setVisibility(View.GONE);
+
+        if (isDarkMode) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background_dark);
+        } else {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
+        }
+
+        try {
+
+            String contactUsHTML = String.join("<br />",
+                    "If you have any problem or suggestions to share with us about Star Emulator, feel free to join our Discord server below",
+                    "Discord: (<a href=\"https://discord.gg/Q74CNHJnq2\">Click Here for Joining</a>)",
+                    "You can also join us in our official Telegram group below for following more news and development logs of Star Emulator",
+                    "Telegram: (<a href=\"https://t.me/staremul\">Click Here for Joining</a>)",
+                    "You can subscribe to our channel below for more gameplay video test of Star Emulator and other emulator as well, owned by the former modder of Winlator@Frost, MrPhryaNikFrosty (Kal Tanakorn)",
+                    "YouTube: (<a href=\"https://youtube.com/@starwindowsemulator?si=Scup37Opu65PFBai\">Click Here to Subscribe</a>)",
+                    "Subscribe also this channel below owned by one of our star developer, Isygold for more useful tips and stuffs that can be used on Star Emulator",
+                    "Youtube: (<a href=\"https://youtube.com/@isygold_s.e.d?si=7lkmriWkHFS0LUmZ\">Click Here to Subscribe</a>)",
+                    "-----",
+                    "If you like our Star Emulator project, you can support us by donating some money for better development of Star Emulator",
+                    "Ko-Fi: (<a href=\"https://ko-fi.com/haikalmanheem\">Click Here to Donate</a>)",
+                    "Buy me a Coffee: (<a href=\"https://buymeacoffee.com/haikalmanheem\">Click Here to Donate</a>)",
+                    "PayPal: (<a href=\"https://www.paypal.com/paypalme/MUHAMMADINISMAIL\">Click Here to Donate</a>)"
+            );
+
+            TextView tvContactUs = dialog.findViewById(R.id.TVContactUs);
+            tvContactUs.setText(Html.fromHtml(contactUsHTML, Html.FROM_HTML_MODE_LEGACY));
+            tvContactUs.setMovementMethod(LinkMovementMethod.getInstance());
         }
 
         dialog.show();
