@@ -448,40 +448,41 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
     
     private void showContactUsDialog() {
-        ContentDialog dialog = new ContentDialog(this, R.layout.contact_us_dialog);
-        dialog.findViewById(R.id.LLBottomBar).setVisibility(View.GONE);
+    ContentDialog dialog = new ContentDialog(this, R.layout.contact_us_dialog);
+    dialog.findViewById(R.id.LLBottomBar).setVisibility(View.GONE);
 
-        if (isDarkMode) {
-            dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background_dark);
-        } else {
-            dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
-        }
-
-        try {
-
-            String contactUsHTML = String.join("<br />",
-                    "If you have any problem or suggestions to share with us about Star Emulator, feel free to join our Discord server below",
-                    "Discord: (<a href=\"https://discord.gg/Q74CNHJnq2\">Click Here for Joining</a>)",
-                    "You can also join us in our official Telegram group below for following more news and development logs of Star Emulator",
-                    "Telegram: (<a href=\"https://t.me/staremul\">Click Here for Joining</a>)",
-                    "You can subscribe to our channel below for more gameplay video test of Star Emulator and other emulator as well, owned by the former modder of Winlator@Frost, MrPhryaNikFrosty (Kal Tanakorn)",
-                    "YouTube: (<a href=\"https://youtube.com/@starwindowsemulator?si=Scup37Opu65PFBai\">Click Here to Subscribe</a>)",
-                    "Subscribe also this channel below owned by one of our star developer, Isygold for more useful tips and stuffs that can be used on Star Emulator",
-                    "Youtube: (<a href=\"https://youtube.com/@isygold_s.e.d?si=7lkmriWkHFS0LUmZ\">Click Here to Subscribe</a>)",
-                    "-----",
-                    "If you like our Star Emulator project, you can support us by donating some money for better development of Star Emulator",
-                    "Ko-Fi: (<a href=\"https://ko-fi.com/haikalmanheem\">Click Here to Donate</a>)",
-                    "Buy me a Coffee: (<a href=\"https://buymeacoffee.com/haikalmanheem\">Click Here to Donate</a>)",
-                    "PayPal: (<a href=\"https://www.paypal.com/paypalme/MUHAMMADINISMAIL\">Click Here to Donate</a>)"
-            );
-
-            TextView tvContactUs = dialog.findViewById(R.id.TVContactUs);
-            tvContactUs.setText(Html.fromHtml(contactUsHTML, Html.FROM_HTML_MODE_LEGACY));
-            tvContactUs.setMovementMethod(LinkMovementMethod.getInstance());
-        }
-
-        dialog.show();
+    if (isDarkMode) {
+        dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background_dark);
+    } else {
+        dialog.getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
     }
+
+    // Removed the empty try block to fix the compilation error
+    String contactUsHTML = String.join("<br />",
+            "If you have any problem or suggestions to share with us about Star Emulator, feel free to join our Discord server below",
+            "Discord: (<a href=\"https://discord.gg/Q74CNHJnq2\">Click Here for Joining</a>)",
+            "You can also join us in our official Telegram group below for following more news and development logs of Star Emulator",
+            "Telegram: (<a href=\"https://t.me/staremul\">Click Here for Joining</a>)",
+            "You can subscribe to our channel below for more gameplay video test of Star Emulator and other emulator as well, owned by the former modder of Winlator@Frost, MrPhryaNikFrosty (Kal Tanakorn)",
+            "YouTube: (<a href=\"https://youtube.com/@starwindowsemulator?si=Scup37Opu65PFBai\">Click Here to Subscribe</a>)",
+            "Subscribe also this channel below owned by one of our star developer, Isygold for more useful tips and stuffs that can be used on Star Emulator",
+            "Youtube: (<a href=\"https://youtube.com/@isygold_s.e.d?si=7lkmriWkHFS0LUmZ\">Click Here to Subscribe</a>)",
+            "-----",
+            "If you like our Star Emulator project, you can support us by donating some money for better development of Star Emulator",
+            "Ko-Fi: (<a href=\"https://ko-fi.com/haikalmanheem\">Click Here to Donate</a>)",
+            "Buy me a Coffee: (<a href=\"https://buymeacoffee.com/haikalmanheem\">Click Here to Donate</a>)",
+            "PayPal: (<a href=\"https://www.paypal.com/paypalme/MUHAMMADINISMAIL\">Click Here to Donate</a>)"
+    );
+
+    TextView tvContactUs = dialog.findViewById(R.id.TVContactUs);
+    if (tvContactUs != null) {
+        tvContactUs.setText(Html.fromHtml(contactUsHTML, Html.FROM_HTML_MODE_LEGACY));
+        tvContactUs.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    dialog.show();
+}
+
 
     private void setNavigationViewItemTextColor(NavigationView navigationView, int color) {
         for (int i = 0; i < navigationView.getMenu().size(); i++) {
