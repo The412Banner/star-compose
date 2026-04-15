@@ -75,7 +75,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
     /** Legacy constructor used by ShortcutsFragment (XML UI). */
     public ShortcutSettingsDialog(ShortcutsFragment fragment, Shortcut shortcut) {
-        super(ctx(), R.layout.shortcut_settings_dialog);
+        super(fragment.getContext(), R.layout.shortcut_settings_dialog);
         this.fragment = fragment;
         this.ctxRef = null;
         this.onRefresh = null;

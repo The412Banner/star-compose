@@ -62,9 +62,10 @@ class MainActivity : AppCompatActivity() {
         const val OPEN_DIRECTORY_REQUEST_CODE: Byte = 4
         const val OPEN_IMAGE_REQUEST_CODE: Byte = 5
         @JvmField val CONTAINER_PATTERN_COMPRESSION_LEVEL: Byte = 9
+        @JvmField var PACKAGE_NAME: String = ""
     }
 
-    val preloaderDialog: PreloaderDialog by lazy { PreloaderDialog(this) }
+    @JvmField val preloaderDialog: PreloaderDialog = PreloaderDialog(this)
     lateinit var containerManager: ContainerManager
         private set
 
@@ -93,6 +94,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
         super.onCreate(savedInstanceState)
+
+        PACKAGE_NAME = applicationContext.packageName
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
 
@@ -199,6 +202,31 @@ class MainActivity : AppCompatActivity() {
             arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE),
             PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE.toInt(),
         )
+    }
+
+    /** Called by DownloadProgressDialog after a download to re-request permissions if needed. */
+    fun doPermissionsFlow() {
+        requestAppPermissions()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
+            showAllFilesDialog.value = true
+        }
+    }
+
+    /** Called by SaveSettingsDialog / SaveEditDialog after a save is added/edited. */
+    fun onSaveAdded() {
+        // SavesFragment is not yet in the Compose nav — no-op for now
+    }
+
+    /** Called by SavesFragment to show the save edit dialog. */
+    fun showSaveEditDialog(save: com.winlator.cmod.saves.Save?) {
+        if (save == null) return
+        val dlg = com.winlator.cmod.contentdialog.SaveEditDialog(
+            this,
+            com.winlator.cmod.saves.SaveManager(this),
+            containerManager,
+            save
+        )
+        dlg.show()
     }
 
     private fun menuItemIdToRoute(itemId: Int): String? = when (itemId) {
