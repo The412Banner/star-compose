@@ -115,7 +115,8 @@ public class SettingsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         // Apply dynamic styles to all labels
         applyDynamicStylesRecursively(view);
-        ((AppCompatActivity)getActivity()).getSupportActionBar().setTitle(R.string.settings);
+        androidx.appcompat.app.ActionBar ab = ((AppCompatActivity)getActivity()).getSupportActionBar();
+        if (ab != null) ab.setTitle(R.string.settings);
     }
 
 
