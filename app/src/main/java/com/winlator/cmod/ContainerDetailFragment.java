@@ -232,7 +232,8 @@ public class ContainerDetailFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        ((AppCompatActivity)getActivity()).getSupportActionBar().setTitle(isEditMode() ? R.string.edit_container : R.string.new_container);
+        androidx.appcompat.app.ActionBar ab = ((AppCompatActivity)getActivity()).getSupportActionBar();
+        if (ab != null) ab.setTitle(isEditMode() ? R.string.edit_container : R.string.new_container);
 
         // Find TextViews by ID and apply dynamic styles
         TextView desktopLabel = view.findViewById(R.id.TVDesktop);

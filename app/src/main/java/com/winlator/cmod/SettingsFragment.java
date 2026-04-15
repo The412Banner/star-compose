@@ -141,10 +141,11 @@ public class SettingsFragment extends Fragment {
         cbDarkMode.setChecked(preferences.getBoolean("dark_mode", false));
 
         cbDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // Save dark mode preference
+            // Use commit() not apply() — apply() is async and the write may not
+            // complete before killProcess() fires in updateTheme().
             SharedPreferences.Editor editor = preferences.edit();
             editor.putBoolean("dark_mode", isChecked);
-            editor.apply();
+            editor.commit();
 
             // Update the UI or activity theme if necessary
             updateTheme(isChecked);
@@ -358,12 +359,17 @@ public class SettingsFragment extends Fragment {
             saveCustomApiKeySettings(editor);
 
             if (editor.commit()) {
+                // In Compose mode there is no XML NavigationView or FLFragmentContainer.
                 NavigationView navigationView = getActivity().findViewById(R.id.NavigationView);
-                navigationView.setCheckedItem(R.id.main_menu_containers);
-                FragmentManager fragmentManager = getParentFragmentManager();
-                fragmentManager.beginTransaction()
-                        .replace(R.id.FLFragmentContainer, new ContainersFragment())
-                        .commit();
+                if (navigationView != null) {
+                    navigationView.setCheckedItem(R.id.main_menu_containers);
+                    getParentFragmentManager().beginTransaction()
+                            .replace(R.id.FLFragmentContainer, new ContainersFragment())
+                            .commit();
+                } else {
+                    // Compose host — just pop back to the previous screen.
+                    requireActivity().getOnBackPressedDispatcher().onBackPressed();
+                }
             }
 
 			AppUtils.showToast(context, "Settings saved!");
