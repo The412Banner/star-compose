@@ -302,7 +302,7 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
                     .setTitle("Sign out of Steam?")
                     .setMessage("Your saved login will be removed. You will need to sign in again.")
                     .setPositiveButton("Sign Out") { _, _ ->
-                        SteamRepository.getInstance().logout()
+                        Thread { SteamRepository.getInstance().logout() }.start()
                     }
                     .setNegativeButton("Cancel", null)
                     .show()
