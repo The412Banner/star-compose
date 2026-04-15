@@ -116,9 +116,9 @@ jobs:
         # stdlib that Gradle cached while building JavaSteam and bundle them as a
         # small compat JAR that the app's fileTree dependency picks up at runtime.
         #
-        # Classes needed:
+        # Class needed:
         #   kotlin/coroutines/jvm/internal/SpillingKt  (Kotlin 2.1+, coroutine stack-spilling)
-        #   kotlin/enums/*                              (Kotlin 1.9+, EnumEntries support)
+        # Note: kotlin/enums/* is already in kotlin-stdlib-1.9.0, do NOT include it.
 
         mkdir -p kotlin_compat_staging
 
@@ -136,17 +136,6 @@ jobs:
           echo "  ✓ SpillingKt.class extracted"
         else
           echo "  ✗ SpillingKt.class not found in cache (login will fail)"
-        fi
-
-        # kotlin/enums/* — EnumEntries support classes
-        if [ -n "$KT2_STDLIB" ]; then
-          ENUM_ENTRIES=$(jar tf "$KT2_STDLIB" 2>/dev/null | grep "^kotlin/enums/")
-          if [ -n "$ENUM_ENTRIES" ]; then
-            cd kotlin_compat_staging
-            jar xf "$KT2_STDLIB" $ENUM_ENTRIES
-            cd ..
-            echo "  ✓ kotlin/enums/ extracted: $(find kotlin_compat_staging/kotlin/enums -name '*.class' 2>/dev/null | wc -l) classes"
-          fi
         fi
 
         # Package into kotlin-compat.jar
