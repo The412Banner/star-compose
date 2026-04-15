@@ -375,14 +375,17 @@ public class SettingsFragment extends Fragment {
     }
 
     private void updateTheme(boolean isDarkMode) {
-        if (isDarkMode) {
-            getActivity().setTheme(R.style.AppTheme_Dark);
-        } else {
-            getActivity().setTheme(R.style.AppTheme);
+        // Full app restart so the Compose theme re-reads preferences cleanly.
+        // recreate() caused an infinite relaunch loop and screen flicker.
+        Activity activity = getActivity();
+        if (activity == null) return;
+        Intent intent = activity.getPackageManager()
+                .getLaunchIntentForPackage(activity.getPackageName());
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            activity.startActivity(intent);
         }
-
-        // Recreate the activity to apply the new theme
-        getActivity().recreate();
+        android.os.Process.killProcess(android.os.Process.myPid());
     }
 
 

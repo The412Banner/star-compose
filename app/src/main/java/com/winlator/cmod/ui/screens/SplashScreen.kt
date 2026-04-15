@@ -48,11 +48,20 @@ fun SplashScreen(progress: Int) {
             Spacer(Modifier.height(20.dp))
 
             Text(
-                text = "Winlator",
+                text = "Bionic Star",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
+
+            Text(
+                text = "V1.2",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFAAAAAA),
+            )
+
+            Spacer(Modifier.height(8.dp))
 
             Text(
                 text = "Installing system files",
