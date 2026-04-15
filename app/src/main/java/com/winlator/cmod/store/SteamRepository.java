@@ -294,7 +294,15 @@ public final class SteamRepository {
         if (steamClient == null) { Log.e(TAG, "connect() before initialize()"); return; }
         startPump();
         startReachabilityCheck();
-        steamClient.connect();
+        // Must NOT call steamClient.connect() on the main thread:
+        // CMClient.connect() calls SmartCMServerList.getNextServerCandidate() which
+        // calls SteamDirectory.load() — a synchronous HTTP request. On Android,
+        // network on the main thread throws NetworkOnMainThreadException, which is
+        // silently caught by runCatching in getNextServerCandidate(), returning null
+        // servers, causing onClientDisconnected() to fire immediately.
+        // Also avoids 'assert connection == null' AssertionError if called twice
+        // while a previous connection is still closing.
+        pumpHandler.post(() -> steamClient.connect());
     }
 
     /** Quick background check — emits events so the UI can show a specific error message. */
