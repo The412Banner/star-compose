@@ -57,6 +57,10 @@ class SteamGameDetailActivity : Activity(), SteamRepository.SteamEventListener {
         appId = intent.getIntExtra(EXTRA_APP_ID, 0)
         if (appId == 0) { finish(); return }
 
+        // Defensive init: handle cold-start after process crash
+        SteamPrefs.init(this)
+        SteamRepository.getInstance().initialize(this)
+
         setContentView(buildUI())
         SteamRepository.getInstance().addListener(this)
         loadGame()

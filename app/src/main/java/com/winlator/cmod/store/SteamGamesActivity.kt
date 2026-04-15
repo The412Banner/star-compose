@@ -33,6 +33,11 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Defensive init: handle cold-start after process crash (Android restarts
+        // the top activity directly, bypassing SteamMainActivity which normally
+        // calls SteamPrefs.init + SteamForegroundService.start).
+        SteamPrefs.init(this)
+        SteamRepository.getInstance().initialize(this)
         setContentView(buildUI())
         SteamRepository.getInstance().addListener(this)
         loadGames()
