@@ -110,6 +110,56 @@ jobs:
           gather_jar "kotlinx-serialization-core-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-core.jar"
         fi
 
+        # --- kotlin-compat.jar ---
+        # JavaSteam is compiled with Kotlin 2.x which uses classes not present in
+        # the app's Kotlin 1.9.0 stdlib.  Extract the missing classes from the 2.x
+        # stdlib that Gradle cached while building JavaSteam and bundle them as a
+        # small compat JAR that the app's fileTree dependency picks up at runtime.
+        #
+        # Classes needed:
+        #   kotlin/coroutines/jvm/internal/SpillingKt  (Kotlin 2.1+, coroutine stack-spilling)
+        #   kotlin/enums/*                              (Kotlin 1.9+, EnumEntries support)
+
+        mkdir -p kotlin_compat_staging
+
+        # SpillingKt — in the newest kotlin-stdlib jar in the cache
+        KT2_STDLIB=$(find ~/.gradle/caches -name "kotlin-stdlib-*.jar" \
+          ! -name "*sources*" ! -name "*javadoc*" ! -name "*metadata*" 2>/dev/null \
+          | sort -V | tail -1)
+        echo "Kotlin stdlib for compat extraction: $KT2_STDLIB"
+
+        SPILLING="kotlin/coroutines/jvm/internal/SpillingKt.class"
+        if [ -n "$KT2_STDLIB" ] && jar tf "$KT2_STDLIB" 2>/dev/null | grep -q "$SPILLING"; then
+          cd kotlin_compat_staging
+          jar xf "$KT2_STDLIB" "$SPILLING"
+          cd ..
+          echo "  ✓ SpillingKt.class extracted"
+        else
+          echo "  ✗ SpillingKt.class not found in cache (login will fail)"
+        fi
+
+        # kotlin/enums/* — EnumEntries support classes
+        if [ -n "$KT2_STDLIB" ]; then
+          ENUM_ENTRIES=$(jar tf "$KT2_STDLIB" 2>/dev/null | grep "^kotlin/enums/")
+          if [ -n "$ENUM_ENTRIES" ]; then
+            cd kotlin_compat_staging
+            jar xf "$KT2_STDLIB" $ENUM_ENTRIES
+            cd ..
+            echo "  ✓ kotlin/enums/ extracted: $(find kotlin_compat_staging/kotlin/enums -name '*.class' 2>/dev/null | wc -l) classes"
+          fi
+        fi
+
+        # Package into kotlin-compat.jar
+        CLASS_COUNT=$(find kotlin_compat_staging -name "*.class" | wc -l)
+        if [ "$CLASS_COUNT" -gt 0 ]; then
+          cd kotlin_compat_staging
+          jar cf ../../app/libs/steam/kotlin-compat.jar $(find . -name "*.class")
+          cd ..
+          echo "kotlin-compat.jar created: $CLASS_COUNT classes ($(du -sh ../app/libs/steam/kotlin-compat.jar | cut -f1))"
+        else
+          echo "  ! No compat classes found — kotlin-compat.jar not created"
+        fi
+
         echo "steam libs:"
         ls -lh ../app/libs/steam/
 

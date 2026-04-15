@@ -126,7 +126,9 @@ public final class SteamRepository {
 
     private HandlerThread     pumpThread  = null;
     private Handler           pumpHandler = null;
-    private final AtomicBoolean pumping   = new AtomicBoolean(false);
+    private final AtomicBoolean pumping    = new AtomicBoolean(false);
+    /** True while a connect() call is in flight (posted to pump thread but not yet completed). */
+    private final AtomicBoolean connecting = new AtomicBoolean(false);
 
     // raw licenses (kept for Phase 5 DepotDownloader)
     private final List<License> licenses = new ArrayList<>();
@@ -292,17 +294,30 @@ public final class SteamRepository {
 
     public void connect() {
         if (steamClient == null) { Log.e(TAG, "connect() before initialize()"); return; }
+        if (connected) { Log.i(TAG, "connect() skipped — already connected"); return; }
+        // Guard against double-connect (e.g. onStartCommand called twice for START_STICKY)
+        if (!connecting.compareAndSet(false, true)) {
+            Log.i(TAG, "connect() skipped — already connecting");
+            return;
+        }
         startPump();
         startReachabilityCheck();
         // Must NOT call steamClient.connect() on the main thread:
-        // CMClient.connect() calls SmartCMServerList.getNextServerCandidate() which
-        // calls SteamDirectory.load() — a synchronous HTTP request. On Android,
-        // network on the main thread throws NetworkOnMainThreadException, which is
-        // silently caught by runCatching in getNextServerCandidate(), returning null
-        // servers, causing onClientDisconnected() to fire immediately.
-        // Also avoids 'assert connection == null' AssertionError if called twice
-        // while a previous connection is still closing.
-        pumpHandler.post(() -> steamClient.connect());
+        // CMClient.connect() → SmartCMServerList.getNextServerCandidate() →
+        // SteamDirectory.load() performs a synchronous HTTP call.  On Android,
+        // network on the main thread is blocked (NetworkOnMainThreadException),
+        // caught silently by runCatching → null servers → instant disconnect.
+        // Also avoids 'assert connection == null' AssertionError when called
+        // a second time while the previous TCP connection is still closing.
+        pumpHandler.post(() -> {
+            try {
+                steamClient.connect();
+            } catch (Throwable t) {
+                Log.e(TAG, "steamClient.connect() threw " + t.getClass().getSimpleName()
+                        + ": " + t.getMessage(), t);
+                connecting.set(false);
+            }
+        });
     }
 
     /** Quick background check — emits events so the UI can show a specific error message. */
@@ -385,6 +400,7 @@ public final class SteamRepository {
     private void onConnected() {
         Log.i(TAG, "Connected to Steam CM");
         connected = true;
+        connecting.set(false);
         reconnectAttempts = 0;
         emit("Connected");
 
@@ -401,6 +417,7 @@ public final class SteamRepository {
         Log.i(TAG, "Disconnected (userInitiated=" + cb.isUserInitiated() + ", attempt=" + reconnectAttempts + ")");
         connected = false;
         loggedIn  = false;
+        connecting.set(false);
         if (!cb.isUserInitiated() && pumping.get() && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
             long delayMs = reconnectAttempts * 2000L;  // 2s, 4s, 6s, 8s, 10s
