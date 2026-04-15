@@ -2,6 +2,7 @@ package com.winlator.cmod.contentdialog;
 
 
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -65,36 +66,48 @@ import java.util.Locale;
 
 public class ShortcutSettingsDialog extends ContentDialog {
     private final ShortcutsFragment fragment;
+    private final Context ctxRef;
+    private final Runnable onRefresh;
     private final Shortcut shortcut;
     private InputControlsManager inputControlsManager;
     private TextView tvGraphicsDriverVersion;
     private String box64Version;
 
-
+    /** Legacy constructor used by ShortcutsFragment (XML UI). */
     public ShortcutSettingsDialog(ShortcutsFragment fragment, Shortcut shortcut) {
-        super(fragment.getContext(), R.layout.shortcut_settings_dialog);
+        super(ctx(), R.layout.shortcut_settings_dialog);
         this.fragment = fragment;
+        this.ctxRef = null;
+        this.onRefresh = null;
         this.shortcut = shortcut;
         setTitle(shortcut.name);
         setIcon(R.drawable.icon_settings);
-
-        // Initialize the ContentsManager
-        ContainerManager containerManager = shortcut.container.getManager();
-
-//        if (containerManager != null) {
-//            this.contentsManager = new ContentsManager(containerManager.getContext());
-//            this.contentsManager.syncTurnipContents();
-//        } else {
-//            Toast.makeText(fragment.getContext(), "Failed to initialize container manager. Please try again.", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-
         createContentView();
+    }
+
+    /** Compose-friendly constructor — no Fragment dependency. */
+    public ShortcutSettingsDialog(Context context, Shortcut shortcut, Runnable onRefresh) {
+        super(context, R.layout.shortcut_settings_dialog);
+        this.fragment = null;
+        this.ctxRef = context;
+        this.onRefresh = onRefresh;
+        this.shortcut = shortcut;
+        setTitle(shortcut.name);
+        setIcon(R.drawable.icon_settings);
+        createContentView();
+    }
+
+    private Context ctx() {
+        return ctxRef != null ? ctxRef : ctx();
+    }
+
+    private Activity act() {
+        return ctxRef != null ? (Activity) ctxRef : act();
     }
 
     public void onIconSelected(Uri iconUri) {
     try {
-        Context context = fragment.getContext();
+        Context context = ctx();
         if (context == null) return;
 
         InputStream inputStream = context.getContentResolver().openInputStream(iconUri);
@@ -124,7 +137,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         shortcut.icon = bitmap;
 
         // Force UI update on the Main Thread
-        fragment.getActivity().runOnUiThread(() -> {
+        act().runOnUiThread(() -> {
             ImageView iconPreview = findViewById(R.id.CustomIcon);
             if (iconPreview != null) {
                 iconPreview.setImageBitmap(bitmap);
@@ -135,14 +148,14 @@ public class ShortcutSettingsDialog extends ContentDialog {
     } catch (Exception e) {
         e.printStackTrace();
         // Show the actual error in the toast so you can debug it
-        fragment.getActivity().runOnUiThread(() -> 
-            AppUtils.showToast(fragment.getContext(), "Error: " + e.getMessage())
+        act().runOnUiThread(() -> 
+            AppUtils.showToast(ctx(), "Error: " + e.getMessage())
         );
     }
 }
 
     private void createContentView() {
-        final Context context = fragment.getContext();
+        final Context context = ctx();
         inputControlsManager = new InputControlsManager(context);
         LinearLayout llContent = findViewById(R.id.LLContent);
         llContent.getLayoutParams().width = AppUtils.getPreferredDialogWidth(context);
@@ -163,7 +176,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("image/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            fragment.startActivityForResult(intent, 1337);
+            act().startActivityForResult(intent, 1337);
         });
 
         final EditText etExecArgs = findViewById(R.id.ETExecArgs);
@@ -686,9 +699,13 @@ public class ShortcutSettingsDialog extends ContentDialog {
             if (!newLinkFile.isFile()) linkFile.renameTo(newLinkFile);
         }
 
-        fragment.loadShortcutsList();
-        fragment.updateShortcutOnScreen(newName, newName, shortcut.container.id, newDesktopFile.getAbsolutePath(),
-                Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid"));
+        if (fragment != null) {
+            fragment.loadShortcutsList();
+            fragment.updateShortcutOnScreen(newName, newName, shortcut.container.id, newDesktopFile.getAbsolutePath(),
+                    Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid"));
+        } else if (onRefresh != null) {
+            onRefresh.run();
+        }
     }
 
     // Method to ensure no old file remains
@@ -736,7 +753,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
     }
 
     private void loadControlsProfileSpinner(Spinner spinner, String selectedValue) {
-        final Context context = fragment.getContext();
+        final Context context = ctx();
         final ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
         ArrayList<String> values = new ArrayList<>();
         values.add(context.getString(R.string.none));
@@ -754,7 +771,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
     }
 
     private void showInputWarning() {
-        final Context context = fragment.getContext();
+        final Context context = ctx();
         ContentDialog.alert(context, R.string.enable_xinput_and_dinput_same_time, null);
     }
 

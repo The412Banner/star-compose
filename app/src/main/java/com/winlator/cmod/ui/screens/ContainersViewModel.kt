@@ -16,14 +16,14 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val manager: ContainerManager = ContainerManager(app)
+    private var manager: ContainerManager = ContainerManager(app)
 
     init {
         refresh()
     }
 
     fun refresh() {
-        manager.reload()
+        manager = ContainerManager(getApplication())
         _containers.value = manager.getContainers().toList()
     }
 
