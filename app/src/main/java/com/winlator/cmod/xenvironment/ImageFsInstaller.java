@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntConsumer;
 
 public abstract class ImageFsInstaller {
     public static final byte LATEST_VERSION = 21;
@@ -101,6 +102,47 @@ public abstract class ImageFsInstaller {
     public static void installIfNeeded(final MainActivity activity) {
         ImageFs imageFs = ImageFs.find(activity);
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION) installFromAssets(activity);
+    }
+
+    public static void installFromAssetsWithCallback(
+            final MainActivity activity,
+            final IntConsumer onProgress,
+            final Runnable onComplete) {
+        AppUtils.keepScreenOn(activity);
+        ImageFs imageFs = ImageFs.find(activity);
+        File rootDir = imageFs.getRootDir();
+
+        SettingsFragment.resetEmulatorsVersion(activity);
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            clearRootDir(rootDir);
+            final byte compressionRatio = 22;
+            final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.txz") * (100.0f / compressionRatio));
+            AtomicLong totalSizeRef = new AtomicLong();
+
+            boolean success = TarCompressorUtils.extract(
+                TarCompressorUtils.Type.XZ, activity, "imagefs.txz", rootDir,
+                (file, size) -> {
+                    if (size > 0) {
+                        long totalSize = totalSizeRef.addAndGet(size);
+                        int progress = (int)(((float) totalSize / contentLength) * 100);
+                        onProgress.accept(Math.min(progress, 100));
+                    }
+                    return file;
+                }
+            );
+
+            if (success) {
+                installWineFromAssets(activity);
+                installDriversFromAssets(activity);
+                imageFs.createImgVersionFile(LATEST_VERSION);
+                resetContainerImgVersions(activity);
+            } else {
+                AppUtils.showToast(activity, R.string.unable_to_install_system_files);
+            }
+
+            activity.runOnUiThread(onComplete);
+        });
     }
 
     private static void clearOptDir(File optDir) {
