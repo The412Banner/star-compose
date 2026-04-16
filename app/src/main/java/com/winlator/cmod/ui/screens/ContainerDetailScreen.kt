@@ -36,6 +36,7 @@ import com.winlator.cmod.contentdialog.DXVKConfigDialog
 import com.winlator.cmod.contentdialog.FPSCounterConfigDialog
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog
 import com.winlator.cmod.contents.AdrenotoolsManager
+import com.winlator.cmod.contents.ContentsManager
 import com.winlator.cmod.core.AppUtils
 import com.winlator.cmod.core.DefaultVersion
 import com.winlator.cmod.core.FileUtils
@@ -62,18 +63,16 @@ fun ContainerDetailScreen(
 
     LaunchedEffect(containerId) { viewModel.init(containerId) }
 
-    // Dummy Views for dialog config storage (DX wrapper + FPS counter still Java dialogs)
-    val dxWrapperConfigView  = remember(context) { View(context).also { it.tag = viewModel.dxWrapperConfig  } }
+    // Dummy View for FPS counter config (still a Java dialog)
     val fpsCounterConfigView = remember(context) { View(context).also { it.tag = viewModel.fpsCounterConfig } }
-
     SideEffect {
-        if (dxWrapperConfigView.tag.toString() != viewModel.dxWrapperConfig)
-            dxWrapperConfigView.tag = viewModel.dxWrapperConfig
         if (fpsCounterConfigView.tag.toString() != viewModel.fpsCounterConfig)
             fpsCounterConfigView.tag = viewModel.fpsCounterConfig
     }
 
     var showGraphicsDriverConfig by remember { mutableStateOf(false) }
+    var showDxvkConfig           by remember { mutableStateOf(false) }
+    var showWineD3DConfig        by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -96,7 +95,7 @@ fun ContainerDetailScreen(
                 onClick = {
                     viewModel.confirm(
                         resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
-                        resolvedDXWrapperConfig      = dxWrapperConfigView.tag?.toString() ?: "",
+                        resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
                         resolvedFPSCounterConfig     = fpsCounterConfigView.tag?.toString() ?: "",
                         resolvedEnvVars      = envVarsViewRef.value?.envVars ?: viewModel.envVarsStr,
                         resolvedCPUList      = cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
@@ -121,7 +120,8 @@ fun ContainerDetailScreen(
             TopLevelFields(
                 viewModel = viewModel,
                 onShowGfxConfig = { showGraphicsDriverConfig = true },
-                dxWrapperConfigView = dxWrapperConfigView,
+                onShowDxvkConfig = { showDxvkConfig = true },
+                onShowWineD3DConfig = { showWineD3DConfig = true },
                 fpsCounterConfigView = fpsCounterConfigView
             )
 
@@ -161,11 +161,23 @@ fun ContainerDetailScreen(
         GraphicsDriverConfigDialog(
             graphicsDriver = StringUtils.parseIdentifier(viewModel.selectedGraphicsDriver),
             initialConfig = viewModel.graphicsDriverConfig,
-            onConfirm = { newConfig ->
-                viewModel.graphicsDriverConfig = newConfig
-                showGraphicsDriverConfig = false
-            },
+            onConfirm = { newConfig -> viewModel.graphicsDriverConfig = newConfig; showGraphicsDriverConfig = false },
             onDismiss = { showGraphicsDriverConfig = false }
+        )
+    }
+    if (showDxvkConfig) {
+        DxvkConfigDialog(
+            isArm64EC = viewModel.isArm64EC,
+            initialConfig = viewModel.dxWrapperConfig,
+            onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
+            onDismiss = { showDxvkConfig = false }
+        )
+    }
+    if (showWineD3DConfig) {
+        WineD3DConfigDialog(
+            initialConfig = viewModel.dxWrapperConfig,
+            onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showWineD3DConfig = false },
+            onDismiss = { showWineD3DConfig = false }
         )
     }
 }
@@ -175,7 +187,8 @@ fun ContainerDetailScreen(
 private fun TopLevelFields(
     viewModel: ContainerDetailViewModel,
     onShowGfxConfig: () -> Unit,
-    dxWrapperConfigView: View,
+    onShowDxvkConfig: () -> Unit,
+    onShowWineD3DConfig: () -> Unit,
     fpsCounterConfigView: View,
 ) {
     val context = LocalContext.current
@@ -259,11 +272,7 @@ private fun TopLevelFields(
             }
             IconButton(onClick = {
                 val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper)
-                if (wrapper.contains("dxvk")) {
-                    DXVKConfigDialog(dxWrapperConfigView, viewModel.isArm64EC).show()
-                } else {
-                    WineD3DConfigDialog(dxWrapperConfigView).show()
-                }
+                if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
             }) {
                 Icon(Icons.Default.Settings, contentDescription = null)
             }
@@ -1050,5 +1059,184 @@ private fun ExtensionPickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         }
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun DxvkConfigDialog(
+    isArm64EC: Boolean,
+    initialConfig: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val config = remember(initialConfig) { DXVKConfigDialog.parseConfig(initialConfig) }
+
+    val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
+    val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val cm = ContentsManager(context)
+            cm.syncContents()
+            val dxvk = DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
+            val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
+            withContext(Dispatchers.Main) {
+                allDxvkVersions.value = dxvk
+                vkd3dVersions.value = vkd3d
+            }
+        }
+    }
+
+    var selectedVkd3d by remember { mutableStateOf(config.get("vkd3dVersion").ifEmpty { "None" }) }
+
+    val filteredDxvk = remember(selectedVkd3d, allDxvkVersions.value) {
+        if (selectedVkd3d != "None") {
+            allDxvkVersions.value.filter { v ->
+                val major = DXVKConfigDialog.tryGetMajor(v)
+                major == null || major >= 2
+            }
+        } else allDxvkVersions.value
+    }
+
+    var selectedDxvk by remember(filteredDxvk) {
+        val stored = config.get("version")
+        mutableStateOf(filteredDxvk.firstOrNull { it == stored } ?: filteredDxvk.firstOrNull() ?: stored)
+    }
+
+    val dxvkType = remember(selectedDxvk) { DXVKConfigDialog.getDXVKType(selectedDxvk) }
+
+    val framerateEntries  = remember { context.resources.getStringArray(R.array.dxvk_framerate_entries).toList() }
+    val featureLevelEntries = remember { DXVKConfigDialog.VKD3D_FEATURE_LEVEL.toList() }
+    val ddraEntries       = remember { context.resources.getStringArray(R.array.ddrawrapper_entries).toList() }
+    val videoMemEntries   = remember { context.resources.getStringArray(R.array.dxvk_max_device_memory_entries).toList() }
+
+    var selectedFramerate by remember {
+        val stored = config.get("framerate")
+        mutableStateOf(framerateEntries.firstOrNull { StringUtils.parseNumber(it) == stored } ?: framerateEntries.first())
+    }
+    var selectedFeatureLevel by remember { mutableStateOf(featureLevelEntries.firstOrNull { it == config.get("vkd3dLevel") } ?: featureLevelEntries.first()) }
+    var selectedDdra         by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
+    var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
+    var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("DXVK ${stringResource(R.string.configuration)}") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
+                LabeledDropdown(stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.dxvk_version), filteredDxvk, selectedDxvk, { selectedDxvk = it })
+                Spacer(Modifier.height(8.dp))
+                if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = asyncEnabled, onCheckedChange = { asyncEnabled = it })
+                        Spacer(Modifier.width(8.dp))
+                        Text("Async")
+                    }
+                }
+                if (dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = asyncCacheEnabled, onCheckedChange = { asyncCacheEnabled = it })
+                        Spacer(Modifier.width(8.dp))
+                        Text("Async Cache")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val cfg = DXVKConfigDialog.parseConfig(initialConfig)
+                cfg.put("version", selectedDxvk)
+                cfg.put("framerate", StringUtils.parseNumber(selectedFramerate))
+                cfg.put("async", if (asyncEnabled && dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) "1" else "0")
+                cfg.put("asyncCache", if (asyncCacheEnabled && dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) "1" else "0")
+                cfg.put("vkd3dVersion", selectedVkd3d)
+                cfg.put("vkd3dLevel", selectedFeatureLevel)
+                cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
+                onConfirm(cfg.toString())
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    )
+}
+
+@Composable
+private fun WineD3DConfigDialog(
+    initialConfig: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val config = remember(initialConfig) { WineD3DConfigDialog.parseConfig(initialConfig) }
+
+    val csmtOptions   = remember { listOf("Enabled", "Disabled") }
+    val ssmOptions    = remember { listOf("Enabled", "Disabled") }
+    val ormOptions    = remember { listOf("fbo", "backbuffer") }
+    val rendOptions   = remember { listOf("gl", "vulkan", "gdi") }
+    val ddraEntries   = remember { context.resources.getStringArray(R.array.ddrawrapper_entries).toList() }
+    val videoMemEntries = remember { context.resources.getStringArray(R.array.video_memory_size_entries).toList() }
+    var gpuNames      by remember { mutableStateOf(listOf<String>()) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val names = WineD3DConfigDialog.loadGpuNames(context)
+            withContext(Dispatchers.Main) { gpuNames = names }
+        }
+    }
+
+    var csmt      by remember { mutableStateOf(if (config.get("csmt") == "3") "Enabled" else "Disabled") }
+    var gpuName   by remember { mutableStateOf(config.get("gpuName")) }
+    var ddra      by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
+    var videoMem  by remember {
+        val stored = config.get("videoMemorySize")
+        mutableStateOf(videoMemEntries.firstOrNull { StringUtils.parseNumber(it) == stored } ?: videoMemEntries.first())
+    }
+    var ssm       by remember { mutableStateOf(if (config.get("strict_shader_math") == "1") "Enabled" else "Disabled") }
+    var orm       by remember { mutableStateOf(config.get("OffscreenRenderingMode").ifEmpty { "fbo" }) }
+    var renderer  by remember { mutableStateOf(config.get("renderer").ifEmpty { "gl" }) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("WineD3D ${stringResource(R.string.configuration)}") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
+                LabeledDropdown("CSMT", csmtOptions, csmt, { csmt = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("DDraw Wrapper", ddraEntries, ddra, { ddra = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), videoMemEntries, videoMem, { videoMem = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("Strict Shader Math", ssmOptions, ssm, { ssm = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("Offscreen Rendering Mode", ormOptions, orm, { orm = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("Renderer", rendOptions, renderer, { renderer = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val cfg = WineD3DConfigDialog.parseConfig(initialConfig)
+                cfg.put("csmt", if (csmt == "Enabled") "3" else "0")
+                cfg.put("strict_shader_math", if (ssm == "Enabled") "1" else "0")
+                cfg.put("OffscreenRenderingMode", orm)
+                cfg.put("gpuName", gpuName)
+                cfg.put("ddrawrapper", StringUtils.parseIdentifier(ddra))
+                cfg.put("videoMemorySize", StringUtils.parseNumber(videoMem))
+                cfg.put("renderer", renderer)
+                onConfirm(cfg.toString())
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
     )
 }

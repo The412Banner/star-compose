@@ -42,11 +42,8 @@ public class ContainerDetailHelper {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                if (dxwrapper.contains("dxvk")) {
-                    vDXWrapperConfig.setOnClickListener((v) -> new DXVKConfigDialog(vDXWrapperConfig, isARM64EC).show());
-                } else {
-                    vDXWrapperConfig.setOnClickListener((v) -> new WineD3DConfigDialog(vDXWrapperConfig).show());
-                }
+                // TODO: replace with Compose dialogs when ContainerDetailHelper is migrated
+                vDXWrapperConfig.setOnClickListener(null);
                 vDXWrapperConfig.setVisibility(View.VISIBLE);
             }
 
