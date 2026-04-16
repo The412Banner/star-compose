@@ -787,9 +787,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
             tvGraphicsDriverVersion.setText(GraphicsDriverConfigDialog.getVersion(graphicsDriverConfig));
 
-            vGraphicsDriverConfig.setOnClickListener((v) -> {
-                new GraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver, tvGraphicsDriverVersion).show();
-            });
+            // TODO: replace with Compose GraphicsDriverConfigDialog when ShortcutSettingsDialog is converted
+            vGraphicsDriverConfig.setOnClickListener(null);
 
             ArrayList<String> items = new ArrayList<>();
             for (String value : dxwrapperEntries) {
