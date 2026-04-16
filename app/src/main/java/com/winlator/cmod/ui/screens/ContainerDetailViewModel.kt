@@ -485,8 +485,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         val controllerMapping = buildControllerMapping()
 
         var inputType = 0
-        if (enableXInput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_XINPUT
-        if (enableDInput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_DINPUT
+        if (enableXInput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()
+        if (enableDInput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()
 
         val c = container
         if (c != null) {
