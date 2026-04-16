@@ -34,12 +34,17 @@ import com.winlator.cmod.R
 import com.winlator.cmod.contentdialog.AddEnvVarDialog
 import com.winlator.cmod.contentdialog.DXVKConfigDialog
 import com.winlator.cmod.contentdialog.FPSCounterConfigDialog
-import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog
+import com.winlator.cmod.contents.AdrenotoolsManager
 import com.winlator.cmod.core.AppUtils
+import com.winlator.cmod.core.DefaultVersion
 import com.winlator.cmod.core.FileUtils
+import com.winlator.cmod.core.GPUInformation
 import com.winlator.cmod.core.StringUtils
 import com.winlator.cmod.core.WineThemeManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.widget.ColorPickerView
 import com.winlator.cmod.widget.CPUListView
@@ -56,20 +61,18 @@ fun ContainerDetailScreen(
 
     LaunchedEffect(containerId) { viewModel.init(containerId) }
 
-    // Dummy Views for dialog config storage (need Activity context)
-    val graphicsDriverConfigView = remember(context) { View(context).also { it.tag = viewModel.graphicsDriverConfig } }
-    val dxWrapperConfigView      = remember(context) { View(context).also { it.tag = viewModel.dxWrapperConfig      } }
-    val fpsCounterConfigView     = remember(context) { View(context).also { it.tag = viewModel.fpsCounterConfig     } }
+    // Dummy Views for dialog config storage (DX wrapper + FPS counter still Java dialogs)
+    val dxWrapperConfigView  = remember(context) { View(context).also { it.tag = viewModel.dxWrapperConfig  } }
+    val fpsCounterConfigView = remember(context) { View(context).also { it.tag = viewModel.fpsCounterConfig } }
 
-    // Keep dummy view tags in sync with VM state (initial load)
     SideEffect {
-        if (graphicsDriverConfigView.tag.toString() != viewModel.graphicsDriverConfig)
-            graphicsDriverConfigView.tag = viewModel.graphicsDriverConfig
         if (dxWrapperConfigView.tag.toString() != viewModel.dxWrapperConfig)
             dxWrapperConfigView.tag = viewModel.dxWrapperConfig
         if (fpsCounterConfigView.tag.toString() != viewModel.fpsCounterConfig)
             fpsCounterConfigView.tag = viewModel.fpsCounterConfig
     }
+
+    var showGraphicsDriverConfig by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -91,7 +94,7 @@ fun ContainerDetailScreen(
             FloatingActionButton(
                 onClick = {
                     viewModel.confirm(
-                        resolvedGraphicsDriverConfig = graphicsDriverConfigView.tag?.toString() ?: "",
+                        resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
                         resolvedDXWrapperConfig      = dxWrapperConfigView.tag?.toString() ?: "",
                         resolvedFPSCounterConfig     = fpsCounterConfigView.tag?.toString() ?: "",
                         resolvedEnvVars      = envVarsViewRef.value?.envVars ?: viewModel.envVarsStr,
@@ -116,7 +119,7 @@ fun ContainerDetailScreen(
             // ── Top-level fields ───────────────────────────────────────────────
             TopLevelFields(
                 viewModel = viewModel,
-                graphicsDriverConfigView = graphicsDriverConfigView,
+                onShowGfxConfig = { showGraphicsDriverConfig = true },
                 dxWrapperConfigView = dxWrapperConfigView,
                 fpsCounterConfigView = fpsCounterConfigView
             )
@@ -152,13 +155,25 @@ fun ContainerDetailScreen(
             Spacer(modifier = Modifier.height(80.dp)) // room for FAB
         }
     }
+
+    if (showGraphicsDriverConfig) {
+        GraphicsDriverConfigDialog(
+            graphicsDriver = StringUtils.parseIdentifier(viewModel.selectedGraphicsDriver),
+            initialConfig = viewModel.graphicsDriverConfig,
+            onConfirm = { newConfig ->
+                viewModel.graphicsDriverConfig = newConfig
+                showGraphicsDriverConfig = false
+            },
+            onDismiss = { showGraphicsDriverConfig = false }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun TopLevelFields(
     viewModel: ContainerDetailViewModel,
-    graphicsDriverConfigView: View,
+    onShowGfxConfig: () -> Unit,
     dxWrapperConfigView: View,
     fpsCounterConfigView: View,
 ) {
@@ -219,10 +234,7 @@ private fun TopLevelFields(
                 onSelect = { viewModel.selectedGraphicsDriver = it },
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = {
-                val driver = StringUtils.parseIdentifier(viewModel.selectedGraphicsDriver)
-                GraphicsDriverConfigDialog(graphicsDriverConfigView, driver, null).show()
-            }) {
+            IconButton(onClick = onShowGfxConfig) {
                 Icon(Icons.Default.Settings, contentDescription = null)
             }
         }
@@ -828,4 +840,214 @@ private fun CompactDropdown(
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun GraphicsDriverConfigDialog(
+    graphicsDriver: String,
+    initialConfig: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val cfg = remember(initialConfig) {
+        initialConfig.split(";").associate { elem ->
+            val parts = elem.split("=")
+            parts[0] to if (parts.size > 1) parts[1] else ""
+        }
+    }
+
+    var version          by remember { mutableStateOf(cfg["version"] ?: "") }
+    var vulkanVersion    by remember { mutableStateOf(cfg["vulkanVersion"] ?: "1.3") }
+    var gpuName          by remember { mutableStateOf(cfg["gpuName"] ?: "Device") }
+    var presentMode      by remember { mutableStateOf(cfg["presentMode"] ?: "mailbox") }
+    var resourceType     by remember { mutableStateOf(cfg["resourceType"] ?: "auto") }
+    var bcnEmulation     by remember { mutableStateOf(cfg["bcnEmulation"] ?: "auto") }
+    var bcnEmulationType by remember { mutableStateOf(cfg["bcnEmulationType"] ?: "software") }
+    var bcnEmulationCache by remember { mutableStateOf(cfg["bcnEmulationCache"] ?: "0") }
+    var syncFrame        by remember { mutableStateOf(cfg["syncFrame"] == "1") }
+    var disablePresentWait by remember { mutableStateOf(cfg["disablePresentWait"] == "1") }
+
+    val deviceMemoryEntries = remember { context.resources.getStringArray(R.array.device_memory_entries).toList() }
+    var selectedMemoryEntry by remember {
+        val storedNum = cfg["maxDeviceMemory"] ?: "0"
+        mutableStateOf(deviceMemoryEntries.firstOrNull { StringUtils.parseNumber(it) == storedNum } ?: deviceMemoryEntries.first())
+    }
+
+    var driverVersions by remember { mutableStateOf(listOf<String>()) }
+    var gpuNames       by remember { mutableStateOf(listOf("Device")) }
+    var allExtensions  by remember { mutableStateOf(listOf<String>()) }
+    val initialBlacklist = remember(initialConfig) {
+        (cfg["blacklistedExtensions"] ?: "").split(",").filter { it.isNotEmpty() }.toSet()
+    }
+    var blacklisted   by remember { mutableStateOf(initialBlacklist) }
+    var showExtPicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val versions = mutableListOf<String>()
+            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries)
+                .filter { GPUInformation.isDriverSupported(it, context) }
+                .forEach { versions.add(it) }
+            AdrenotoolsManager(context).enumarateInstalledDrivers().forEach { versions.add(it) }
+
+            val gpuList = mutableListOf("Device")
+            try {
+                val json = FileUtils.readString(context, "gpu_cards.json")
+                val arr = JSONArray(json)
+                for (i in 0 until arr.length()) gpuList.add(arr.getJSONObject(i).getString("name"))
+            } catch (_: Exception) {}
+
+            withContext(Dispatchers.Main) {
+                driverVersions = versions
+                gpuNames = gpuList
+                if (version.isEmpty() || versions.none { it.equals(version, ignoreCase = true) }) {
+                    version = versions.firstOrNull { it.equals(DefaultVersion.WRAPPER_ADRENO, ignoreCase = true) }
+                        ?: versions.firstOrNull { it.equals(DefaultVersion.WRAPPER, ignoreCase = true) }
+                        ?: versions.firstOrNull() ?: version
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(version) {
+        if (version.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
+                withContext(Dispatchers.Main) {
+                    allExtensions = exts
+                    if (version != cfg["version"]) blacklisted = emptySet()
+                }
+            }
+        }
+    }
+
+    if (showExtPicker) {
+        ExtensionPickerDialog(
+            extensions = allExtensions,
+            blacklisted = blacklisted,
+            onDismiss = { showExtPicker = false },
+            onConfirm = { newBlacklist -> blacklisted = newBlacklist; showExtPicker = false }
+        )
+    }
+
+    val vulkanVersions      = remember { context.resources.getStringArray(R.array.vulkan_version_entries).toList() }
+    val presentModeEntries  = remember { context.resources.getStringArray(R.array.present_mode_entries).toList() }
+    val resourceTypeEntries = remember { context.resources.getStringArray(R.array.resource_type_entries).toList() }
+    val bcnEmulationEntries = remember { context.resources.getStringArray(R.array.bcn_emulation_entries).toList() }
+    val bcnTypeEntries      = remember { context.resources.getStringArray(R.array.bcn_emulation_type_entries).toList() }
+    val bcnCacheEntries     = remember { context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.graphics_driver_configuration)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
+                LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it })
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showExtPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val enabled = allExtensions.size - blacklisted.size
+                    Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
+                }
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), deviceMemoryEntries, selectedMemoryEntry, { selectedMemoryEntry = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_present_modes), presentModeEntries, presentMode, { presentMode = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_resource_type), resourceTypeEntries, resourceType, { resourceType = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation), bcnEmulationEntries, bcnEmulation, { bcnEmulation = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_type), bcnTypeEntries, bcnEmulationType, { bcnEmulationType = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_cache), bcnCacheEntries, bcnEmulationCache, { bcnEmulationCache = it })
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = syncFrame, onCheckedChange = { syncFrame = it })
+                    Text(stringResource(R.string.graphics_driver_sync_frame))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = disablePresentWait, onCheckedChange = { disablePresentWait = it })
+                    Text(stringResource(R.string.graphics_driver_disable_present_wait))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val config = "vulkanVersion=$vulkanVersion;" +
+                    "version=$version;" +
+                    "blacklistedExtensions=${blacklisted.joinToString(",")};" +
+                    "maxDeviceMemory=${StringUtils.parseNumber(selectedMemoryEntry)};" +
+                    "presentMode=$presentMode;" +
+                    "syncFrame=${if (syncFrame) "1" else "0"};" +
+                    "disablePresentWait=${if (disablePresentWait) "1" else "0"};" +
+                    "resourceType=$resourceType;" +
+                    "bcnEmulation=$bcnEmulation;" +
+                    "bcnEmulationType=$bcnEmulationType;" +
+                    "bcnEmulationCache=$bcnEmulationCache;" +
+                    "gpuName=$gpuName"
+                onConfirm(config)
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        }
+    )
+}
+
+@Composable
+private fun ExtensionPickerDialog(
+    extensions: List<String>,
+    blacklisted: Set<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit
+) {
+    var state by remember(extensions, blacklisted) {
+        mutableStateOf(extensions.associateWith { !blacklisted.contains(it) })
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.graphics_driver_available_extensions)) },
+        text = {
+            if (extensions.isEmpty()) {
+                Text("No extensions available for this driver.")
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn {
+                    items(extensions) { ext ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = state[ext] == true,
+                                onCheckedChange = { checked ->
+                                    state = state.toMutableMap().also { it[ext] = checked }
+                                }
+                            )
+                            Text(ext, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val newBlacklist = extensions.filter { state[it] != true }.toSet()
+                onConfirm(newBlacklist)
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        }
+    )
 }
