@@ -134,6 +134,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var confirmRemove by remember { mutableStateOf<Shortcut?>(null) }
     var cloneTarget by remember { mutableStateOf<Shortcut?>(null) }
     var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (shortcuts.isEmpty()) {
@@ -153,7 +154,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         onClone = { cloneTarget = shortcut },
                         onAddToHome = { addToHomeScreen(context, shortcut) },
                         onExport = { exportShortcut(context, shortcut) },
-                        onProperties = { showProperties(context, shortcut) },
+                        onProperties = { propertiesShortcut = shortcut },
                     )
                     Divider(color = DividerColor)
                 }
@@ -213,6 +214,39 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             },
             confirmButton = {},
             dismissButton = { TextButton(onClick = { cloneTarget = null }) { Text("Cancel") } },
+        )
+    }
+
+    // Shortcut properties dialog
+    propertiesShortcut?.let { s ->
+        val playtimePrefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
+        val playtimeKey = "${s.name}_playtime"
+        val playCountKey = "${s.name}_play_count"
+        val totalMs = playtimePrefs.getLong(playtimeKey, 0L)
+        val playCount = playtimePrefs.getInt(playCountKey, 0)
+        val seconds = (totalMs / 1000) % 60
+        val minutes = (totalMs / (1000 * 60)) % 60
+        val hours   = (totalMs / (1000 * 60 * 60)) % 24
+        val days    = (totalMs / (1000 * 60 * 60 * 24))
+        val formatted = String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
+        var didReset by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { propertiesShortcut = null },
+            title = { Text("Properties") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (didReset) "Number of times played: 0" else "Number of times played: $playCount")
+                    Text(if (didReset) "Playtime: 0d 00h 00m 00s" else "Playtime: $formatted")
+                    Button(
+                        onClick = {
+                            playtimePrefs.edit().remove(playtimeKey).remove(playCountKey).apply()
+                            didReset = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Reset Properties") }
+                }
+            },
+            confirmButton = { TextButton(onClick = { propertiesShortcut = null }) { Text("Close") } }
         )
     }
 
@@ -1206,30 +1240,3 @@ private fun exportShortcut(context: Context, shortcut: Shortcut) {
     }
 }
 
-private fun showProperties(context: Context, shortcut: Shortcut) {
-    val playtimePrefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
-    val playtimeKey = "${shortcut.name}_playtime"
-    val playCountKey = "${shortcut.name}_play_count"
-    val totalMs = playtimePrefs.getLong(playtimeKey, 0L)
-    val playCount = playtimePrefs.getInt(playCountKey, 0)
-
-    val seconds = (totalMs / 1000) % 60
-    val minutes = (totalMs / (1000 * 60)) % 60
-    val hours   = (totalMs / (1000 * 60 * 60)) % 24
-    val days    = (totalMs / (1000 * 60 * 60 * 24))
-    val formatted = String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
-
-    val dialog = com.winlator.cmod.contentdialog.ContentDialog(context, com.winlator.cmod.R.layout.shortcut_properties_dialog)
-    dialog.setTitle("Properties")
-    (dialog.findViewById<android.widget.TextView>(com.winlator.cmod.R.id.play_count))
-        .setText("Number of times played: $playCount")
-    (dialog.findViewById<android.widget.TextView>(com.winlator.cmod.R.id.playtime))
-        .setText("Playtime: $formatted")
-    dialog.findViewById<android.widget.Button>(com.winlator.cmod.R.id.reset_properties)
-        .setOnClickListener {
-            playtimePrefs.edit().remove(playtimeKey).remove(playCountKey).apply()
-            Toast.makeText(context, "Properties reset.", Toast.LENGTH_SHORT).show()
-            dialog.dismiss()
-        }
-    dialog.show()
-}
