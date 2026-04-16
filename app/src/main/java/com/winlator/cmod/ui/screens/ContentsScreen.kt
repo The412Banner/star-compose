@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -365,24 +366,37 @@ private fun ContentInfoDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                InfoRow("Type",    profile.type.toString())
-                InfoRow("Version", profile.verName)
-                InfoRow("Code",    profile.verCode.toString())
-                if (!profile.desc.isNullOrEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(profile.desc, color = Color(0xFFBBBBBB), style = MaterialTheme.typography.bodySmall)
+                // ── Info section ──────────────────────────────────────────────
+                SectionBox(header = "Info") {
+                    InfoRow("Type",    profile.type.toString())
+                    InfoRow("Version", profile.verName)
+                    InfoRow("Code",    profile.verCode.toString())
                 }
+
+                // ── Description section ───────────────────────────────────────
+                if (!profile.desc.isNullOrEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    SectionBox(header = "Description") {
+                        Text(
+                            text = profile.desc,
+                            color = Color(0xFFBBBBBB),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+
+                // ── Files section ─────────────────────────────────────────────
                 if (!profile.fileList.isNullOrEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    Text("Files", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.height(4.dp))
-                    profile.fileList.forEach { file ->
-                        Text(
-                            text = "${file.source} → ${file.target}",
-                            color = Color(0xFFCCCCCC),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 2.dp),
-                        )
+                    SectionBox(header = "Files") {
+                        profile.fileList.forEach { file ->
+                            Text(
+                                text = "${file.source} → ${file.target}",
+                                color = Color(0xFFCCCCCC),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(vertical = 2.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -412,19 +426,21 @@ private fun UntrustedDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                Text(
-                    "The following files could not be verified. Continue only if you trust the source.",
-                    color = Color(0xFFCCCCCC),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.height(10.dp))
-                files.forEach { file ->
+                SectionBox(header = "Unverified Files", borderColor = Color(0xFFFF8A80)) {
                     Text(
-                        text = "${file.source} → ${file.target}",
-                        color = Color(0xFFFF8A80),
+                        "These files could not be verified. Continue only if you trust the source.",
+                        color = Color(0xFFCCCCCC),
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 2.dp),
                     )
+                    Spacer(Modifier.height(8.dp))
+                    files.forEach { file ->
+                        Text(
+                            text = "${file.source} → ${file.target}",
+                            color = Color(0xFFFF8A80),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                    }
                 }
             }
         },
@@ -435,6 +451,31 @@ private fun UntrustedDialog(
             TextButton(onClick = onDismiss) { Text("Cancel", color = Primary) }
         },
     )
+}
+
+@Composable
+private fun SectionBox(
+    header: String,
+    borderColor: Color = Color(0xFF555555),
+    content: @Composable () -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = header,
+            color = Color(0xFFAAAAAA),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, borderColor, shape)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            content()
+        }
+    }
 }
 
 @Composable
