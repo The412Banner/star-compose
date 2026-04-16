@@ -78,7 +78,8 @@ public class SavesFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        ((AppCompatActivity) getActivity()).getSupportActionBar().setTitle(R.string.saves);
+        androidx.appcompat.app.ActionBar ab = ((AppCompatActivity) getActivity()).getSupportActionBar();
+        if (ab != null) ab.setTitle(R.string.saves);
         saveManager = new SaveManager(getContext());
         loadSavesList();
     }
