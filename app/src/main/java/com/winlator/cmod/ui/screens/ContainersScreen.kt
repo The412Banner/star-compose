@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,23 +39,31 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.XrActivity
 import com.winlator.cmod.container.Container
-import com.winlator.cmod.contentdialog.StorageInfoDialog
+import com.winlator.cmod.core.FileUtils
+import com.winlator.cmod.core.StringUtils
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
@@ -84,6 +93,7 @@ fun ContainersScreen(
 
     // Confirm-dialog state
     var confirmDialog by remember { mutableStateOf<ConfirmAction?>(null) }
+    var storageInfoContainer by remember { mutableStateOf<Container?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (containers.isEmpty() && !isLoading) {
@@ -113,10 +123,7 @@ fun ContainersScreen(
                         onRemove = {
                             confirmDialog = ConfirmAction.Remove(container)
                         },
-                        onInfo = {
-                            // StorageInfoDialog is still a Java dialog — needs Activity
-                            StorageInfoDialog(activity, container).show()
-                        },
+                        onInfo = { storageInfoContainer = container },
                     )
                     Divider(color = DividerColor)
                 }
@@ -185,6 +192,11 @@ fun ContainersScreen(
                 )
             }
         }
+    }
+
+    // Storage info dialog
+    storageInfoContainer?.let { container ->
+        StorageInfoDialog(container = container, onDismiss = { storageInfoContainer = null })
     }
 }
 
@@ -268,4 +280,90 @@ private fun ContainerItem(
 private sealed class ConfirmAction {
     data class Duplicate(val container: Container) : ConfirmAction()
     data class Remove(val container: Container) : ConfirmAction()
+}
+
+@Composable
+private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
+    var driveCSize by remember { mutableLongStateOf(0L) }
+    var cacheSize  by remember { mutableLongStateOf(0L) }
+    var totalSize  by remember { mutableLongStateOf(0L) }
+    val internalStorageSize = remember { FileUtils.getInternalStorageSize() }
+    val progress = if (internalStorageSize > 0)
+        ((totalSize.toFloat() / internalStorageSize) * 100f).coerceIn(0f, 100f)
+    else 0f
+
+    val handler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+
+    LaunchedEffect(container) {
+        val rootDir   = container.getRootDir()
+        val driveCDir = File(rootDir, ".wine/drive_c")
+        val cacheDir  = File(rootDir, ".cache")
+        launch(Dispatchers.IO) {
+            FileUtils.getSizeAsync(driveCDir) { size ->
+                handler.post { driveCSize += size; totalSize += size }
+            }
+        }
+        launch(Dispatchers.IO) {
+            FileUtils.getSizeAsync(cacheDir) { size ->
+                handler.post { cacheSize += size; totalSize += size }
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Storage Info") },
+        text = {
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+            ) {
+                // Left column — Drive C / Cache / Total sizes
+                Column(
+                    modifier = androidx.compose.ui.Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text("Drive C", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(StringUtils.formatBytes(driveCSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
+                    Text("Cache", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(StringUtils.formatBytes(cacheSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
+                    Text("Total", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(StringUtils.formatBytes(totalSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                // Right column — circular progress + label
+                Column(
+                    modifier = androidx.compose.ui.Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = { progress / 100f },
+                            modifier = androidx.compose.ui.Modifier.size(100.dp),
+                            strokeWidth = 10.dp,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                        Text("${progress.toInt()}%", fontSize = 16.sp)
+                    }
+                    Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
+                    Text(
+                        "Estimated used space",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = {
+                FileUtils.clear(File(container.getRootDir(), ".cache"))
+                container.putExtra("desktopTheme", null)
+                container.saveData()
+                onDismiss()
+            }) { Text("Clear Cache") }
+        },
+    )
 }
