@@ -46,6 +46,7 @@ import com.winlator.cmod.store.SteamMainActivity
 import com.winlator.cmod.ui.AppDrawerContent
 import com.winlator.cmod.ui.AppNavGraph
 import com.winlator.cmod.ui.AppTopBar
+import com.winlator.cmod.ui.PreloaderOverlay
 import com.winlator.cmod.ui.Screen
 import com.winlator.cmod.ui.screens.SplashScreen
 import com.winlator.cmod.ui.screens.SplashViewModel
@@ -187,6 +188,9 @@ class MainActivity : AppCompatActivity() {
                             },
                         )
                     }
+
+                    // Compose-based preloader overlay — replaces XML PreloaderDialog
+                    PreloaderOverlay()
                 }
             }
         }

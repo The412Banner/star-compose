@@ -1,64 +1,25 @@
 package com.winlator.cmod.core;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.ImageView;
-import android.widget.TextView;
 
-import com.winlator.cmod.R;
-
+/**
+ * Thin shim — delegates to PreloaderState (observed by the Compose overlay in MainActivity).
+ * No Dialog, no XML layout, no theme issues.
+ */
 public class PreloaderDialog {
     private final Activity activity;
-    private Dialog dialog;
 
     public PreloaderDialog(Activity activity) {
         this.activity = activity;
     }
 
-    private void create() {
-        if (dialog != null) return;
-        dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setCancelable(false);
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.setContentView(R.layout.preloader_dialog);
-
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-            // Force transparent window background so the light AppTheme doesn't paint white behind the dialog
-            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-        }
-    }
-
     public synchronized void show(int textResId) {
-        if (isShowing()) return;
-        close();
-        if (dialog == null) create();
-        ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
-        ImageView customIcon = dialog.findViewById(R.id.CustomIcon);
-        customIcon.setImageResource(R.drawable.icon_wine);
-        customIcon.setColorFilter(Color.WHITE);
-        dialog.show();
+        PreloaderState.show(activity.getString(textResId));
     }
 
     public synchronized void show(String text, Bitmap icon) {
-        if (isShowing()) return;
-        close();
-        if (dialog == null) create();
-        ((TextView)dialog.findViewById(R.id.TextView)).setText(text);
-        ImageView customIcon = dialog.findViewById(R.id.CustomIcon);
-        if (icon == null) {
-            customIcon.setImageResource(R.drawable.icon_wine);
-            customIcon.setColorFilter(Color.WHITE);
-        } else
-            customIcon.setImageBitmap(icon);
-        dialog.show();
+        PreloaderState.show(text);
     }
 
     public void showOnUiThread(final int textResId) {
@@ -66,12 +27,7 @@ public class PreloaderDialog {
     }
 
     public synchronized void close() {
-        try {
-            if (dialog != null) {
-                dialog.dismiss();
-            }
-        }
-        catch (Exception e) {}
+        PreloaderState.hide();
     }
 
     public void closeOnUiThread() {
@@ -79,7 +35,6 @@ public class PreloaderDialog {
     }
 
     public boolean isShowing() {
-        return dialog != null && dialog.isShowing();
+        return PreloaderState.isVisible();
     }
 }
-
