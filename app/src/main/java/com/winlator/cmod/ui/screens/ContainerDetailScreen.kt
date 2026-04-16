@@ -33,7 +33,6 @@ import com.winlator.cmod.MainActivity
 import com.winlator.cmod.R
 import com.winlator.cmod.contentdialog.AddEnvVarDialog
 import com.winlator.cmod.contentdialog.DXVKConfigDialog
-import com.winlator.cmod.contentdialog.FPSCounterConfigDialog
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog
 import com.winlator.cmod.contents.AdrenotoolsManager
 import com.winlator.cmod.contents.ContentsManager
@@ -63,16 +62,10 @@ fun ContainerDetailScreen(
 
     LaunchedEffect(containerId) { viewModel.init(containerId) }
 
-    // Dummy View for FPS counter config (still a Java dialog)
-    val fpsCounterConfigView = remember(context) { View(context).also { it.tag = viewModel.fpsCounterConfig } }
-    SideEffect {
-        if (fpsCounterConfigView.tag.toString() != viewModel.fpsCounterConfig)
-            fpsCounterConfigView.tag = viewModel.fpsCounterConfig
-    }
-
     var showGraphicsDriverConfig by remember { mutableStateOf(false) }
     var showDxvkConfig           by remember { mutableStateOf(false) }
     var showWineD3DConfig        by remember { mutableStateOf(false) }
+    var showFpsConfig            by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -96,7 +89,7 @@ fun ContainerDetailScreen(
                     viewModel.confirm(
                         resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
                         resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
-                        resolvedFPSCounterConfig     = fpsCounterConfigView.tag?.toString() ?: "",
+                        resolvedFPSCounterConfig     = viewModel.fpsCounterConfig,
                         resolvedEnvVars      = envVarsViewRef.value?.envVars ?: viewModel.envVarsStr,
                         resolvedCPUList      = cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
                         resolvedCPUListWoW64 = cpuListWoW64Ref.value?.checkedCPUListAsString ?: viewModel.cpuListWoW64,
@@ -122,7 +115,7 @@ fun ContainerDetailScreen(
                 onShowGfxConfig = { showGraphicsDriverConfig = true },
                 onShowDxvkConfig = { showDxvkConfig = true },
                 onShowWineD3DConfig = { showWineD3DConfig = true },
-                fpsCounterConfigView = fpsCounterConfigView
+                onShowFpsConfig = { showFpsConfig = true }
             )
 
             // ── Tabs ───────────────────────────────────────────────────────────
@@ -180,6 +173,13 @@ fun ContainerDetailScreen(
             onDismiss = { showWineD3DConfig = false }
         )
     }
+    if (showFpsConfig) {
+        FpsCounterConfigDialog(
+            initialConfig = viewModel.fpsCounterConfig,
+            onConfirm = { newConfig -> viewModel.fpsCounterConfig = newConfig; showFpsConfig = false },
+            onDismiss = { showFpsConfig = false }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ private fun TopLevelFields(
     onShowGfxConfig: () -> Unit,
     onShowDxvkConfig: () -> Unit,
     onShowWineD3DConfig: () -> Unit,
-    fpsCounterConfigView: View,
+    onShowFpsConfig: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -317,9 +317,7 @@ private fun TopLevelFields(
             )
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.show_fps), modifier = Modifier.weight(1f))
-            IconButton(onClick = {
-                FPSCounterConfigDialog.show(context, fpsCounterConfigView)
-            }) {
+            IconButton(onClick = onShowFpsConfig) {
                 Icon(Icons.Default.Settings, contentDescription = null)
             }
         }
@@ -1235,6 +1233,93 @@ private fun WineD3DConfigDialog(
                 cfg.put("videoMemorySize", StringUtils.parseNumber(videoMem))
                 cfg.put("renderer", renderer)
                 onConfirm(cfg.toString())
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun FpsCounterConfigDialog(
+    initialConfig: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    fun parseConfig(s: String): Map<String, String> {
+        if (s.isEmpty()) return emptyMap()
+        val map = mutableMapOf<String, String>()
+        s.split(",").forEach { part ->
+            val eq = part.indexOf('=')
+            if (eq >= 0) map[part.substring(0, eq)] = part.substring(eq + 1)
+        }
+        return map
+    }
+
+    val cfg = remember(initialConfig) { parseConfig(initialConfig) }
+
+    var showFPS            by remember { mutableStateOf(cfg.getOrDefault("showFPS", "1") == "1") }
+    var showCPULoad        by remember { mutableStateOf(cfg.getOrDefault("showCPULoad", "0") == "1") }
+    var showGPULoad        by remember { mutableStateOf(cfg.getOrDefault("showGPULoad", "0") == "1") }
+    var showRAM            by remember { mutableStateOf(cfg.getOrDefault("showRAM", "0") == "1") }
+    var showRenderer       by remember { mutableStateOf(cfg.getOrDefault("showRenderer", "0") == "1") }
+    var showBatteryTemp    by remember { mutableStateOf(cfg.getOrDefault("showBatteryTemp", "0") == "1") }
+    var showBatteryVoltage by remember { mutableStateOf(cfg.getOrDefault("showBatteryVoltage", "0") == "1") }
+    var hudScale           by remember { mutableStateOf(cfg.getOrDefault("hudScale", "100").toIntOrNull() ?: 100) }
+    var hudTransparency    by remember { mutableStateOf(cfg.getOrDefault("hudTransparency", "0").toIntOrNull() ?: 0) }
+
+    @Composable
+    fun CheckRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Checkbox(checked = checked, onCheckedChange = onToggle)
+            Text(label)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("FPS Counter Settings") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                CheckRow("Show FPS", showFPS) { showFPS = it }
+                CheckRow("Show CPU Load", showCPULoad) { showCPULoad = it }
+                CheckRow("Show GPU Load", showGPULoad) { showGPULoad = it }
+                CheckRow("Show RAM", showRAM) { showRAM = it }
+                CheckRow("Show Renderer", showRenderer) { showRenderer = it }
+                CheckRow("Show Battery Temp", showBatteryTemp) { showBatteryTemp = it }
+                CheckRow("Show Battery Voltage", showBatteryVoltage) { showBatteryVoltage = it }
+                Spacer(Modifier.height(8.dp))
+                Text("HUD Scale: $hudScale%", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = hudScale.toFloat(),
+                    onValueChange = { hudScale = it.toInt().coerceAtLeast(50) },
+                    valueRange = 50f..150f,
+                    steps = 99
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("HUD Transparency: $hudTransparency", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = hudTransparency.toFloat(),
+                    onValueChange = { hudTransparency = it.toInt() },
+                    valueRange = 0f..50f,
+                    steps = 49
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val result = listOf(
+                    "showFPS=${if (showFPS) "1" else "0"}",
+                    "showCPULoad=${if (showCPULoad) "1" else "0"}",
+                    "showGPULoad=${if (showGPULoad) "1" else "0"}",
+                    "showRAM=${if (showRAM) "1" else "0"}",
+                    "showRenderer=${if (showRenderer) "1" else "0"}",
+                    "showBatteryTemp=${if (showBatteryTemp) "1" else "0"}",
+                    "showBatteryVoltage=${if (showBatteryVoltage) "1" else "0"}",
+                    "hudScale=$hudScale",
+                    "hudTransparency=$hudTransparency"
+                ).joinToString(",")
+                onConfirm(result)
             }) { Text(stringResource(android.R.string.ok)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
