@@ -92,7 +92,6 @@ import com.winlator.cmod.box64.Box64Preset
 import com.winlator.cmod.box64.Box64PresetManager
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.Shortcut
-import com.winlator.cmod.contentdialog.AddEnvVarDialog
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.cmod.contents.ContentProfile
 import com.winlator.cmod.contents.ContentsManager
@@ -943,7 +942,7 @@ private fun ScWinComponentsTab(components: androidx.compose.runtime.snapshots.Sn
 
 @Composable
 private fun ScEnvVarsTab(shortcut: Shortcut, envVarsViewRef: MutableState<EnvVarsView?>) {
-    val context = LocalContext.current
+    var showAddEnvVar by remember { mutableStateOf(false) }
     Column {
         AndroidView(
             factory = { ctx ->
@@ -957,13 +956,24 @@ private fun ScEnvVarsTab(shortcut: Shortcut, envVarsViewRef: MutableState<EnvVar
         )
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = { envVarsViewRef.value?.let { AddEnvVarDialog(context, it).show() } },
+            onClick = { showAddEnvVar = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(4.dp))
             Text("Add Environment Variable")
         }
+    }
+    if (showAddEnvVar) {
+        AddEnvVarComposable(
+            onConfirm = { name, value ->
+                envVarsViewRef.value?.let { ev ->
+                    if (name.isNotEmpty() && !ev.containsName(name)) ev.add(name, value)
+                }
+                showAddEnvVar = false
+            },
+            onDismiss = { showAddEnvVar = false }
+        )
     }
 }
 

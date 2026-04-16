@@ -31,7 +31,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.cmod.MainActivity
 import com.winlator.cmod.R
-import com.winlator.cmod.contentdialog.AddEnvVarDialog
 import com.winlator.cmod.contentdialog.DXVKConfigDialog
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog
 import com.winlator.cmod.contents.AdrenotoolsManager
@@ -461,7 +460,7 @@ private fun EnvVarsTab(
     viewModel: ContainerDetailViewModel,
     envVarsViewRef: MutableState<EnvVarsView?>
 ) {
-    val context = LocalContext.current
+    var showAddEnvVar by remember { mutableStateOf(false) }
     Column {
         AndroidView(
             factory = { ctx ->
@@ -475,13 +474,24 @@ private fun EnvVarsTab(
         )
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = { envVarsViewRef.value?.let { AddEnvVarDialog(context, it).show() } },
+            onClick = { showAddEnvVar = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.add) + " " + stringResource(R.string.environment_variables))
         }
+    }
+    if (showAddEnvVar) {
+        AddEnvVarComposable(
+            onConfirm = { name, value ->
+                envVarsViewRef.value?.let { ev ->
+                    if (name.isNotEmpty() && !ev.containsName(name)) ev.add(name, value)
+                }
+                showAddEnvVar = false
+            },
+            onDismiss = { showAddEnvVar = false }
+        )
     }
 }
 
@@ -743,6 +753,63 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared composables
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+internal fun AddEnvVarComposable(
+    onConfirm: (name: String, value: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var value by remember { mutableStateOf("") }
+    var showPresets by remember { mutableStateOf(false) }
+
+    val knownNames = remember { EnvVarsView.knownEnvVars.map { it[0] } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.new_environment_variable)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text("Value") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Box {
+                    OutlinedButton(onClick = { showPresets = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Presets")
+                    }
+                    DropdownMenu(expanded = showPresets, onDismissRequest = { showPresets = false }) {
+                        knownNames.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(preset) },
+                                onClick = { name = preset; showPresets = false }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val n = name.trim().replace(" ", "")
+                val v = value.trim().replace(" ", "")
+                onConfirm(n, v)
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
