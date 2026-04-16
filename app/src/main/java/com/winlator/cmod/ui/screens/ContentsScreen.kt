@@ -61,12 +61,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
 import com.winlator.cmod.R
 import com.winlator.cmod.container.ContainerManager
-import com.winlator.cmod.contentdialog.ContentDialog
-import com.winlator.cmod.contentdialog.ContentInfoDialog
-import com.winlator.cmod.contentdialog.ContentUntrustedDialog
 import com.winlator.cmod.contents.ContentProfile
 import com.winlator.cmod.contents.ContentsManager
-import com.winlator.cmod.core.AppUtils
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
@@ -74,6 +70,28 @@ import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 import com.winlator.cmod.ui.theme.SurfaceVariant
 import java.util.concurrent.Executors
+
+// ---------------------------------------------------------------------------
+// Dialog state — drives Compose dialogs in the install pipeline
+// ---------------------------------------------------------------------------
+private sealed class InstallDialogState {
+    data class Info(
+        val profile: ContentProfile,
+        val onConfirm: () -> Unit,
+        val onCancel: () -> Unit,
+    ) : InstallDialogState()
+
+    data class Untrusted(
+        val files: List<ContentProfile.ContentFile>,
+        val onConfirm: () -> Unit,
+        val onCancel: () -> Unit,
+    ) : InstallDialogState()
+
+    data class Alert(
+        val message: String,
+        val onDismiss: () -> Unit,
+    ) : InstallDialogState()
+}
 
 @Composable
 fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
@@ -84,7 +102,6 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
     val profiles by vm.profiles.collectAsState()
     val downloadingKeys by vm.downloadingKeys.collectAsState()
 
-    // Fetch remote profiles on entry (mirrors onResume)
     LaunchedEffect(Unit) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val url = prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES)
@@ -92,26 +109,28 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         vm.syncRemote(url)
     }
 
-    // Clear cache on leave (mirrors onDestroy)
     DisposableEffect(Unit) {
         onDispose { context.cacheDir.listFiles()?.forEach { it.delete() } }
     }
 
-    // Confirm dialogs / info state / loading overlay
+    // ── State ─────────────────────────────────────────────────────────────────
     var confirmInstallPrompt by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf<ContentProfile?>(null) }
     var showInfoFor by remember { mutableStateOf<ContentProfile?>(null) }
     var loadingText by remember { mutableStateOf<String?>(null) }
+    var installDialog by remember { mutableStateOf<InstallDialogState?>(null) }
 
-    // File picker for installing local .wcp/.txz/.zst content
+    // File picker
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                launchInstall(context, uri, vm,
+                launchInstall(
+                    context, uri, vm,
                     onLoading = { text -> loadingText = text },
-                    onDone = { loadingText = null },
+                    onDone   = { loadingText = null },
+                    onDialog = { state -> installDialog = state },
                 )
             }
         }
@@ -119,7 +138,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // ── Filter chips ─────────────────────────────────────────────────────
+        // ── Filter chips ──────────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -179,9 +198,11 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         isDownloading = isDownloading,
                         onDownload = {
                             vm.downloadRemote(profile, context.cacheDir) { uri ->
-                                launchInstall(context, uri, vm,
+                                launchInstall(
+                                    context, uri, vm,
                                     onLoading = { text -> loadingText = text },
-                                    onDone = { loadingText = null },
+                                    onDone   = { loadingText = null },
+                                    onDialog = { state -> installDialog = state },
                                 )
                             }
                         },
@@ -198,12 +219,14 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
     if (confirmInstallPrompt) {
         AlertDialog(
             onDismissRequest = { confirmInstallPrompt = false },
-            title = { Text(context.getString(R.string.do_you_want_to_install_content)) },
+            containerColor = Color(0xFF2A2A2A),
+            title = { Text(context.getString(R.string.do_you_want_to_install_content), color = Color.White) },
             text = {
                 Text(
                     context.getString(R.string.pls_make_sure_content_trustworthy) + "\n\n" +
                     context.getString(R.string.content_suffix_is_wcp_packed_xz_zst) + "\n" +
-                    context.getString(R.string.get_more_contents_form_github)
+                    context.getString(R.string.get_more_contents_form_github),
+                    color = Color(0xFFCCCCCC),
                 )
             },
             confirmButton = {
@@ -214,11 +237,11 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         type = "*/*"
                     }
                     filePicker.launch(intent)
-                }) { Text(context.getString(android.R.string.ok)) }
+                }) { Text(context.getString(android.R.string.ok), color = Primary) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmInstallPrompt = false }) {
-                    Text(context.getString(android.R.string.cancel))
+                    Text(context.getString(android.R.string.cancel), color = Primary)
                 }
             },
         )
@@ -249,54 +272,49 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         }
     }
 
-    // ── Content info dialog (Compose replacement for ContentInfoDialog) ───────
+    // ── Content info (local item) ─────────────────────────────────────────────
     showInfoFor?.let { profile ->
-        AlertDialog(
-            onDismissRequest = { showInfoFor = null },
+        ContentInfoDialog(
+            profile = profile,
+            onDismiss = { showInfoFor = null },
+        )
+    }
+
+    // ── Install pipeline dialogs ──────────────────────────────────────────────
+    when (val d = installDialog) {
+        is InstallDialogState.Info -> ContentInfoDialog(
+            profile = d.profile,
+            confirmLabel = context.getString(R.string._continue),
+            onConfirm = { installDialog = null; d.onConfirm() },
+            onDismiss = { installDialog = null; d.onCancel() },
+        )
+        is InstallDialogState.Untrusted -> UntrustedDialog(
+            files = d.files,
+            onConfirm = { installDialog = null; d.onConfirm() },
+            onDismiss = { installDialog = null; d.onCancel() },
+        )
+        is InstallDialogState.Alert -> AlertDialog(
+            onDismissRequest = { installDialog = null; d.onDismiss() },
             containerColor = Color(0xFF2A2A2A),
-            title = { Text("Content Info", color = Color.White) },
-            text = {
-                Column {
-                    Text(
-                        "Version: ${profile.verName}  (code ${profile.verCode})",
-                        color = Color(0xFFAAAAAA),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (!profile.fileList.isNullOrEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("Files:", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.labelMedium)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            profile.fileList.forEach { file ->
-                                Text(
-                                    text = "• ${file.target}",
-                                    color = Color(0xFFCCCCCC),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(vertical = 2.dp),
-                                )
-                            }
-                        }
-                    }
+            text = { Text(d.message, color = Color(0xFFCCCCCC)) },
+            confirmButton = {
+                TextButton(onClick = { installDialog = null; d.onDismiss() }) {
+                    Text(context.getString(android.R.string.ok), color = Primary)
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showInfoFor = null }) { Text("Close", color = Color(0xFF8B6BE0)) }
-            },
         )
+        null -> Unit
     }
 
     // ── Confirm: remove ───────────────────────────────────────────────────────
     confirmRemove?.let { profile ->
         AlertDialog(
             onDismissRequest = { confirmRemove = null },
-            title = { Text(context.getString(R.string.do_you_want_to_remove_this_content)) },
+            containerColor = Color(0xFF2A2A2A),
+            title = { Text(context.getString(R.string.do_you_want_to_remove_this_content), color = Color.White) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRemove = null
-                    // Guard: if Wine/Proton, check no container is using it
                     if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE ||
                         profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON
                     ) {
@@ -304,29 +322,132 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         val entryName = ContentsManager.getEntryName(profile)
                         val blocking = cm.getContainers().firstOrNull { it.wineVersion == entryName }
                         if (blocking != null) {
-                            ContentDialog.alert(
-                                context,
-                                context.getString(
+                            installDialog = InstallDialogState.Alert(
+                                message = context.getString(
                                     R.string.unable_to_remove_content_since_container_using,
                                     blocking.name,
                                 ),
-                                null,
+                                onDismiss = {},
                             )
                             return@TextButton
                         }
                     }
                     vm.removeContent(profile)
-                }) { Text(context.getString(android.R.string.ok)) }
+                }) { Text(context.getString(android.R.string.ok), color = Primary) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemove = null }) {
-                    Text(context.getString(android.R.string.cancel))
+                    Text(context.getString(android.R.string.cancel), color = Primary)
                 }
             },
         )
     }
 }
 
+// ---------------------------------------------------------------------------
+// Reusable Compose dialogs
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ContentInfoDialog(
+    profile: ContentProfile,
+    confirmLabel: String = "OK",
+    onConfirm: () -> Unit = {},
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF2A2A2A),
+        title = { Text("Content Info", color = Color.White) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                InfoRow("Type",    profile.type.toString())
+                InfoRow("Version", profile.verName)
+                InfoRow("Code",    profile.verCode.toString())
+                if (!profile.desc.isNullOrEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(profile.desc, color = Color(0xFFBBBBBB), style = MaterialTheme.typography.bodySmall)
+                }
+                if (!profile.fileList.isNullOrEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Files", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.height(4.dp))
+                    profile.fileList.forEach { file ->
+                        Text(
+                            text = "${file.source} → ${file.target}",
+                            color = Color(0xFFCCCCCC),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(confirmLabel, color = Primary) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Primary) }
+        },
+    )
+}
+
+@Composable
+private fun UntrustedDialog(
+    files: List<ContentProfile.ContentFile>,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF2A2A2A),
+        title = { Text("Warning", color = Color(0xFFFF8A80)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    "The following files could not be verified. Continue only if you trust the source.",
+                    color = Color(0xFFCCCCCC),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(10.dp))
+                files.forEach { file ->
+                    Text(
+                        text = "${file.source} → ${file.target}",
+                        color = Color(0xFFFF8A80),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Continue", color = Primary) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Primary) }
+        },
+    )
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+        Text("$label: ", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.bodySmall)
+        Text(value,      color = Color(0xFFE0E0E0), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Content list item
+// ---------------------------------------------------------------------------
 @Composable
 private fun ContentItem(
     profile: ContentProfile,
@@ -345,16 +466,8 @@ private fun ContentItem(
             .background(Surface)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        // Type icon
-        val iconRes = when (profile.type) {
-            ContentProfile.ContentType.CONTENT_TYPE_WINE,
-            ContentProfile.ContentType.CONTENT_TYPE_PROTON -> R.drawable.icon_wine
-            else -> R.drawable.icon_settings
-        }
         Icon(
-            imageVector = if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE ||
-                profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)
-                Icons.Filled.Settings else Icons.Filled.Settings,
+            imageVector = Icons.Filled.Settings,
             contentDescription = null,
             tint = Primary,
             modifier = Modifier.size(36.dp),
@@ -364,17 +477,12 @@ private fun ContentItem(
             .weight(1f)
             .padding(horizontal = 12.dp)) {
             Text("Version: ${profile.verName}", style = MaterialTheme.typography.bodyLarge, color = OnSurface)
-            Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+            Text("Code: ${profile.verCode}",    style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
         }
 
-        // Download button (remote items)
         if (!isLocal) {
             if (isDownloading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(28.dp),
-                    color = Primary,
-                    strokeWidth = 3.dp,
-                )
+                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Primary, strokeWidth = 3.dp)
             } else {
                 IconButton(onClick = onDownload) {
                     Icon(Icons.Filled.Download, contentDescription = "Download", tint = Primary)
@@ -382,7 +490,6 @@ private fun ContentItem(
             }
         }
 
-        // Menu (local items)
         if (isLocal) {
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
@@ -406,7 +513,7 @@ private fun ContentItem(
 }
 
 // ---------------------------------------------------------------------------
-// Install pipeline (ported from ContentsFragment.onActivityResult)
+// Install pipeline
 // ---------------------------------------------------------------------------
 private fun launchInstall(
     context: Context,
@@ -414,6 +521,7 @@ private fun launchInstall(
     vm: ContentsViewModel,
     onLoading: (String?) -> Unit,
     onDone: () -> Unit,
+    onDialog: (InstallDialogState) -> Unit,
 ) {
     val activity = context as Activity
     activity.runOnUiThread { onLoading(context.getString(R.string.installing_content)) }
@@ -423,21 +531,20 @@ private fun launchInstall(
 
         override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
             val msgId = when (reason) {
-                ContentsManager.InstallFailedReason.ERROR_BADTAR        -> R.string.file_cannot_be_recognied
-                ContentsManager.InstallFailedReason.ERROR_NOPROFILE     -> R.string.profile_not_found_in_content
-                ContentsManager.InstallFailedReason.ERROR_BADPROFILE    -> R.string.profile_cannot_be_recognized
-                ContentsManager.InstallFailedReason.ERROR_EXIST         -> R.string.content_already_exist
-                ContentsManager.InstallFailedReason.ERROR_MISSINGFILES  -> R.string.content_is_incomplete
+                ContentsManager.InstallFailedReason.ERROR_BADTAR         -> R.string.file_cannot_be_recognied
+                ContentsManager.InstallFailedReason.ERROR_NOPROFILE      -> R.string.profile_not_found_in_content
+                ContentsManager.InstallFailedReason.ERROR_BADPROFILE     -> R.string.profile_cannot_be_recognized
+                ContentsManager.InstallFailedReason.ERROR_EXIST          -> R.string.content_already_exist
+                ContentsManager.InstallFailedReason.ERROR_MISSINGFILES   -> R.string.content_is_incomplete
                 ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> R.string.content_cannot_be_trusted
-                else -> R.string.unable_to_install_content
+                else                                                      -> R.string.unable_to_install_content
             }
             activity.runOnUiThread {
                 onDone()
-                ContentDialog.alert(
-                    context,
-                    "${context.getString(R.string.install_failed)}: ${context.getString(msgId)}",
-                    null,
-                )
+                onDialog(InstallDialogState.Alert(
+                    message  = "${context.getString(R.string.install_failed)}: ${context.getString(msgId)}",
+                    onDismiss = {},
+                ))
             }
         }
 
@@ -445,31 +552,35 @@ private fun launchInstall(
             if (isExtracting) {
                 val self = this
                 activity.runOnUiThread {
-                    // Show Compose content-info dialog by reusing ContentInfoDialog
-                    val infoDialog = ContentInfoDialog(context, profile)
-                    (infoDialog.findViewById<android.widget.TextView>(R.id.BTConfirm))
-                        .setText(R.string._continue)
-                    infoDialog.setOnConfirmCallback {
-                        isExtracting = false
-                        val untrusted = vm.manager.getUnTrustedContentFiles(profile)
-                        if (untrusted.isNotEmpty()) {
-                            val untrustedDialog = ContentUntrustedDialog(context, untrusted)
-                            untrustedDialog.setOnCancelCallback { activity.runOnUiThread { onDone() } }
-                            untrustedDialog.setOnConfirmCallback {
+                    onDialog(InstallDialogState.Info(
+                        profile   = profile,
+                        onConfirm = {
+                            isExtracting = false
+                            val untrusted = vm.manager.getUnTrustedContentFiles(profile)
+                            if (untrusted.isNotEmpty()) {
+                                onDialog(InstallDialogState.Untrusted(
+                                    files     = untrusted,
+                                    onConfirm = { vm.manager.finishInstallContent(profile, self) },
+                                    onCancel  = { activity.runOnUiThread { onDone() } },
+                                ))
+                            } else {
                                 vm.manager.finishInstallContent(profile, self)
                             }
-                            untrustedDialog.show()
-                        } else {
-                            vm.manager.finishInstallContent(profile, self)
-                        }
-                    }
-                    infoDialog.setOnCancelCallback { activity.runOnUiThread { onDone() } }
-                    infoDialog.show()
+                        },
+                        onCancel = { activity.runOnUiThread { onDone() } },
+                    ))
                 }
             } else {
                 activity.runOnUiThread {
                     onDone()
-                    ContentDialog.alert(context, R.string.content_installed_success, null)
+                    onDialog(InstallDialogState.Alert(
+                        message   = context.getString(R.string.content_installed_success),
+                        onDismiss = {
+                            vm.manager.syncContents()
+                            vm.setFilter(profile.type)
+                            vm.refreshList()
+                        },
+                    ))
                     vm.manager.syncContents()
                     vm.setFilter(profile.type)
                     vm.refreshList()
