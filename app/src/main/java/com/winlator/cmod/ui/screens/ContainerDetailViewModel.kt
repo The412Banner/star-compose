@@ -431,23 +431,21 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         resolvedColorAsString: String,
         onDone: () -> Unit
     ) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Main) {
             isSaving = true
             PreloaderState.show(context.getString(R.string.creating_container))
-            withContext(Dispatchers.IO) {
-                doConfirm(
-                    resolvedGraphicsDriverConfig,
-                    resolvedDXWrapperConfig,
-                    resolvedFPSCounterConfig,
-                    resolvedEnvVars,
-                    resolvedCPUList,
-                    resolvedCPUListWoW64,
-                    resolvedColorAsString
-                )
-            }
+            doConfirm(
+                resolvedGraphicsDriverConfig,
+                resolvedDXWrapperConfig,
+                resolvedFPSCounterConfig,
+                resolvedEnvVars,
+                resolvedCPUList,
+                resolvedCPUListWoW64,
+                resolvedColorAsString
+            )
             PreloaderState.hide()
             isSaving = false
-            withContext(Dispatchers.Main) { onDone() }
+            onDone()
         }
     }
 

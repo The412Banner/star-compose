@@ -427,15 +427,12 @@ private fun WinComponentsTab(viewModel: ContainerDetailViewModel) {
 @Composable
 private fun WinComponentRow(comp: WinComponentEntry, onSelect: (Int) -> Unit) {
     val options = listOf("Builtin (Wine)", "Native (Windows)")
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(comp.label, modifier = Modifier.weight(1f))
-        CompactDropdown(
-            options = options,
-            selectedOption = options.getOrElse(comp.selectedIndex) { options[0] },
-            onSelect = { opt -> onSelect(options.indexOf(opt).coerceAtLeast(0)) }
-        )
-    }
-    Spacer(Modifier.height(4.dp))
+    LabeledDropdown(
+        label = comp.label,
+        options = options,
+        selectedOption = options.getOrElse(comp.selectedIndex) { options[0] },
+        onSelect = { opt -> onSelect(options.indexOf(opt).coerceAtLeast(0)) }
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -801,13 +798,27 @@ private fun CompactDropdown(
         onExpandedChange = { expanded = it },
         modifier = modifier
     ) {
-        OutlinedTextField(
-            value = selectedOption,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
-        )
+        OutlinedCard(
+            onClick = { expanded = !expanded },
+            modifier = Modifier
+                .menuAnchor()
+                .height(56.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = selectedOption,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            }
+        }
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { opt ->
                 DropdownMenuItem(
