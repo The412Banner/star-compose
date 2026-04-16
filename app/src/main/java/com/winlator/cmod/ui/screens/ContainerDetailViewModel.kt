@@ -145,16 +145,16 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var xrKeycodeNames by mutableStateOf(emptyList<String>()); private set
 
     private val xrDefaults = listOf(
-        XKeycode.KEY_A.ordinal(),
-        XKeycode.KEY_B.ordinal(),
-        XKeycode.KEY_X.ordinal(),
-        XKeycode.KEY_Y.ordinal(),
-        XKeycode.KEY_SPACE.ordinal(),
-        XKeycode.KEY_ENTER.ordinal(),
-        XKeycode.KEY_UP.ordinal(),
-        XKeycode.KEY_DOWN.ordinal(),
-        XKeycode.KEY_LEFT.ordinal(),
-        XKeycode.KEY_RIGHT.ordinal()
+        XKeycode.KEY_A.ordinal,
+        XKeycode.KEY_B.ordinal,
+        XKeycode.KEY_X.ordinal,
+        XKeycode.KEY_Y.ordinal,
+        XKeycode.KEY_SPACE.ordinal,
+        XKeycode.KEY_ENTER.ordinal,
+        XKeycode.KEY_UP.ordinal,
+        XKeycode.KEY_DOWN.ordinal,
+        XKeycode.KEY_LEFT.ordinal,
+        XKeycode.KEY_RIGHT.ordinal
     )
 
     val xrMappingLabels = listOf(
@@ -278,9 +278,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         lcAll = c?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"
 
         // Input type
-        val inputType = c?.inputType ?: WinHandler.DEFAULT_INPUT_TYPE
-        enableXInput   = (inputType and WinHandler.FLAG_INPUT_TYPE_XINPUT) != 0
-        enableDInput   = (inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT) != 0
+        val inputType: Int = c?.inputType ?: WinHandler.DEFAULT_INPUT_TYPE.toInt()
+        enableXInput   = (inputType and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0
+        enableDInput   = (inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0
         exclusiveXInput = c?.isExclusiveXInput ?: true
         if (!exclusiveXInput) {
             enableXInput = true; enableDInput = true
