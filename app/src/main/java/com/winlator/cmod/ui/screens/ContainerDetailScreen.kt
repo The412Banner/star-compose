@@ -42,6 +42,7 @@ import com.winlator.cmod.core.FileUtils
 import com.winlator.cmod.core.GPUInformation
 import com.winlator.cmod.core.StringUtils
 import com.winlator.cmod.core.WineThemeManager
+import androidx.compose.foundation.lazy.items
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
