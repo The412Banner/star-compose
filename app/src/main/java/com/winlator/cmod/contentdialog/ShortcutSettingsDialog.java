@@ -33,7 +33,6 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.tabs.TabLayout;
 import com.winlator.cmod.ContainerDetailFragment;
 import com.winlator.cmod.R;
-import com.winlator.cmod.ShortcutsFragment;
 import com.winlator.cmod.box64.Box64PresetManager;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
@@ -65,7 +64,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class ShortcutSettingsDialog extends ContentDialog {
-    private final ShortcutsFragment fragment;
     private final Context ctxRef;
     private final Runnable onRefresh;
     private final Shortcut shortcut;
@@ -73,22 +71,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
     private TextView tvGraphicsDriverVersion;
     private String box64Version;
 
-    /** Legacy constructor used by ShortcutsFragment (XML UI). */
-    public ShortcutSettingsDialog(ShortcutsFragment fragment, Shortcut shortcut) {
-        super(fragment.getContext(), R.layout.shortcut_settings_dialog);
-        this.fragment = fragment;
-        this.ctxRef = null;
-        this.onRefresh = null;
-        this.shortcut = shortcut;
-        setTitle(shortcut.name);
-        setIcon(R.drawable.icon_settings);
-        createContentView();
-    }
-
-    /** Compose-friendly constructor — no Fragment dependency. */
     public ShortcutSettingsDialog(Context context, Shortcut shortcut, Runnable onRefresh) {
         super(context, R.layout.shortcut_settings_dialog);
-        this.fragment = null;
         this.ctxRef = context;
         this.onRefresh = onRefresh;
         this.shortcut = shortcut;
@@ -699,11 +683,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
             if (!newLinkFile.isFile()) linkFile.renameTo(newLinkFile);
         }
 
-        if (fragment != null) {
-            fragment.loadShortcutsList();
-            fragment.updateShortcutOnScreen(newName, newName, shortcut.container.id, newDesktopFile.getAbsolutePath(),
-                    Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid"));
-        } else if (onRefresh != null) {
+        if (onRefresh != null) {
             onRefresh.run();
         }
     }

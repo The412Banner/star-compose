@@ -39,7 +39,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 
-import com.google.android.material.navigation.NavigationView;
 import com.winlator.cmod.box64.Box64EditPresetDialog;
 import com.winlator.cmod.box64.Box64Preset;
 import com.winlator.cmod.box64.Box64PresetManager;
@@ -359,17 +358,7 @@ public class SettingsFragment extends Fragment {
             saveCustomApiKeySettings(editor);
 
             if (editor.commit()) {
-                // In Compose mode there is no XML NavigationView or FLFragmentContainer.
-                NavigationView navigationView = getActivity().findViewById(R.id.NavigationView);
-                if (navigationView != null) {
-                    navigationView.setCheckedItem(R.id.main_menu_containers);
-                    getParentFragmentManager().beginTransaction()
-                            .replace(R.id.FLFragmentContainer, new ContainersFragment())
-                            .commit();
-                } else {
-                    // Compose host — just pop back to the previous screen.
-                    requireActivity().getOnBackPressedDispatcher().onBackPressed();
-                }
+                requireActivity().getOnBackPressedDispatcher().onBackPressed();
             }
 
 			AppUtils.showToast(context, "Settings saved!");
