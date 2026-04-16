@@ -269,8 +269,13 @@ private fun AppShell(
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
 
-    val screenTitle = Screen.drawerItems
-        .firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
+    val screenTitle = when {
+        currentRoute.startsWith("container_detail") -> {
+            val id = backstackEntry?.arguments?.getInt("id") ?: -1
+            if (id > 0) context.getString(R.string.edit_container) else context.getString(R.string.new_container)
+        }
+        else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,

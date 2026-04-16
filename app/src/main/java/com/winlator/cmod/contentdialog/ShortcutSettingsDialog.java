@@ -31,7 +31,7 @@ import android.widget.TextView;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.tabs.TabLayout;
-import com.winlator.cmod.ContainerDetailFragment;
+import com.winlator.cmod.ContainerDetailHelper;
 import com.winlator.cmod.R;
 import com.winlator.cmod.box64.Box64PresetManager;
 import com.winlator.cmod.container.ContainerManager;
@@ -166,9 +166,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final EditText etExecArgs = findViewById(R.id.ETExecArgs);
         etExecArgs.setText(shortcut.getExtra("execArgs"));
 
-        ContainerDetailFragment containerDetailFragment = new ContainerDetailFragment(shortcut.container.id);
-//        containerDetailFragment.loadScreenSizeSpinner(getContentView(), shortcut.getExtra("screenSize", shortcut.container.getScreenSize()));
-
         loadScreenSizeSpinner(getContentView(), shortcut.getExtra("screenSize", shortcut.container.getScreenSize()), isDarkMode);
 
 
@@ -234,7 +231,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
             sEmulator64.setSelection(1);
         }
 
-        ContainerDetailFragment.setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig, wineInfo.isArm64EC());
+        ContainerDetailHelper.setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig, wineInfo.isArm64EC());
         loadBox64VersionSpinner(context, contentsManager, sBox64Version, wineInfo.isArm64EC());
 
         // Add this part to set the initial spinner selection based on the shortcut
@@ -348,7 +345,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         String isTouchScreenMode = shortcut.getExtra("simTouchScreen");
         cbSimTouchScreen.setChecked(isTouchScreenMode.equals("1") ? true : false);
 
-        ContainerDetailFragment.createWinComponentsTabFromShortcut(this, getContentView(),
+        ContainerDetailHelper.createWinComponentsTabFromShortcut(this, getContentView(),
                 shortcut.getExtra("wincomponents", shortcut.container.getWinComponents()), isDarkMode);
 
         final EnvVarsView envVarsView = createEnvVarsTab();
@@ -453,7 +450,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 String emulator = StringUtils.parseIdentifier(sEmulator.getSelectedItem());
                 String lc_all = etLC_ALL.getText().toString();
                 String midiSoundFont = sMIDISoundFont.getSelectedItemPosition() == 0 ? "" : sMIDISoundFont.getSelectedItem().toString();
-                String screenSize = containerDetailFragment.getScreenSize(getContentView());
+                String screenSize = ContainerDetailHelper.getScreenSize(getContentView());
 
                 int finalInputType = 0;
                 finalInputType |= cbEnableXInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_XINPUT : 0;
@@ -487,7 +484,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
                 shortcut.putExtra("fullscreenStretched", cbFullscreenStretched.isChecked() ? "1" : null);
 
-                String wincomponents = containerDetailFragment.getWinComponents(getContentView());
+                String wincomponents = ContainerDetailHelper.getWinComponents(getContentView());
                 shortcut.putExtra("wincomponents", wincomponents);
 
                 String envVars = envVarsView.getEnvVars();
@@ -780,7 +777,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
     public void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vGraphicsDriverConfig, String selectedGraphicsDriver, String selectedDXWrapper) {
         final Context context = sGraphicsDriver.getContext();
         
-        ContainerDetailFragment.updateGraphicsDriverSpinner(context, sGraphicsDriver);
+        ContainerDetailHelper.updateGraphicsDriverSpinner(context, sGraphicsDriver);
         
         final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
         

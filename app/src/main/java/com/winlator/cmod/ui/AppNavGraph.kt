@@ -9,10 +9,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.winlator.cmod.ContainerDetailFragment
 import com.winlator.cmod.InputControlsFragment
 import com.winlator.cmod.SettingsFragment
 import com.winlator.cmod.ui.screens.AdrenoToolsScreen
+import com.winlator.cmod.ui.screens.ContainerDetailScreen
 import com.winlator.cmod.ui.screens.ContainersScreen
 import com.winlator.cmod.ui.screens.ContentsScreen
 import com.winlator.cmod.ui.screens.FileManagerScreen
@@ -30,6 +30,7 @@ fun AppNavGraph(
     val activity = LocalContext.current as FragmentActivity
 
     NavHost(navController = navController, startDestination = startRoute, modifier = modifier) {
+
 
         composable(Screen.Containers.route) {
             ContainersScreen(
@@ -54,9 +55,10 @@ fun AppNavGraph(
             ),
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getInt("id") ?: -1
-            FragmentScreen(activity = activity) {
-                if (id == -1) ContainerDetailFragment() else ContainerDetailFragment(id)
-            }
+            ContainerDetailScreen(
+                containerId = id,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Shortcuts.route) {

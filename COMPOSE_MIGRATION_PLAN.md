@@ -66,7 +66,7 @@
 
 | Fragment | Layout | Notes |
 |---|---|---|
-| `ContainerDetailFragment` | `container_detail_fragment.xml` | Tabbed UI — convert tabs to Compose `TabRow` |
+| ~~`ContainerDetailFragment`~~ | ~~`container_detail_fragment.xml`~~ | ✅ Replaced by ContainerDetailScreen.kt + ContainerDetailViewModel.kt |
 | ~~`SavesFragment`~~ | ~~`saves_fragment.xml`~~ | ✅ Replaced by SavesScreen.kt (commit `b42ff8b`) |
 | `InputControlsFragment` | `input_controls_fragment.xml` | Complex custom input UI — hardest of the 5 |
 | `SettingsFragment` | `preference_list_fragment.xml` | `PreferenceFragmentCompat` — replace with Compose preference list |
