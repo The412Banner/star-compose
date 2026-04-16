@@ -96,6 +96,12 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         onDispose { context.cacheDir.listFiles()?.forEach { it.delete() } }
     }
 
+    // Confirm dialogs / info state / loading overlay
+    var confirmInstallPrompt by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf<ContentProfile?>(null) }
+    var showInfoFor by remember { mutableStateOf<ContentProfile?>(null) }
+    var loadingText by remember { mutableStateOf<String?>(null) }
+
     // File picker for installing local .wcp/.txz/.zst content
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -109,12 +115,6 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             }
         }
     }
-
-    // Confirm dialogs / info state / loading overlay
-    var confirmInstallPrompt by remember { mutableStateOf(false) }
-    var confirmRemove by remember { mutableStateOf<ContentProfile?>(null) }
-    var showInfoFor by remember { mutableStateOf<ContentProfile?>(null) }
-    var loadingText by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -264,12 +264,14 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                     if (!profile.fileList.isNullOrEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         Text("Files:", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.labelMedium)
-                        androidx.compose.foundation.lazy.LazyColumn(
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
                         ) {
-                            androidx.compose.foundation.lazy.items(profile.fileList) { file ->
+                            profile.fileList.forEach { file ->
                                 Text(
-                                    text = "• ${file.path}",
+                                    text = "• ${file.target}",
                                     color = Color(0xFFCCCCCC),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(vertical = 2.dp),
