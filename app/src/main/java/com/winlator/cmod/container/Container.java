@@ -4,7 +4,6 @@ import android.os.Environment;
 
 import com.winlator.cmod.box64.Box64Preset;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
-import com.winlator.cmod.contentdialog.FPSCounterConfigDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;

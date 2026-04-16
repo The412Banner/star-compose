@@ -65,7 +65,6 @@ import com.winlator.cmod.contentdialog.ActiveWindowsDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
-import com.winlator.cmod.contentdialog.FPSCounterConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
