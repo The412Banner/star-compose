@@ -9,6 +9,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
     object Saves         : Screen("saves",          "Saves",                  "save")
     object FileManager   : Screen("file_manager",   "File Manager",           "folder_open")
     object Settings      : Screen("settings",       "Settings",               "settings")
+    object Appearance    : Screen("appearance",     "Appearance",             "palette")
 
     // Store items — these launch Activities via Intent, not Compose nav routes
     object Gog    : Screen("gog",    "GOG",          "storefront")
@@ -22,7 +23,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
     companion object {
         // Used for top-bar title lookup — all navigable screens
         val drawerItems by lazy {
-            listOf(Shortcuts, Containers, Settings, InputControls, Contents, AdrenoTools, Saves)
+            listOf(Shortcuts, Containers, Settings, Appearance, InputControls, Contents, AdrenoTools, Saves)
         }
         val storeItems by lazy {
             listOf(Gog, Epic, Amazon, Steam)

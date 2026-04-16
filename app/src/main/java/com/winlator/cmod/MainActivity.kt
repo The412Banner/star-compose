@@ -50,6 +50,7 @@ import com.winlator.cmod.ui.PreloaderOverlay
 import com.winlator.cmod.ui.Screen
 import com.winlator.cmod.ui.screens.SplashScreen
 import com.winlator.cmod.ui.screens.SplashViewModel
+import com.winlator.cmod.ui.theme.AppThemeState
 import com.winlator.cmod.ui.theme.WinlatorTheme
 import kotlinx.coroutines.launch
 import java.io.File
@@ -97,6 +98,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         PACKAGE_NAME = applicationContext.packageName
+        AppThemeState.init(this)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
 
