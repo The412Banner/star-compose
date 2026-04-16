@@ -746,7 +746,7 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SectionBox(
+internal fun SectionBox(
     title: String,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
@@ -771,7 +771,7 @@ private fun SectionBox(
 }
 
 @Composable
-private fun LabeledDropdown(
+internal fun LabeledDropdown(
     label: String,
     options: List<String>,
     selectedOption: String,
@@ -852,7 +852,7 @@ private fun CompactDropdown(
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun GraphicsDriverConfigDialog(
+internal fun GraphicsDriverConfigDialog(
     graphicsDriver: String,
     initialConfig: String,
     onConfirm: (String) -> Unit,
@@ -1013,7 +1013,7 @@ private fun GraphicsDriverConfigDialog(
 }
 
 @Composable
-private fun ExtensionPickerDialog(
+internal fun ExtensionPickerDialog(
     extensions: List<String>,
     blacklisted: Set<String>,
     onDismiss: () -> Unit,
@@ -1062,7 +1062,7 @@ private fun ExtensionPickerDialog(
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun DxvkConfigDialog(
+internal fun DxvkConfigDialog(
     isArm64EC: Boolean,
     initialConfig: String,
     onConfirm: (String) -> Unit,
@@ -1168,7 +1168,7 @@ private fun DxvkConfigDialog(
 }
 
 @Composable
-private fun WineD3DConfigDialog(
+internal fun WineD3DConfigDialog(
     initialConfig: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
@@ -1241,7 +1241,7 @@ private fun WineD3DConfigDialog(
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun FpsCounterConfigDialog(
+internal fun FpsCounterConfigDialog(
     initialConfig: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit

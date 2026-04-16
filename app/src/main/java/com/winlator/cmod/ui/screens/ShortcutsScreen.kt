@@ -6,23 +6,37 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddToHomeScreen
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -31,17 +45,30 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,29 +76,55 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
+import androidx.compose.ui.viewinterop.AndroidView
+import com.winlator.cmod.R
 import com.winlator.cmod.SettingsFragment
 import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.XrActivity
+import com.winlator.cmod.box64.Box64Preset
+import com.winlator.cmod.box64.Box64PresetManager
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.Shortcut
-import com.winlator.cmod.contentdialog.ShortcutSettingsDialog
+import com.winlator.cmod.contentdialog.AddEnvVarDialog
+import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog
+import com.winlator.cmod.contents.ContentProfile
+import com.winlator.cmod.contents.ContentsManager
+import com.winlator.cmod.core.DefaultVersion
 import com.winlator.cmod.core.FileUtils
+import com.winlator.cmod.core.KeyValueSet
+import com.winlator.cmod.core.StringUtils
+import com.winlator.cmod.core.WineInfo
+import com.winlator.cmod.fexcore.FEXCorePreset
+import com.winlator.cmod.fexcore.FEXCorePresetManager
+import com.winlator.cmod.inputcontrols.ControlsProfile
+import com.winlator.cmod.inputcontrols.InputControlsManager
+import com.winlator.cmod.midi.MidiManager
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
 import com.winlator.cmod.ui.theme.Primary
-import com.winlator.cmod.ui.theme.Surface
+import com.winlator.cmod.ui.theme.Surface as SurfaceColor
+import com.winlator.cmod.widget.CPUListView
+import com.winlator.cmod.widget.EnvVarsView
+import com.winlator.cmod.winhandler.WinHandler
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.io.FileWriter
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.IOException
+import java.lang.reflect.Field
 
 @Composable
 fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
@@ -81,6 +134,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     var confirmRemove by remember { mutableStateOf<Shortcut?>(null) }
     var cloneTarget by remember { mutableStateOf<Shortcut?>(null) }
+    var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (shortcuts.isEmpty()) {
@@ -95,9 +149,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     ShortcutItem(
                         shortcut = shortcut,
                         onRun = { runShortcut(activity, shortcut) },
-                        onSettings = {
-                            ShortcutSettingsDialog(context, shortcut) { vm.refresh() }.show()
-                        },
+                        onSettings = { settingsShortcut = shortcut },
                         onRemove = { confirmRemove = shortcut },
                         onClone = { cloneTarget = shortcut },
                         onAddToHome = { addToHomeScreen(context, shortcut) },
@@ -164,6 +216,14 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             dismissButton = { TextButton(onClick = { cloneTarget = null }) { Text("Cancel") } },
         )
     }
+
+    // Compose shortcut settings dialog
+    settingsShortcut?.let { s ->
+        ShortcutSettingsDialogScreen(
+            shortcut = s,
+            onDismiss = { settingsShortcut = null; vm.refresh() }
+        )
+    }
 }
 
 @Composable
@@ -183,13 +243,12 @@ private fun ShortcutItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface)
+            .background(SurfaceColor)
             .clickable(onClick = onRun)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        // Icon: Bitmap from shortcut or fallback
         if (shortcut.icon != null) {
-            androidx.compose.foundation.Image(
+            Image(
                 bitmap = shortcut.icon.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.size(40.dp),
@@ -207,7 +266,6 @@ private fun ShortcutItem(
             Text(text = shortcut.name, style = MaterialTheme.typography.bodyLarge, color = OnSurface)
             Text(text = shortcut.container.name, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
         }
-        // 3-dot menu
         Box {
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant)
@@ -248,9 +306,807 @@ private fun ShortcutItem(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Non-composable helpers (ported from ShortcutsFragment inner methods)
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val res = context.resources
+
+    // Async-loaded state
+    var isArm64EC by remember { mutableStateOf(false) }
+    var box64Versions by remember { mutableStateOf(listOf<String>()) }
+    var box64Presets by remember { mutableStateOf(listOf<Box64Preset>()) }
+    var fexCoreVersions by remember { mutableStateOf(listOf<String>()) }
+    var fexCorePresets by remember { mutableStateOf(listOf<FEXCorePreset>()) }
+    var controlsProfiles by remember { mutableStateOf(listOf<ControlsProfile>()) }
+    var midiList by remember { mutableStateOf(listOf<String>()) }
+
+    // Screen size
+    val screenSizeEntries = remember { res.getStringArray(R.array.screen_size_entries).toList() }
+    val rawScreenSize = remember { shortcut.getExtra("screenSize", shortcut.container.getScreenSize()) }
+    var selectedScreenSize by remember {
+        val display = screenSizeEntries.firstOrNull {
+            StringUtils.parseIdentifier(it).equals(rawScreenSize, ignoreCase = true)
+        }
+        mutableStateOf(display ?: "Custom")
+    }
+    var customWidth by remember {
+        mutableStateOf(if (rawScreenSize.contains("x")) rawScreenSize.substringBefore("x") else "800")
+    }
+    var customHeight by remember {
+        mutableStateOf(if (rawScreenSize.contains("x")) rawScreenSize.substringAfter("x") else "600")
+    }
+
+    // Graphics driver
+    val graphicsDriverEntries = remember { res.getStringArray(R.array.graphics_driver_entries).toList() }
+    var selectedGfxDriver by remember {
+        val id = shortcut.getExtra("graphicsDriver", shortcut.container.graphicsDriver)
+        mutableStateOf(graphicsDriverEntries.firstOrNull { StringUtils.parseIdentifier(it) == id }
+            ?: graphicsDriverEntries.firstOrNull() ?: id)
+    }
+    var graphicsDriverConfig by remember {
+        mutableStateOf(shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig()))
+    }
+
+    // DX wrapper
+    val dxWrapperEntries = remember { res.getStringArray(R.array.dxwrapper_entries).toList() }
+    var selectedDxWrapper by remember {
+        val id = shortcut.getExtra("dxwrapper", shortcut.container.getDXWrapper())
+        mutableStateOf(dxWrapperEntries.firstOrNull { StringUtils.parseIdentifier(it) == id }
+            ?: dxWrapperEntries.firstOrNull() ?: id)
+    }
+    var dxWrapperConfig by remember {
+        mutableStateOf(shortcut.getExtra("dxwrapperConfig", shortcut.container.getDXWrapperConfig()))
+    }
+
+    // Audio driver
+    val audioDriverEntries = remember { res.getStringArray(R.array.audio_driver_entries).toList() }
+    var selectedAudioDriver by remember {
+        val id = shortcut.getExtra("audioDriver", shortcut.container.audioDriver)
+        mutableStateOf(audioDriverEntries.firstOrNull { StringUtils.parseIdentifier(it) == id }
+            ?: audioDriverEntries.firstOrNull() ?: id)
+    }
+
+    // Emulator
+    val emulatorEntries = remember { res.getStringArray(R.array.emulator_entries).toList() }
+    var selectedEmulator by remember {
+        val id = shortcut.getExtra("emulator", shortcut.container.emulator)
+        mutableStateOf(emulatorEntries.firstOrNull { StringUtils.parseIdentifier(it) == id }
+            ?: emulatorEntries.firstOrNull() ?: id)
+    }
+
+    // MIDI
+    var selectedMidi by remember {
+        mutableStateOf(shortcut.getExtra("midiSoundFont", shortcut.container.getMIDISoundFont()))
+    }
+
+    // Basic text fields
+    var name by remember { mutableStateOf(shortcut.name) }
+    var execArgs by remember { mutableStateOf(shortcut.getExtra("execArgs")) }
+    var lcAll by remember { mutableStateOf(shortcut.getExtra("lc_all", shortcut.container.getLC_ALL())) }
+
+    // Checkboxes / switches
+    var fullscreenStretched by remember { mutableStateOf(shortcut.getExtra("fullscreenStretched", "0") == "1") }
+    var exclusiveXInput by remember {
+        val v = shortcut.getExtra("exclusiveXInput")
+        mutableStateOf(if (v.isEmpty()) shortcut.container.isExclusiveXInput else v == "1")
+    }
+    val initialInputType = remember {
+        shortcut.getExtra("inputType", shortcut.container.getInputType().toString()).toIntOrNull()
+            ?: shortcut.container.getInputType()
+    }
+    var enableXInput by remember { mutableStateOf((initialInputType and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0) }
+    var enableDInput by remember { mutableStateOf((initialInputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0) }
+    var disabledXInput by remember { mutableStateOf(shortcut.getExtra("disableXinput", "0") == "1") }
+    var simTouchScreen by remember { mutableStateOf(shortcut.getExtra("simTouchScreen", "0") == "1") }
+
+    // Num controllers
+    val numControllersEntries = remember { res.getStringArray(R.array.num_controllers_entries).toList() }
+    var selectedNumControllers by remember {
+        val n = (shortcut.getExtra("numControllers", "1").toIntOrNull() ?: 1).coerceIn(1, numControllersEntries.size)
+        mutableStateOf(numControllersEntries.getOrElse(n - 1) { numControllersEntries.first() })
+    }
+
+    // Box64 / FEXCore / controls
+    var selectedBox64Version by remember {
+        mutableStateOf(shortcut.getExtra("box64Version", shortcut.container.getBox64Version()))
+    }
+    var selectedBox64PresetIndex by remember { mutableIntStateOf(0) }
+    var selectedFexCoreVersion by remember {
+        mutableStateOf(shortcut.getExtra("fexcoreVersion", shortcut.container.getFEXCoreVersion()))
+    }
+    var selectedFexCorePresetIndex by remember { mutableIntStateOf(0) }
+    var selectedControlsProfileIndex by remember { mutableIntStateOf(0) }
+
+    // Startup selection
+    val startupSelectionEntries = remember { res.getStringArray(R.array.startup_selection_entries).toList() }
+    var selectedStartupSelection by remember {
+        val idx = (shortcut.getExtra("startupSelection", shortcut.container.getStartupSelection().toString())
+            .toIntOrNull() ?: 0).coerceIn(0, startupSelectionEntries.lastIndex)
+        mutableStateOf(startupSelectionEntries.getOrElse(idx) { startupSelectionEntries.first() })
+    }
+
+    // Sharpness
+    val sharpnessEffectEntries = remember { res.getStringArray(R.array.vkbasalt_sharpness_entries).toList() }
+    var selectedSharpnessEffect by remember {
+        val v = shortcut.getExtra("sharpnessEffect", "None")
+        mutableStateOf(sharpnessEffectEntries.firstOrNull { it == v } ?: sharpnessEffectEntries.firstOrNull() ?: v)
+    }
+    var sharpnessLevel by remember {
+        mutableIntStateOf(shortcut.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100)
+    }
+    var sharpnessDenoise by remember {
+        mutableIntStateOf(shortcut.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100)
+    }
+
+    // Win components
+    val winComponents = remember {
+        val raw = shortcut.getExtra("wincomponents", shortcut.container.getWinComponents())
+        mutableStateListOf<WinComponentEntry>().also { list ->
+            for (parts in KeyValueSet(raw)) {
+                val key = parts[0]; val idx = parts[1].toIntOrNull() ?: 0
+                val resId = res.getIdentifier(key, "string", context.packageName)
+                val label = if (resId != 0) res.getString(resId) else key
+                list.add(WinComponentEntry(key, idx, label))
+            }
+        }
+    }
+
+    // AndroidView refs
+    val envVarsViewRef = remember { mutableStateOf<EnvVarsView?>(null) }
+    val cpuListViewRef = remember { mutableStateOf<CPUListView?>(null) }
+
+    // Icon
+    var iconBitmap by remember { mutableStateOf<Bitmap?>(shortcut.icon) }
+
+    // Sub-dialog show states
+    var showGfxConfig by remember { mutableStateOf(false) }
+    var showDxvkConfig by remember { mutableStateOf(false) }
+    var showWineD3DConfig by remember { mutableStateOf(false) }
+
+    // Tab
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabTitles = listOf("Win Components", "Env Vars", "Advanced")
+
+    // Icon picker
+    val iconPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            runCatching {
+                val bitmap = context.contentResolver.openInputStream(it)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                } ?: return@runCatching
+                shortcut.iconFile?.let { f ->
+                    f.parentFile?.mkdirs()
+                    FileOutputStream(f).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
+                }
+                shortcut.icon = bitmap
+                iconBitmap = bitmap
+            }
+        }
+    }
+
+    // Load async data
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val cm = ContentsManager(context)
+            cm.syncContents()
+            val wineInfo = WineInfo.fromIdentifier(context, cm, shortcut.container.wineVersion)
+            val arm64ec = wineInfo.isArm64EC()
+
+            val b64Type = if (arm64ec) ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64
+                          else ContentProfile.ContentType.CONTENT_TYPE_BOX64
+            val b64Arr = if (arm64ec) res.getStringArray(R.array.wowbox64_version_entries).toMutableList()
+                         else res.getStringArray(R.array.box64_version_entries).toMutableList()
+            for (p in cm.getProfiles(b64Type)) {
+                val n = ContentsManager.getEntryName(p)
+                b64Arr.add(n.substring(n.indexOf('-') + 1))
+            }
+
+            val fexList = res.getStringArray(R.array.fexcore_version_entries).toMutableList()
+            for (p in cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE)) {
+                val n = ContentsManager.getEntryName(p)
+                fexList.add(n.substring(n.indexOf('-') + 1))
+            }
+
+            val b64Presets = Box64PresetManager.getPresets("box64", context)
+            val fexPresets = FEXCorePresetManager.getPresets(context)
+            val profiles = InputControlsManager(context).getProfiles(true)
+
+            val midi = mutableListOf("-- ${context.getString(R.string.disabled)} --", MidiManager.DEFAULT_SF2_FILE)
+            val sfDir = File(context.filesDir, MidiManager.SF_DIR)
+            if (sfDir.exists()) sfDir.listFiles()?.forEach { midi.add(it.name) }
+
+            withContext(Dispatchers.Main) {
+                isArm64EC = arm64ec
+                box64Versions = b64Arr
+                fexCoreVersions = fexList
+                box64Presets = b64Presets
+                fexCorePresets = fexPresets
+                controlsProfiles = profiles
+                midiList = midi
+
+                val b64Id = shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset())
+                selectedBox64PresetIndex = b64Presets.indexOfFirst { it.id == b64Id }.coerceAtLeast(0)
+
+                val fexId = shortcut.getExtra("fexcorePreset", shortcut.container.getFEXCorePreset())
+                selectedFexCorePresetIndex = fexPresets.indexOfFirst { it.id == fexId }.coerceAtLeast(0)
+
+                val cpId = shortcut.getExtra("controlsProfile", "0").toIntOrNull() ?: 0
+                selectedControlsProfileIndex = if (cpId == 0) 0
+                    else profiles.indexOfFirst { it.id == cpId }.let { if (it >= 0) it + 1 else 0 }
+
+                if (selectedBox64Version.isEmpty()) selectedBox64Version = b64Arr.firstOrNull() ?: ""
+            }
+        }
+    }
+
+    // Save
+    fun save() {
+        val newName = name.trim()
+        if (newName.isNotEmpty() && newName != shortcut.name) {
+            renameShortcut(shortcut, newName)
+        }
+
+        val screenSize = if (selectedScreenSize == "Custom") {
+            val w = customWidth.trim(); val h = customHeight.trim()
+            if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
+                val wi = w.toInt(); val hi = h.toInt()
+                if (wi % 2 == 0 && hi % 2 == 0) "${wi}x${hi}" else Container.DEFAULT_SCREEN_SIZE
+            } else Container.DEFAULT_SCREEN_SIZE
+        } else {
+            StringUtils.parseIdentifier(selectedScreenSize)
+        }
+
+        var finalInputType = 0
+        if (enableXInput) finalInputType = finalInputType or WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()
+        if (enableDInput) finalInputType = finalInputType or WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()
+
+        val wincomps = winComponents.joinToString(",") { "${it.key}=${it.selectedIndex}" }
+        val envVars = envVarsViewRef.value?.getEnvVars() ?: shortcut.getExtra("envVars")
+        val cpuList = cpuListViewRef.value?.getCheckedCPUListAsString() ?: shortcut.getExtra("cpuList", shortcut.container.getCPUList(true))
+
+        val b64PresetId = box64Presets.getOrElse(selectedBox64PresetIndex) { null }?.id ?: Box64Preset.COMPATIBILITY
+        val fexPresetId = fexCorePresets.getOrElse(selectedFexCorePresetIndex) { null }?.id ?: FEXCorePreset.COMPATIBILITY
+        val ctrlProfileId = if (selectedControlsProfileIndex == 0) 0
+            else controlsProfiles.getOrElse(selectedControlsProfileIndex - 1) { null }?.id ?: 0
+
+        val midiVal = if (midiList.isNotEmpty() && selectedMidi == midiList.firstOrNull()) "" else selectedMidi
+        val startupIdx = startupSelectionEntries.indexOf(selectedStartupSelection).coerceAtLeast(0)
+        val numCtrl = (numControllersEntries.indexOf(selectedNumControllers) + 1).coerceAtLeast(1)
+
+        with(shortcut) {
+            putExtra("execArgs", execArgs.ifEmpty { null })
+            putExtra("screenSize", screenSize)
+            putExtra("graphicsDriver", StringUtils.parseIdentifier(selectedGfxDriver))
+            putExtra("graphicsDriverConfig", graphicsDriverConfig)
+            putExtra("dxwrapper", StringUtils.parseIdentifier(selectedDxWrapper))
+            putExtra("dxwrapperConfig", dxWrapperConfig)
+            putExtra("audioDriver", StringUtils.parseIdentifier(selectedAudioDriver))
+            putExtra("emulator", StringUtils.parseIdentifier(selectedEmulator))
+            putExtra("midiSoundFont", midiVal.ifEmpty { null })
+            putExtra("lc_all", lcAll)
+            putExtra("fullscreenStretched", if (fullscreenStretched) "1" else null)
+            putExtra("inputType", finalInputType.toString())
+            putExtra("exclusiveXInput", if (exclusiveXInput) "1" else "0")
+            putExtra("disableXinput", if (disabledXInput) "1" else null)
+            putExtra("simTouchScreen", if (simTouchScreen) "1" else "0")
+            putExtra("numControllers", numCtrl.toString())
+            putExtra("box64Version", selectedBox64Version)
+            putExtra("box64Preset", b64PresetId)
+            putExtra("fexcoreVersion", selectedFexCoreVersion)
+            putExtra("fexcorePreset", fexPresetId)
+            putExtra("controlsProfile", if (ctrlProfileId > 0) ctrlProfileId.toString() else null)
+            putExtra("startupSelection", startupIdx.toString())
+            putExtra("sharpnessEffect", selectedSharpnessEffect)
+            putExtra("sharpnessLevel", sharpnessLevel.toString())
+            putExtra("sharpnessDenoise", sharpnessDenoise.toString())
+            putExtra("wincomponents", wincomps)
+            putExtra("envVars", envVars.ifEmpty { null })
+            putExtra("cpuList", cpuList)
+            saveData()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.92f),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column {
+                // Title bar
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(shortcut.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+                Divider(color = DividerColor)
+
+                // Scrollable content
+                Column(
+                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Name
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.name)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Exec Args
+                    OutlinedTextField(
+                        value = execArgs,
+                        onValueChange = { execArgs = it },
+                        label = { Text(stringResource(R.string.exec_arguments)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Screen size
+                    LabeledDropdown(
+                        label = stringResource(R.string.screen_size),
+                        options = screenSizeEntries,
+                        selectedOption = selectedScreenSize,
+                        onSelect = { selectedScreenSize = it }
+                    )
+                    if (selectedScreenSize == "Custom") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = customWidth,
+                                onValueChange = { customWidth = it },
+                                label = { Text("Width") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = customHeight,
+                                onValueChange = { customHeight = it },
+                                label = { Text("Height") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+                    }
+
+                    // Icon
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        iconBitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                        OutlinedButton(onClick = { iconPickerLauncher.launch("image/*") }, modifier = Modifier.weight(1f)) {
+                            Text("Select Icon")
+                        }
+                    }
+
+                    // Graphics Driver
+                    LabeledDropdown(
+                        label = stringResource(R.string.graphics_driver),
+                        options = graphicsDriverEntries,
+                        selectedOption = selectedGfxDriver,
+                        onSelect = { selectedGfxDriver = it }
+                    )
+                    OutlinedButton(onClick = { showGfxConfig = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("${stringResource(R.string.graphics_driver)}: ${GraphicsDriverConfigDialog.getVersion(graphicsDriverConfig)}")
+                    }
+
+                    // DX Wrapper
+                    LabeledDropdown(
+                        label = stringResource(R.string.dxwrapper),
+                        options = dxWrapperEntries,
+                        selectedOption = selectedDxWrapper,
+                        onSelect = { selectedDxWrapper = it }
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            if (StringUtils.parseIdentifier(selectedDxWrapper).contains("dxvk")) showDxvkConfig = true
+                            else showWineD3DConfig = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("DX Wrapper Config") }
+
+                    // Audio driver
+                    LabeledDropdown(
+                        label = stringResource(R.string.audio_driver),
+                        options = audioDriverEntries,
+                        selectedOption = selectedAudioDriver,
+                        onSelect = { selectedAudioDriver = it }
+                    )
+
+                    // Emulator
+                    LabeledDropdown(
+                        label = "Emulator",
+                        options = emulatorEntries,
+                        selectedOption = selectedEmulator,
+                        onSelect = { selectedEmulator = it },
+                        enabled = isArm64EC
+                    )
+
+                    // MIDI
+                    if (midiList.isNotEmpty()) {
+                        val midiDisplay = midiList.firstOrNull { it == selectedMidi } ?: midiList.first()
+                        LabeledDropdown(
+                            label = "MIDI Sound Font",
+                            options = midiList,
+                            selectedOption = midiDisplay,
+                            onSelect = { selectedMidi = it }
+                        )
+                    }
+
+                    // LC_ALL
+                    OutlinedTextField(
+                        value = lcAll,
+                        onValueChange = { lcAll = it },
+                        label = { Text("LC_ALL") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Fullscreen stretched
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = fullscreenStretched, onCheckedChange = { fullscreenStretched = it })
+                        Text(stringResource(R.string.fullscreen_stretched))
+                    }
+
+                    // Input section
+                    SectionBox(title = "Input") {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = enableXInput,
+                                onCheckedChange = { enableXInput = it },
+                                enabled = exclusiveXInput
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.enable_xinput_for_wine_game), modifier = Modifier.weight(1f))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = enableDInput,
+                                onCheckedChange = { enableDInput = it },
+                                enabled = exclusiveXInput
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.enable_dinput_for_wine_game), modifier = Modifier.weight(1f))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = exclusiveXInput,
+                                onCheckedChange = { checked ->
+                                    exclusiveXInput = checked
+                                    if (!checked) { enableXInput = true; enableDInput = true }
+                                    else if (enableXInput && enableDInput) enableDInput = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Exclusive Input", modifier = Modifier.weight(1f))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = disabledXInput, onCheckedChange = { disabledXInput = it })
+                            Text("Disable XInput")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = simTouchScreen, onCheckedChange = { simTouchScreen = it })
+                            Text("Touchscreen Mode")
+                        }
+                        LabeledDropdown(
+                            label = "Num Controllers",
+                            options = numControllersEntries,
+                            selectedOption = selectedNumControllers,
+                            onSelect = { selectedNumControllers = it }
+                        )
+                    }
+
+                    // Tabs
+                    TabRow(selectedTabIndex = selectedTab) {
+                        tabTitles.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+
+                    // Tab content
+                    when (selectedTab) {
+                        0 -> ScWinComponentsTab(winComponents)
+                        1 -> ScEnvVarsTab(shortcut, envVarsViewRef)
+                        2 -> ScAdvancedTab(
+                            isArm64EC = isArm64EC,
+                            box64Versions = box64Versions,
+                            selectedBox64Version = selectedBox64Version,
+                            onBox64VersionChange = { selectedBox64Version = it },
+                            box64Presets = box64Presets,
+                            selectedBox64PresetIndex = selectedBox64PresetIndex,
+                            onBox64PresetIndexChange = { selectedBox64PresetIndex = it },
+                            fexCoreVersions = fexCoreVersions,
+                            selectedFexCoreVersion = selectedFexCoreVersion,
+                            onFexVersionChange = { selectedFexCoreVersion = it },
+                            fexCorePresets = fexCorePresets,
+                            selectedFexPresetIndex = selectedFexCorePresetIndex,
+                            onFexPresetIndexChange = { selectedFexCorePresetIndex = it },
+                            controlsProfiles = controlsProfiles,
+                            selectedControlsProfileIndex = selectedControlsProfileIndex,
+                            onControlsProfileChange = { selectedControlsProfileIndex = it },
+                            startupSelectionEntries = startupSelectionEntries,
+                            selectedStartupSelection = selectedStartupSelection,
+                            onStartupChange = { selectedStartupSelection = it },
+                            cpuListViewRef = cpuListViewRef,
+                            initialCpuList = shortcut.getExtra("cpuList", shortcut.container.getCPUList(true)),
+                            sharpnessEffectEntries = sharpnessEffectEntries,
+                            selectedSharpnessEffect = selectedSharpnessEffect,
+                            onSharpnessEffectChange = { selectedSharpnessEffect = it },
+                            sharpnessLevel = sharpnessLevel,
+                            onSharpnessLevelChange = { sharpnessLevel = it },
+                            sharpnessDenoise = sharpnessDenoise,
+                            onSharpnessDenoiseChange = { sharpnessDenoise = it }
+                        )
+                    }
+                }
+
+                Divider(color = DividerColor)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { save(); onDismiss() }) { Text(stringResource(android.R.string.ok)) }
+                }
+            }
+        }
+    }
+
+    if (showGfxConfig) {
+        GraphicsDriverConfigDialog(
+            graphicsDriver = StringUtils.parseIdentifier(selectedGfxDriver),
+            initialConfig = graphicsDriverConfig,
+            onConfirm = { graphicsDriverConfig = it; showGfxConfig = false },
+            onDismiss = { showGfxConfig = false }
+        )
+    }
+    if (showDxvkConfig) {
+        DxvkConfigDialog(
+            isArm64EC = isArm64EC,
+            initialConfig = dxWrapperConfig,
+            onConfirm = { dxWrapperConfig = it; showDxvkConfig = false },
+            onDismiss = { showDxvkConfig = false }
+        )
+    }
+    if (showWineD3DConfig) {
+        WineD3DConfigDialog(
+            initialConfig = dxWrapperConfig,
+            onConfirm = { dxWrapperConfig = it; showWineD3DConfig = false },
+            onDismiss = { showWineD3DConfig = false }
+        )
+    }
+}
+
+@Composable
+private fun ScWinComponentsTab(components: androidx.compose.runtime.snapshots.SnapshotStateList<WinComponentEntry>) {
+    val directx = components.filter { it.key.startsWith("direct") }
+    val general = components.filterNot { it.key.startsWith("direct") }
+    val options = listOf("Builtin (Wine)", "Native (Windows)")
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (directx.isNotEmpty()) {
+            SectionBox(title = "DirectX") {
+                directx.forEach { comp ->
+                    LabeledDropdown(
+                        label = comp.label,
+                        options = options,
+                        selectedOption = options.getOrElse(comp.selectedIndex) { options[0] },
+                        onSelect = { opt ->
+                            val i = components.indexOfFirst { it.key == comp.key }
+                            if (i >= 0) components[i] = components[i].copy(selectedIndex = options.indexOf(opt).coerceAtLeast(0))
+                        }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        if (general.isNotEmpty()) {
+            SectionBox(title = "General") {
+                general.forEach { comp ->
+                    LabeledDropdown(
+                        label = comp.label,
+                        options = options,
+                        selectedOption = options.getOrElse(comp.selectedIndex) { options[0] },
+                        onSelect = { opt ->
+                            val i = components.indexOfFirst { it.key == comp.key }
+                            if (i >= 0) components[i] = components[i].copy(selectedIndex = options.indexOf(opt).coerceAtLeast(0))
+                        }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScEnvVarsTab(shortcut: Shortcut, envVarsViewRef: MutableState<EnvVarsView?>) {
+    val context = LocalContext.current
+    Column {
+        AndroidView(
+            factory = { ctx ->
+                EnvVarsView(ctx).also { ev ->
+                    ev.setDarkMode(true)
+                    ev.setEnvVars(com.winlator.cmod.core.EnvVars(shortcut.getExtra("envVars")))
+                    envVarsViewRef.value = ev
+                }
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { envVarsViewRef.value?.let { AddEnvVarDialog(context, it).show() } },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text("Add Environment Variable")
+        }
+    }
+}
+
+@Composable
+private fun ScAdvancedTab(
+    isArm64EC: Boolean,
+    box64Versions: List<String>,
+    selectedBox64Version: String,
+    onBox64VersionChange: (String) -> Unit,
+    box64Presets: List<Box64Preset>,
+    selectedBox64PresetIndex: Int,
+    onBox64PresetIndexChange: (Int) -> Unit,
+    fexCoreVersions: List<String>,
+    selectedFexCoreVersion: String,
+    onFexVersionChange: (String) -> Unit,
+    fexCorePresets: List<FEXCorePreset>,
+    selectedFexPresetIndex: Int,
+    onFexPresetIndexChange: (Int) -> Unit,
+    controlsProfiles: List<ControlsProfile>,
+    selectedControlsProfileIndex: Int,
+    onControlsProfileChange: (Int) -> Unit,
+    startupSelectionEntries: List<String>,
+    selectedStartupSelection: String,
+    onStartupChange: (String) -> Unit,
+    cpuListViewRef: MutableState<CPUListView?>,
+    initialCpuList: String,
+    sharpnessEffectEntries: List<String>,
+    selectedSharpnessEffect: String,
+    onSharpnessEffectChange: (String) -> Unit,
+    sharpnessLevel: Int,
+    onSharpnessLevelChange: (Int) -> Unit,
+    sharpnessDenoise: Int,
+    onSharpnessDenoiseChange: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionBox(title = "Box64") {
+            LabeledDropdown(
+                label = stringResource(R.string.box64_version),
+                options = box64Versions,
+                selectedOption = box64Versions.firstOrNull { it == selectedBox64Version } ?: selectedBox64Version,
+                onSelect = onBox64VersionChange
+            )
+            Spacer(Modifier.height(8.dp))
+            val presetNames = box64Presets.map { it.name }
+            LabeledDropdown(
+                label = stringResource(R.string.box64_preset),
+                options = presetNames,
+                selectedOption = presetNames.getOrElse(selectedBox64PresetIndex) { "" },
+                onSelect = { opt -> onBox64PresetIndexChange(presetNames.indexOf(opt).coerceAtLeast(0)) }
+            )
+        }
+
+        if (isArm64EC) {
+            SectionBox(title = "FEXCore") {
+                LabeledDropdown(
+                    label = stringResource(R.string.fexcore_version),
+                    options = fexCoreVersions,
+                    selectedOption = fexCoreVersions.firstOrNull { it == selectedFexCoreVersion } ?: selectedFexCoreVersion,
+                    onSelect = onFexVersionChange
+                )
+                Spacer(Modifier.height(8.dp))
+                val fexNames = fexCorePresets.map { it.name }
+                LabeledDropdown(
+                    label = stringResource(R.string.fexcore_preset),
+                    options = fexNames,
+                    selectedOption = fexNames.getOrElse(selectedFexPresetIndex) { "" },
+                    onSelect = { opt -> onFexPresetIndexChange(fexNames.indexOf(opt).coerceAtLeast(0)) }
+                )
+            }
+        }
+
+        val profileNames = mutableListOf(stringResource(R.string.none))
+        profileNames.addAll(controlsProfiles.map { it.getName() })
+        LabeledDropdown(
+            label = "Controls Profile",
+            options = profileNames,
+            selectedOption = profileNames.getOrElse(selectedControlsProfileIndex) { profileNames.first() },
+            onSelect = { opt -> onControlsProfileChange(profileNames.indexOf(opt).coerceAtLeast(0)) }
+        )
+
+        LabeledDropdown(
+            label = stringResource(R.string.startup_selection),
+            options = startupSelectionEntries,
+            selectedOption = selectedStartupSelection,
+            onSelect = onStartupChange
+        )
+
+        SectionBox(title = stringResource(R.string.processor_affinity)) {
+            AndroidView(
+                factory = { ctx ->
+                    CPUListView(ctx).also { cpv ->
+                        cpv.setCheckedCPUList(initialCpuList)
+                        cpuListViewRef.value = cpv
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().wrapContentHeight()
+            )
+        }
+
+        SectionBox(title = "Sharpness (VKBasalt)") {
+            LabeledDropdown(
+                label = "Effect",
+                options = sharpnessEffectEntries,
+                selectedOption = selectedSharpnessEffect,
+                onSelect = onSharpnessEffectChange
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("Level: $sharpnessLevel%", style = MaterialTheme.typography.bodySmall)
+            Slider(
+                value = sharpnessLevel.toFloat(),
+                onValueChange = { onSharpnessLevelChange(it.toInt()) },
+                valueRange = 0f..100f,
+                steps = 99
+            )
+            Text("Denoise: $sharpnessDenoise%", style = MaterialTheme.typography.bodySmall)
+            Slider(
+                value = sharpnessDenoise.toFloat(),
+                onValueChange = { onSharpnessDenoiseChange(it.toInt()) },
+                valueRange = 0f..100f,
+                steps = 99
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Non-composable helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun renameShortcut(shortcut: Shortcut, newName: String) {
+    val parent = shortcut.file.parentFile ?: return
+    val oldFile = shortcut.file
+    val newFile = File(parent, "$newName.desktop")
+    if (!newFile.isFile && oldFile.renameTo(newFile)) {
+        runCatching {
+            val field: Field = Shortcut::class.java.getDeclaredField("file")
+            field.isAccessible = true
+            field.set(shortcut, newFile)
+        }
+        val lnk = File(parent, "${shortcut.name}.lnk")
+        if (lnk.isFile) lnk.renameTo(File(parent, "$newName.lnk"))
+    }
+}
 
 private fun runShortcut(activity: Activity, shortcut: Shortcut) {
     if (!XrActivity.isEnabled(activity)) {
@@ -353,7 +1209,6 @@ private fun showProperties(context: Context, shortcut: Shortcut) {
     val days    = (totalMs / (1000 * 60 * 60 * 24))
     val formatted = String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
 
-    // Properties still uses the legacy ContentDialog XML layout — show it directly
     val dialog = com.winlator.cmod.contentdialog.ContentDialog(context, com.winlator.cmod.R.layout.shortcut_properties_dialog)
     dialog.setTitle("Properties")
     (dialog.findViewById<android.widget.TextView>(com.winlator.cmod.R.id.play_count))
