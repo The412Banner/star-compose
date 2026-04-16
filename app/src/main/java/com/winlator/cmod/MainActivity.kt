@@ -236,22 +236,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Called by SaveSettingsDialog / SaveEditDialog after a save is added/edited. */
-    fun onSaveAdded() {
-        // SavesFragment is not yet in the Compose nav — no-op for now
-    }
-
-    /** Called by SavesFragment to show the save edit dialog. */
-    fun showSaveEditDialog(save: com.winlator.cmod.saves.Save?) {
-        if (save == null) return
-        val dlg = com.winlator.cmod.contentdialog.SaveEditDialog(
-            this,
-            com.winlator.cmod.saves.SaveManager(this),
-            containerManager,
-            save
-        )
-        dlg.show()
-    }
 
     private fun menuItemIdToRoute(itemId: Int): String? = when (itemId) {
         R.id.main_menu_containers -> Screen.Containers.route

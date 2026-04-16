@@ -11,13 +11,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.winlator.cmod.ContainerDetailFragment
 import com.winlator.cmod.InputControlsFragment
-import com.winlator.cmod.SavesFragment
 import com.winlator.cmod.SettingsFragment
 import com.winlator.cmod.ui.screens.AdrenoToolsScreen
 import com.winlator.cmod.ui.screens.ContainersScreen
 import com.winlator.cmod.ui.screens.ContentsScreen
 import com.winlator.cmod.ui.screens.FileManagerScreen
 import com.winlator.cmod.ui.screens.FragmentScreen
+import com.winlator.cmod.ui.screens.SavesScreen
 import com.winlator.cmod.ui.screens.ShortcutsScreen
 
 @Composable
@@ -84,7 +84,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.Saves.route) {
-            FragmentScreen(activity = activity) { SavesFragment() }
+            SavesScreen()
         }
     }
 }
