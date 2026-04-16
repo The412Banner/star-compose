@@ -276,6 +276,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         getWindow().setAttributes(params);
         
         setContentView(R.layout.xserver_display_activity);
+        com.winlator.cmod.ui.PreloaderOverlayHelper.attach(this);
 
         preloaderDialog = new PreloaderDialog(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
