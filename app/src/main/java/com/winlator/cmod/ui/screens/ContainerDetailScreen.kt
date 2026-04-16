@@ -886,7 +886,6 @@ private fun CompactDropdown(
         modifier = modifier
     ) {
         OutlinedCard(
-            onClick = { expanded = !expanded },
             modifier = Modifier
                 .menuAnchor()
                 .height(56.dp),
