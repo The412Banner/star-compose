@@ -146,31 +146,14 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 7 — Add Shortcut from External Storage
-**Status:** NOT STARTED  
-**File:** `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt`  
-**Problem:** Users cannot add an existing `.lnk` shortcut file from storage. Only shortcut creation via ContainerDetail exists.  
-**Fix:**
-1. Add an "Import Shortcut" option — either as a second FAB action or in a top-bar menu
-2. Launch `ActivityResultContracts.GetContent("*/*")` filtered for `.lnk` files
-3. Copy the file into the shortcuts directory
-4. Reload the shortcut list  
-**Effort:** 45 min  
-**Commit message:** `feat: add import shortcut from external storage`
+**Status:** ✅ COMPLETE — commit `546d25e`, CI run `24577265773`  
+**Files:** `ShortcutsViewModel.kt`, `ShortcutsScreen.kt`
 
 ---
 
 ### Job 8 — Shortcut List Layout Toggle (Grid / List)
-**Status:** NOT STARTED  
-**File:** `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt`  
-**Problem:** Shortcuts are list-only. Old version had a layout toggle.  
-**Fix:**
-1. Add a toggle icon button (list/grid) in the shortcuts top bar
-2. `isGridView: Boolean` state in `ShortcutsViewModel`, persisted to SharedPreferences
-3. List mode: current `LazyColumn` with icon + name + container name
-4. Grid mode: `LazyVerticalGrid(GridCells.Fixed(2))` — large icon, name below, container name smaller
-5. Smooth animated crossfade between the two layouts using `AnimatedContent`  
-**Effort:** 1.5 hours  
-**Commit message:** `feat: add grid/list layout toggle for shortcuts`
+**Status:** ✅ COMPLETE — commit `546d25e`, CI run `24577265773`  
+**Files:** `ShortcutsViewModel.kt`, `ShortcutsScreen.kt`
 
 ---
 
@@ -195,14 +178,13 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job 4: Dark mode pref + Settings theme fix | `44a4bdb` | `24571445525` | ✅ green | 2026-04-17 |
 | Job 5: Sort shortcuts list | `00dc6a5` | `24571836336` | ✅ green | 2026-04-17 |
 | Job 6: Import/Export container | `8477b65` | `24572308670` | ✅ green | 2026-04-17 |
+| Job 7+8: Import shortcut + grid/list toggle | `546d25e` | `24577265773` | ✅ green | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 7: Add Shortcut from External Storage** ⏸ PAUSED — awaiting resume
+**→ ALL 8 JOBS COMPLETE** ✅
 
-Jobs 1–6 done. CI `24572308670` ✅ green.
-
-Last known commit: `8477b65`  
-Next action: Implement Job 7 → commit → push → CI → update this log
+Last commit: `546d25e`  
+Last CI: `24577265773` ✅ green

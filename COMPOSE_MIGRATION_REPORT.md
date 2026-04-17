@@ -2,9 +2,10 @@
 
 **Repo:** https://github.com/The412Banner/star-compose  
 **Branch:** `main`  
-**Final commit:** `6537038`  
+**Final migration commit:** `6537038`  
+**Latest commit:** `546d25e`  
 **Date:** 2026-04-16  
-**Last updated:** 2026-04-16
+**Last updated:** 2026-04-17
 
 ---
 
@@ -755,6 +756,23 @@ After building the APK, go through this list. These are the areas most likely to
 - [ ] InputControls screen loads — no ActionBar crash
 - [ ] Settings screen loads — no ActionBar crash
 - [ ] Settings changes persist (dark mode toggle, etc.)
+- [ ] Dark mode toggle in Settings immediately changes the Compose theme without restart
+
+#### Shortcuts — New Features (Jobs 5–8)
+- [ ] Sort button opens dropdown with Name A→Z, Name Z→A, Container options
+- [ ] Selected sort order persists after closing and reopening the app
+- [ ] Import button → container picker appears; selecting a container → file picker opens
+- [ ] Picked `.desktop` file is copied to the selected container; shortcut appears in list
+- [ ] `container_id` in the imported file is rewritten to match the selected container
+- [ ] Grid/list toggle button switches between layouts with a crossfade
+- [ ] Grid view shows 2 columns with large icon, name, and container label
+- [ ] Grid/list preference persists after closing and reopening the app
+- [ ] All overflow menu actions (Settings, Remove, Clone, Export, Properties) work in grid mode
+
+#### Containers — New Features (Job 6)
+- [ ] Export (3-dot menu) → toast confirms path; file exists in Downloads/Winlator/Backups/Containers/
+- [ ] Import (toolbar button) → lists available backup dirs; selecting one imports and shows new container
+- [ ] Imported container settings match the exported original
 
 #### XML Layout Text Colours (common regression)
 - [ ] Input Controls → "External Controllers" section header is readable (not dark on dark)
@@ -789,6 +807,480 @@ grep -rn 'textColor.*colorPrimary\|colorPrimary.*textColor' app/src/main/res/lay
 ```
 
 Fix every match by replacing with `#E6E6E6` or a dedicated string resource.
+
+---
+
+## Part D — Post-Migration Feedback Fixes (2026-04-17)
+
+After device testing against the original Java/XML version, 8 issues were identified and fixed. All 8 jobs are complete as of commit `546d25e`, CI run `24577265773`.
+
+---
+
+### D1. Fix Summary Table
+
+| Job | Commit | Issue | Files Changed |
+|---|---|---|---|
+| 1 — Help & Support | `93d0326` | Tapping Help did nothing (TODO stub) | `AppDrawer.kt` |
+| 2 — About dialog | `d18cae6` | About dialog showed placeholder text; `BuildConfig` unresolved | `AppDrawer.kt`, `build.gradle`, `MainActivity.kt` |
+| 3 — Save overlay | `2e5f4a1`, `67844d2` | No loading state while container was being created/saved | `ContainerDetailViewModel.kt`, `ContainerDetailScreen.kt` |
+| 4 — Dark mode pref | `44a4bdb` | Dark mode toggle in Settings had no effect on Compose theme | `AppThemeState.kt`, `ThemePreset.kt`, `FragmentScreen.kt` |
+| 5 — Sort shortcuts | `00dc6a5` | No sort option — shortcuts appeared in filesystem order | `ShortcutsViewModel.kt`, `ShortcutsScreen.kt` |
+| 6 — Import/Export container | `8477b65` | Import/export container was missing from Containers screen | `ContainersViewModel.kt`, `ContainersScreen.kt` |
+| 7 — Import shortcut | `546d25e` | No way to import a `.desktop` shortcut file from storage | `ShortcutsViewModel.kt`, `ShortcutsScreen.kt` |
+| 8 — Grid/list toggle | `546d25e` | Shortcuts list-only; original had grid/list toggle | `ShortcutsViewModel.kt`, `ShortcutsScreen.kt` |
+
+Plus 4 visual polish fixes done between Job 6 and Job 7:
+
+| Commit | Issue | Fix |
+|---|---|---|
+| `beee77b` | Appearance option missing from nav drawer | Added to `AppDrawer.kt` hardcoded items |
+| Theme fix | Drawer accent color static, didn't follow theme | `AppDrawer.kt`: replaced `Primary` static import with `MaterialTheme.colorScheme.primary` |
+| Theme fix | FAB at wrong position (center instead of bottom-right) | `ContainersScreen.kt`, `ShortcutsScreen.kt`: `Box(weight(1f))` → `Box(weight(1f).fillMaxWidth())` |
+| Theme fix | Contents/AdrenoTools/Saves buttons showed old static primary color | All files: `Primary` static import → `MaterialTheme.colorScheme.primary` |
+
+---
+
+### D2. Job Detail: Help & Support
+
+**Problem:** `AppDrawer.kt` had `onClick = { /* TODO: open help URL */ }` — tapping did nothing.
+
+**Fix:** Replaced with a Compose `AlertDialog` showing the GitHub repo link with an `Intent(ACTION_VIEW)` button:
+
+```kotlin
+var showHelpDialog by remember { mutableStateOf(false) }
+
+NavigationDrawerItem(
+    label = { Text("Help & Support") },
+    onClick = { showHelpDialog = true }
+)
+
+if (showHelpDialog) {
+    AlertDialog(
+        title = { Text("Help & Support") },
+        text = { Text("Report issues at the GitHub repository.") },
+        confirmButton = {
+            TextButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+            }) { Text("Open GitHub") }
+        },
+        dismissButton = { TextButton(onClick = { showHelpDialog = false }) { Text("Close") } },
+        onDismissRequest = { showHelpDialog = false }
+    )
+}
+```
+
+---
+
+### D3. Job Detail: About Dialog + BuildConfig Fix
+
+**Problem 1:** The About dialog showed a placeholder version string.
+
+**Problem 2:** `BuildConfig.VERSION_NAME` and `BuildConfig.VERSION_CODE` caused a compile error — `Unresolved reference 'BuildConfig'`. Even after adding the import, the class didn't exist.
+
+**Root cause:** AGP disables `BuildConfig` generation by default in newer versions.
+
+**Fix — `app/build.gradle`:**
+```groovy
+buildFeatures {
+    compose true
+    buildConfig true   // ADD THIS — AGP won't generate BuildConfig without it
+}
+```
+
+**Fix — MainActivity.kt:** Add the import after enabling buildConfig:
+```kotlin
+import com.winlator.cmod.BuildConfig
+```
+
+**Fix — About dialog:**
+```kotlin
+AlertDialog(
+    title = { Text("About") },
+    text = {
+        Text("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n\nBuilt on …")
+    },
+    …
+)
+```
+
+---
+
+### D4. Job Detail: Container Save Loading Overlay
+
+**Problem:** Tapping the save FAB on ContainerDetail gave no feedback while the container was being created/saved asynchronously. The FAB remained enabled, allowing double-taps.
+
+**Fix — `ContainerDetailViewModel.kt`:**
+```kotlin
+var isSaving by mutableStateOf(false)
+    private set
+
+fun confirm(onComplete: () -> Unit) {
+    if (isSaving) return
+    isSaving = true
+    PreloaderState.show()
+    viewModelScope.launch {
+        doConfirm {
+            isSaving = false
+            PreloaderState.hide()
+            onComplete()
+        }
+    }
+}
+```
+
+**Fix — `ContainerDetailScreen.kt` — dim the FAB while saving:**
+```kotlin
+FloatingActionButton(
+    onClick = { if (!viewModel.isSaving) viewModel.confirm { navController.popBackStack() } },
+    containerColor = if (viewModel.isSaving)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    else
+        MaterialTheme.colorScheme.primary
+) {
+    Icon(Icons.Default.Check, contentDescription = "Save")
+}
+```
+
+---
+
+### D5. Job Detail: Dark Mode Preference Wiring
+
+**Problem:** The dark mode toggle in SettingsFragment had no effect. `WinlatorTheme` always used `darkColorScheme()` hardcoded.
+
+**Problem 2:** `SettingsFragment` used the light XML `AppTheme`, so the Settings screen looked completely different from the rest of the app.
+
+**Fix — `AppThemeState.kt` — read pref and register listener:**
+```kotlin
+object AppThemeState {
+    private val _isDarkMode = MutableStateFlow(
+        PreferenceManager.getDefaultSharedPreferences(app)
+            .getBoolean("dark_mode", false)
+    )
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode
+
+    init {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(app)
+        prefs.registerOnSharedPreferenceChangeListener { _, key ->
+            if (key == "dark_mode") {
+                _isDarkMode.value = prefs.getBoolean("dark_mode", false)
+            }
+        }
+    }
+
+    val colorScheme: Flow<ColorScheme> =
+        combine(_presetIndex, _customAccent, _isDarkMode) { index, accent, dark ->
+            val preset = themePresets.getOrElse(index) { themePresets.first() }
+            val override = if (index == CUSTOM_PRESET_INDEX) accent else null
+            if (dark) preset.toColorScheme(accentOverride = override)
+            else      preset.toLightColorScheme(accentOverride = override)
+        }
+}
+```
+
+**Fix — `ThemePreset.kt` — add light variant:**
+```kotlin
+fun toLightColorScheme(accentOverride: Color? = null): ColorScheme {
+    val primary = accentOverride ?: this.primary
+    return lightColorScheme(
+        primary = primary,
+        onPrimary = Color.White,
+        surface = Color(0xFFF5F5F5),
+        onSurface = Color(0xFF1C1C1C),
+        background = Color(0xFFFFFFFF),
+        // …
+    )
+}
+```
+
+**Fix — `FragmentScreen.kt` — wrap with dark context so SettingsFragment matches the app:**
+```kotlin
+AndroidView(
+    factory = { ctx ->
+        val themedCtx = ContextThemeWrapper(ctx, R.style.AppTheme_Dark)
+        FragmentContainerView(themedCtx).apply { id = View.generateViewId() }
+    },
+    …
+)
+```
+
+---
+
+### D6. Job Detail: Sort Shortcuts List
+
+**Problem:** No sort option existed — shortcuts always appeared in filesystem order.
+
+**Fix — `ShortcutsViewModel.kt`:**
+```kotlin
+enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
+
+private val _sortOrder = MutableStateFlow(
+    ShortcutSortOrder.entries[
+        prefs.getInt("sort_order", ShortcutSortOrder.NAME_ASC.ordinal)
+            .coerceIn(0, ShortcutSortOrder.entries.size - 1)
+    ]
+)
+val sortOrder: StateFlow<ShortcutSortOrder> = _sortOrder
+
+// shortcuts is now a Flow, not StateFlow
+val shortcuts: Flow<List<Shortcut>> =
+    combine(_shortcuts, _sortOrder) { list, order ->
+        when (order) {
+            ShortcutSortOrder.NAME_ASC   -> list.sortedBy { it.name.lowercase() }
+            ShortcutSortOrder.NAME_DESC  -> list.sortedByDescending { it.name.lowercase() }
+            ShortcutSortOrder.CONTAINER  -> list.sortedBy { (it.container?.name ?: "").lowercase() }
+        }
+    }
+
+fun setSortOrder(order: ShortcutSortOrder) {
+    _sortOrder.value = order
+    prefs.edit().putInt("sort_order", order.ordinal).apply()
+}
+```
+
+**Fix — `ShortcutsScreen.kt`:** Changed `collectAsState()` to `collectAsState(initial = emptyList())` since `shortcuts` is now a `Flow` not a `StateFlow`. Added a sort dropdown in the toolbar.
+
+**Key lesson:** When changing a `StateFlow` to a `Flow` (e.g. via `combine()`), always pass an `initial` value to `collectAsState()` or the screen will show nothing until the first emission.
+
+---
+
+### D7. Job Detail: Import/Export Container
+
+**Problem:** The old `ContainersFragment` had import/export. The Compose version had neither.
+
+**Fix — `ContainersViewModel.kt`:** Wraps existing `ContainerManager` Java methods:
+```kotlin
+fun exportContainer(container: Container, onDone: (String?) -> Unit) {
+    viewModelScope.launch(Dispatchers.IO) {
+        val path = manager.exportContainer(container)
+        withContext(Dispatchers.Main) { onDone(path) }
+    }
+}
+
+fun importContainer(dir: File, onDone: () -> Unit) {
+    viewModelScope.launch(Dispatchers.IO) {
+        manager.importContainer(dir)
+        withContext(Dispatchers.Main) {
+            refresh()
+            onDone()
+        }
+    }
+}
+
+fun availableBackups(): List<File> = manager.availableBackups() ?: emptyList()
+```
+
+**Fix — `ContainersScreen.kt`:**
+- Export added to each container's 3-dot dropdown menu
+- Import button added to the top bar; tapping opens an `AlertDialog` listing backup directories from `availableBackups()`
+
+---
+
+### D8. Job Detail: Import Shortcut
+
+**Problem:** No way to bring a `.desktop` shortcut file from external storage into a container.
+
+**Fix — `ShortcutsViewModel.kt`:**
+```kotlin
+fun importShortcut(containerIndex: Int, uri: Uri, context: Context) {
+    val containers = manager.getContainers()
+    if (containerIndex >= containers.size) return
+    val container = containers[containerIndex]
+    val destDir = container.getDesktopDir()
+    if (!destDir.exists()) destDir.mkdirs()
+    val fileName = DocumentFile.fromSingleUri(context, uri)?.name ?: "imported.desktop"
+    val dest = File(destDir, fileName)
+    runCatching {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            FileOutputStream(dest).use { output -> input.copyTo(output) }
+        }
+        // Rewrite container_id to match the selected container
+        val lines = dest.readLines().map { line ->
+            if (line.startsWith("container_id:")) "container_id:${container.id}" else line
+        }
+        dest.writeText(lines.joinToString("\n") + "\n")
+    }
+    refresh()
+}
+```
+
+**Fix — `ShortcutsScreen.kt`:** The import flow has two steps — first pick a container, then pick a file. Both steps must be wired up at the top level because `rememberLauncherForActivityResult` must be called unconditionally:
+
+```kotlin
+var showImportContainerPicker by remember { mutableStateOf(false) }
+var pendingImportContainerIndex by remember { mutableStateOf(-1) }
+
+// Register unconditionally — launch only when container is selected
+val importFileLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.GetContent()
+) { uri ->
+    uri ?: return@rememberLauncherForActivityResult
+    if (pendingImportContainerIndex >= 0) {
+        vm.importShortcut(pendingImportContainerIndex, uri, context)
+        pendingImportContainerIndex = -1
+    }
+}
+```
+
+---
+
+### D9. Job Detail: Grid/List Layout Toggle
+
+**Problem:** Shortcuts were list-only. The original app had a grid/list toggle.
+
+**Fix — `ShortcutsViewModel.kt`:**
+```kotlin
+private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", false))
+val isGridView: StateFlow<Boolean> = _isGridView
+
+fun setGridView(grid: Boolean) {
+    _isGridView.value = grid
+    prefs.edit().putBoolean("is_grid_view", grid).apply()
+}
+```
+
+**Fix — `ShortcutsScreen.kt`:** Toggle button in toolbar switches icon (GridView ↔ ViewList). `AnimatedContent` crossfades between layouts:
+
+```kotlin
+AnimatedContent(targetState = isGridView, label = "layout") { grid ->
+    if (grid) {
+        LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.fillMaxSize()) {
+            items(shortcuts, key = { it.file.path }) { shortcut ->
+                ShortcutGridItem(shortcut, …)
+            }
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(shortcuts, key = { it.file.path }) { shortcut ->
+                ShortcutItem(shortcut, …)
+                Divider(color = DividerColor)
+            }
+        }
+    }
+}
+```
+
+Added `ShortcutGridItem` composable — shows 64dp icon centered, name (2 lines max), container label, and 3-dot overflow menu in the top-right corner of the icon.
+
+---
+
+### D10. New Gotchas Discovered During Feedback Fixes
+
+These are additions to the existing gotcha list in section A11.
+
+#### Gotcha 13: `Box(weight(1f))` inside a `Column` needs explicit `fillMaxWidth()`
+
+`Box` inside a `Column` with `Modifier.weight(1f)` fills vertically but defaults to **wrap-content width**. This causes two symptoms:
+
+1. `align(Alignment.BottomEnd)` anchors to the wrapped width instead of the screen edge → FAB appears in the wrong position
+2. `LazyColumn` inside the Box inherits the wrap-content width → text items get cut off
+
+**Wrong:**
+```kotlin
+Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.weight(1f)) { // wrap-content width!
+        LazyColumn(modifier = Modifier.fillMaxSize()) { … }
+        FloatingActionButton(modifier = Modifier.align(Alignment.BottomEnd)) { … }
+    }
+}
+```
+
+**Fix:**
+```kotlin
+Box(modifier = Modifier.weight(1f).fillMaxWidth()) { … }
+```
+
+#### Gotcha 14: Static theme color constants never update with the theme
+
+Defining `val Primary = Color(0xFF8B6BE0)` in `Color.kt` as a top-level constant and importing it in composables seems convenient, but it never reacts to theme changes. When the user switches preset or toggles dark mode, composables reading `Primary` directly keep showing the old color.
+
+**Wrong — anywhere in a composable:**
+```kotlin
+import com.winlator.cmod.ui.theme.Primary
+
+Icon(tint = Primary) // static, never updates
+```
+
+**Fix — always use MaterialTheme inside composables:**
+```kotlin
+Icon(tint = MaterialTheme.colorScheme.primary) // reactive
+```
+
+The static constants (`Primary`, `Surface`, `OnSurface`, etc.) in `Color.kt` are only used by `Theme.kt` when building the `ColorScheme` object. They should never be imported directly into composable functions.
+
+#### Gotcha 15: `buildConfig true` required in newer AGP
+
+AGP 8.x disabled `BuildConfig` generation by default. If your project uses `BuildConfig.VERSION_NAME`, `BuildConfig.DEBUG`, or any other `BuildConfig` field, you must opt back in:
+
+```groovy
+android {
+    buildFeatures {
+        compose true
+        buildConfig true   // without this, the class is never generated
+    }
+}
+```
+
+The error `Unresolved reference 'BuildConfig'` even after adding the import is a symptom of this being missing.
+
+#### Gotcha 16: `SharedPreferences.OnSharedPreferenceChangeListener` must be held strongly
+
+The listener registered with `registerOnSharedPreferenceChangeListener` is stored as a `WeakReference` by Android. If you register it as a lambda and don't hold a strong reference, it gets garbage-collected and stops firing:
+
+```kotlin
+// WRONG — lambda is collected immediately
+prefs.registerOnSharedPreferenceChangeListener { _, key -> … }
+
+// RIGHT — store the listener as a field
+private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+    if (key == "dark_mode") _isDarkMode.value = prefs.getBoolean(key, false)
+}
+
+init {
+    prefs.registerOnSharedPreferenceChangeListener(prefListener)
+}
+```
+
+#### Gotcha 17: Changing `StateFlow` to `Flow` (via `combine`) breaks `collectAsState()`
+
+When a ViewModel property is converted from `StateFlow` to `Flow` using `combine()`, it loses its `value` property and its guaranteed initial emission. `collectAsState()` without an `initial` argument will throw a compile error or emit nothing until the flow produces its first value.
+
+```kotlin
+// StateFlow — collectAsState() works without initial
+val shortcuts: StateFlow<List<Shortcut>> = _shortcuts
+
+// Flow (from combine) — MUST supply initial
+val shortcuts: Flow<List<Shortcut>> = combine(_shortcuts, _sortOrder) { … }
+```
+
+```kotlin
+// In the screen:
+val shortcuts by vm.shortcuts.collectAsState(initial = emptyList()) // required
+```
+
+#### Gotcha 18: `rememberLauncherForActivityResult` must be called unconditionally at the top level
+
+Activity result launchers are composable infrastructure — they must be registered at the top of the composition tree, not inside dialogs or conditional branches. If you need a launcher that is only *triggered* from inside a dialog, register it at the top of the screen composable and store the "pending state" in a `remember` variable.
+
+```kotlin
+// WRONG — inside an if block
+if (showDialog) {
+    val launcher = rememberLauncherForActivityResult(…) { … } // will crash
+}
+
+// RIGHT — register unconditionally at top level
+var pendingContainerIndex by remember { mutableStateOf(-1) }
+val launcher = rememberLauncherForActivityResult(…) { uri ->
+    if (pendingContainerIndex >= 0) {
+        vm.importShortcut(pendingContainerIndex, uri, context)
+    }
+}
+
+// Trigger from inside dialog:
+TextButton(onClick = {
+    pendingContainerIndex = index
+    launcher.launch("*/*")
+})
+```
 
 ---
 
@@ -948,15 +1440,22 @@ Composables promoted to `internal` visibility so they can be shared across scree
 | Pattern | Used For |
 |---|---|
 | `LazyColumn` | All list screens (containers, shortcuts, contents, saves) |
+| `LazyVerticalGrid(GridCells.Fixed(n))` | Shortcuts grid view (Job 8) |
 | `AlertDialog` | All confirmation, settings, and info dialogs |
 | `Dialog(DialogProperties(usePlatformDefaultWidth = false))` | Full-screen dialogs (ShortcutSettings, SplashScreen) |
 | `TabRow` + `HorizontalPager` | ContainerDetail tabs, ShortcutSettings tabs |
 | `AndroidView` | `EnvVarsView`, `CPUListView` — Java views with no Compose equivalent |
-| `rememberLauncherForActivityResult(ActivityResultContracts.GetContent())` | Icon picker in ShortcutSettings |
+| `rememberLauncherForActivityResult(ActivityResultContracts.GetContent())` | Icon picker in ShortcutSettings; shortcut + container import |
 | `LaunchedEffect + withContext(Dispatchers.IO)` | Async spinner loading (Box64 versions, FEXCore, controls profiles, MIDI) |
 | `SnapshotStateList` | Win components state in ShortcutSettings |
 | `collectAsState()` on `StateFlow` | All ViewModels → screen state binding |
+| `collectAsState(initial = emptyList())` on `Flow` | Sorted shortcuts (combine() flow has no initial value) |
+| `combine(_flowA, _flowB) { … }` | Reactive sort: `_shortcuts` + `_sortOrder` → sorted list |
+| `AnimatedContent(targetState = …)` | Crossfade between list and grid layouts (shortcuts) |
 | `internal fun` composables | Shared dialogs reused across multiple screens |
+| `MaterialTheme.colorScheme.primary` (not static `Primary`) | All tint/color references inside composables — reacts to theme changes |
+| `SharedPreferences.OnSharedPreferenceChangeListener` (held as field) | Live dark mode updates without app restart |
+| `ContextThemeWrapper(ctx, R.style.AppTheme_Dark)` | Force dark theme on XML `FragmentContainerView` (Settings, InputControls) |
 
 ---
 
@@ -973,3 +1472,5 @@ Composables promoted to `internal` visibility so they can be shared across scree
 | New Kotlin ViewModels | 6 |
 | Internal reusable composables | 8 |
 | Total lines of Java/XML removed | ~5,000+ |
+| Post-migration feedback fix commits | 8 jobs → 9 commits |
+| New gotchas documented (Part D) | 6 (Gotchas 13–18) |
