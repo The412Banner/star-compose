@@ -78,7 +78,7 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 3 — Container Creation Loading Indicator
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `2e5f4a1`, CI run `24570142005`  
 **Files:**
 - `app/src/main/java/com/winlator/cmod/ui/screens/ContainerDetailScreen.kt` — Save button / confirm action
 - `app/src/main/java/com/winlator/cmod/ui/screens/ContainerDetailViewModel.kt` — `saveContainer()` or equivalent
@@ -190,15 +190,16 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 |---|---|---|---|---|
 | Pre-plan: Appearance drawer fix | `beee77b` | `24568759383` | ✅ green | 2026-04-17 |
 | Job 1: Help and Support dialog | `93d0326` | `24569312463` | ✅ green | 2026-04-17 |
-| Job 2: About dialog rebuild | `d18cae6` | `24569669122` | pending | 2026-04-17 |
+| Job 2: About dialog rebuild | `d18cae6` | `24569669122` | ✅ green | 2026-04-17 |
+| Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | pending | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 3: Container Creation Loading Indicator**
+**→ Job 4: Settings Theme Mismatch (Dark Mode Toggle Broken)**
 
-Jobs 1 + 2 done. Waiting on CI `24569669122` for Job 2.
+Jobs 1–3 done. Waiting on CI `24570142005` for Job 3.
 
-Last known commit: `d18cae6`  
-Next action: Confirm CI green → implement Job 3 → commit → push → CI → update this log
+Last known commit: `2e5f4a1`  
+Next action: Confirm CI green → implement Job 4 → commit → push → CI → update this log
