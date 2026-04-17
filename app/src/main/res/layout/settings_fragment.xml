@@ -17,7 +17,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -101,7 +101,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -185,7 +185,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -229,7 +229,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="gone">
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <CheckBox
                         android:id="@+id/CBDarkMode"
                         android:layout_width="wrap_content"
@@ -246,7 +246,7 @@
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -306,7 +306,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
 
                     <!-- SteamGridDB API Key Section -->
                     <CheckBox
@@ -319,7 +319,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
-                        <LinearLayout style="@style/FieldSet">
+                        <LinearLayout style="@style/FieldSet.Dark">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -367,7 +367,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -435,7 +435,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <CheckBox
                         android:id="@+id/CBEnableWineDebug"
                         android:layout_width="wrap_content"
@@ -474,7 +474,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -537,7 +537,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <LinearLayout style="@style/FieldSet">
+                <LinearLayout style="@style/FieldSet.Dark">
 
                     <Button
                         style="@style/ButtonPositive"

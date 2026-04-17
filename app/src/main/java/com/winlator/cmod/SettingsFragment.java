@@ -127,8 +127,7 @@ public class SettingsFragment extends Fragment {
         final Context context = getContext();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
-        // Check for Dark Mode preference
-        isDarkMode = preferences.getBoolean("dark_mode", false);
+        isDarkMode = true;
         // Apply dynamic styles
         applyDynamicStyles(view, isDarkMode);
 

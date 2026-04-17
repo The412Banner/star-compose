@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +38,7 @@ fun PreloaderOverlay() {
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            color = Color(0xFF2A2A2A),
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(14.dp),
             shadowElevation = 8.dp,
         ) {
@@ -46,13 +47,13 @@ fun PreloaderOverlay() {
                 modifier = Modifier.padding(horizontal = 36.dp, vertical = 28.dp),
             ) {
                 CircularProgressIndicator(
-                    color = Color(0xFF8B6BE0),
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 3.dp,
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = text!!,
-                    color = Color(0xFFE0E0E0),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
