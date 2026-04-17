@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
@@ -54,6 +55,7 @@ private fun iconFor(screen: Screen): ImageVector = when (screen) {
     Screen.Saves         -> Icons.Filled.Save
     Screen.FileManager   -> Icons.Filled.FolderOpen
     Screen.Settings      -> Icons.Filled.Settings
+    Screen.Appearance    -> Icons.Filled.Palette
     else                 -> Icons.Filled.Storefront
 }
 
@@ -99,6 +101,7 @@ fun AppDrawerContent(
         DrawerItem(Screen.Shortcuts,     currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
+        DrawerItem(Screen.Appearance,    currentRoute, onNavigate)
 
         Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
