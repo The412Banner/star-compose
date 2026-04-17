@@ -17,14 +17,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import java.io.File
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -61,7 +65,6 @@ import com.winlator.cmod.XrActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.core.FileUtils
 import com.winlator.cmod.core.StringUtils
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.winlator.cmod.ui.theme.Divider as DividerColor
@@ -94,8 +97,20 @@ fun ContainersScreen(
     // Confirm-dialog state
     var confirmDialog by remember { mutableStateOf<ConfirmAction?>(null) }
     var storageInfoContainer by remember { mutableStateOf<Container?>(null) }
+    var showImportPicker by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Import button row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            IconButton(onClick = { showImportPicker = true }) {
+                Icon(Icons.Filled.FileDownload, contentDescription = "Import container", tint = OnSurfaceVariant)
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
         if (containers.isEmpty() && !isLoading) {
             Text(
                 text = "No containers yet. Tap + to create one.",
@@ -122,6 +137,15 @@ fun ContainersScreen(
                         },
                         onRemove = {
                             confirmDialog = ConfirmAction.Remove(container)
+                        },
+                        onExport = {
+                            vm.exportContainer(container) { path ->
+                                val msg = if (path != null)
+                                    "Exported to $path"
+                                else
+                                    "Export failed or already exists"
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
                         },
                         onInfo = { storageInfoContainer = container },
                     )
@@ -154,6 +178,40 @@ fun ContainersScreen(
                 CircularProgressIndicator(color = Primary)
             }
         }
+        } // end inner Box(weight)
+    } // end Column
+
+    // Import picker dialog
+    if (showImportPicker) {
+        val backups = remember { vm.availableBackups() }
+        AlertDialog(
+            onDismissRequest = { showImportPicker = false },
+            title = { Text("Import Container") },
+            text = {
+                if (backups.isEmpty()) {
+                    Text("No exported containers found in Downloads/Winlator/Backups/Containers/.")
+                } else {
+                    androidx.compose.foundation.layout.Column {
+                        backups.forEach { dir ->
+                            TextButton(
+                                onClick = {
+                                    showImportPicker = false
+                                    vm.importContainer(dir) {
+                                        Toast.makeText(context, "Container imported: ${dir.name}", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(dir.name, modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showImportPicker = false }) { Text("Cancel") }
+            },
+        )
     }
 
     // Confirm dialogs
@@ -207,6 +265,7 @@ private fun ContainerItem(
     onEdit: () -> Unit,
     onDuplicate: () -> Unit,
     onRemove: () -> Unit,
+    onExport: () -> Unit,
     onInfo: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -266,6 +325,11 @@ private fun ContainerItem(
                     text = { Text("Remove") },
                     leadingIcon = { Icon(Icons.Filled.Delete, null) },
                     onClick = { menuExpanded = false; onRemove() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Export") },
+                    leadingIcon = { Icon(Icons.Filled.FileUpload, null) },
+                    onClick = { menuExpanded = false; onExport() },
                 )
                 DropdownMenuItem(
                     text = { Text("Info") },

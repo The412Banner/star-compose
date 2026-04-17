@@ -115,7 +115,7 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 5 — Sort Shortcut List
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `00dc6a5`, CI run `24571836336`  
 **File:** `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt`  
 **Problem:** No sort option — shortcuts always appear in filesystem order  
 **Fix:**
@@ -193,14 +193,15 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job 2: About dialog rebuild | `d18cae6` | `24569669122` | ✅ green | 2026-04-17 |
 | Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | ✅ green (fix: `67844d2`) | 2026-04-17 |
 | Job 4: Dark mode pref + Settings theme fix | `44a4bdb` | `24571445525` | ✅ green | 2026-04-17 |
+| Job 5: Sort shortcuts list | `00dc6a5` | `24571836336` | ✅ green | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 5: Sort Shortcut List**
+**→ Job 6: Import/Export Container**
 
-Jobs 1–4 done. CI `24571445525` ✅ green.
+Jobs 1–5 done. CI `24571836336` ✅ green.
 
-Last known commit: `44a4bdb`  
-Next action: Implement Job 5 → commit → push → CI → update this log
+Last known commit: `00dc6a5`  
+Next action: Implement Job 6 → commit → push → CI → update this log
