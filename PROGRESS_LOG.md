@@ -129,7 +129,7 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 6 — Import/Export Container
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `8477b65`, CI run `24572308670`  
 **Files:**
 - `app/src/main/java/com/winlator/cmod/ui/screens/ContainersScreen.kt`
 - `app/src/main/java/com/winlator/cmod/ui/screens/ContainersViewModel.kt`
@@ -194,14 +194,15 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | ✅ green (fix: `67844d2`) | 2026-04-17 |
 | Job 4: Dark mode pref + Settings theme fix | `44a4bdb` | `24571445525` | ✅ green | 2026-04-17 |
 | Job 5: Sort shortcuts list | `00dc6a5` | `24571836336` | ✅ green | 2026-04-17 |
+| Job 6: Import/Export container | `8477b65` | `24572308670` | ✅ green | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 6: Import/Export Container**
+**→ Job 7: Add Shortcut from External Storage** ⏸ PAUSED — awaiting resume
 
-Jobs 1–5 done. CI `24571836336` ✅ green.
+Jobs 1–6 done. CI `24572308670` ✅ green.
 
-Last known commit: `00dc6a5`  
-Next action: Implement Job 6 → commit → push → CI → update this log
+Last known commit: `8477b65`  
+Next action: Implement Job 7 → commit → push → CI → update this log
