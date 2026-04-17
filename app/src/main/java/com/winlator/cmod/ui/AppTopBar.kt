@@ -11,7 +11,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.winlator.cmod.ui.theme.Primary
+import androidx.compose.material3.MaterialTheme
 import com.winlator.cmod.ui.theme.Surface
 
 @OptIn(ExperimentalMaterial3Api::class)

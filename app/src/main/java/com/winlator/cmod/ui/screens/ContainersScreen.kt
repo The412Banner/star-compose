@@ -70,7 +70,6 @@ import kotlinx.coroutines.launch
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 import com.winlator.cmod.xenvironment.ImageFs
 
@@ -110,7 +109,7 @@ fun ContainersScreen(
             }
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         if (containers.isEmpty() && !isLoading) {
             Text(
                 text = "No containers yet. Tap + to create one.",
@@ -159,7 +158,7 @@ fun ContainersScreen(
             onClick = {
                 if (ImageFs.find(context).isValid()) onNavigateToDetail(null)
             },
-            containerColor = Primary,
+            containerColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),
@@ -175,7 +174,7 @@ fun ContainersScreen(
                     .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = Primary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
         } // end inner Box(weight)
@@ -280,7 +279,7 @@ private fun ContainerItem(
         Icon(
             imageVector = Icons.Filled.FolderOpen,
             contentDescription = null,
-            tint = Primary,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(36.dp),
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -295,7 +294,7 @@ private fun ContainerItem(
             Icon(
                 imageVector = Icons.Filled.PlayArrow,
                 contentDescription = "Run",
-                tint = Primary,
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
         // 3-dot menu

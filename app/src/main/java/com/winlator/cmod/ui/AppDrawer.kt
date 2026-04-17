@@ -52,7 +52,6 @@ import com.winlator.cmod.ui.theme.Background
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 
 private fun iconFor(screen: Screen): ImageVector = when (screen) {
@@ -178,20 +177,20 @@ private fun DrawerItem(screen: Screen, currentRoute: String, onNavigate: (Screen
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onNavigate(screen) }
-            .background(if (selected) Primary.copy(alpha = 0.15f) else Color.Transparent)
+            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
             .padding(horizontal = 20.dp, vertical = 13.dp),
     ) {
         Icon(
             imageVector = iconFor(screen),
             contentDescription = null,
-            tint = if (selected) Primary else OnSurfaceVariant,
+            tint = if (selected) MaterialTheme.colorScheme.primary else OnSurfaceVariant,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = screen.label,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (selected) Primary else OnSurface,
+            color = if (selected) MaterialTheme.colorScheme.primary else OnSurface,
         )
     }
 }
