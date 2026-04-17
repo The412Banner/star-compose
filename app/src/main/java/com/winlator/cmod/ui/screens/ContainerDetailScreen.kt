@@ -954,9 +954,10 @@ internal fun GraphicsDriverConfigDialog(
         mutableStateOf(deviceMemoryEntries.firstOrNull { StringUtils.parseNumber(it) == storedNum } ?: deviceMemoryEntries.first())
     }
 
-    var driverVersions by remember { mutableStateOf(listOf<String>()) }
-    var gpuNames       by remember { mutableStateOf(listOf("Device")) }
-    var allExtensions  by remember { mutableStateOf(listOf<String>()) }
+    var driverVersions      by remember { mutableStateOf(listOf<String>()) }
+    var adrenotoolsVersions by remember { mutableStateOf(setOf<String>()) }
+    var gpuNames            by remember { mutableStateOf(listOf("Device")) }
+    var allExtensions       by remember { mutableStateOf(listOf<String>()) }
     val initialBlacklist = remember(initialConfig) {
         (cfg["blacklistedExtensions"] ?: "").split(",").filter { it.isNotEmpty() }.toSet()
     }
@@ -965,11 +966,10 @@ internal fun GraphicsDriverConfigDialog(
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val versions = mutableListOf<String>()
-            context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries)
+            val wrapperVersions = context.resources
+                .getStringArray(R.array.wrapper_graphics_driver_version_entries)
                 .filter { GPUInformation.isDriverSupported(it, context) }
-                .forEach { versions.add(it) }
-            AdrenotoolsManager(context).enumarateInstalledDrivers().forEach { versions.add(it) }
+            val atVersions = AdrenotoolsManager(context).enumarateInstalledDrivers()
 
             val gpuList = mutableListOf("Device")
             try {
@@ -979,23 +979,26 @@ internal fun GraphicsDriverConfigDialog(
             } catch (_: Exception) {}
 
             withContext(Dispatchers.Main) {
-                driverVersions = versions
+                adrenotoolsVersions = atVersions.toSet()
+                driverVersions = wrapperVersions + atVersions
                 gpuNames = gpuList
-                if (version.isEmpty() || versions.none { it.equals(version, ignoreCase = true) }) {
-                    version = versions.firstOrNull { it.equals(DefaultVersion.WRAPPER_ADRENO, ignoreCase = true) }
-                        ?: versions.firstOrNull { it.equals(DefaultVersion.WRAPPER, ignoreCase = true) }
-                        ?: versions.firstOrNull() ?: version
+                if (version.isEmpty() || (wrapperVersions + atVersions).none { it.equals(version, ignoreCase = true) }) {
+                    version = wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER_ADRENO, ignoreCase = true) }
+                        ?: wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER, ignoreCase = true) }
+                        ?: wrapperVersions.firstOrNull() ?: version
                 }
             }
         }
     }
 
     LaunchedEffect(version) {
-        if (version.isNotEmpty()) {
+        // enumerateExtensions() is a native JNI call that loads the Vulkan library.
+        // When an AdrenoTools custom driver is installed its hook intercepts that load
+        // and causes a SIGSEGV — uncatchable at the JVM level. Skip the call entirely
+        // for AdrenoTools versions; extension blacklisting only applies to wrapper drivers.
+        if (version.isNotEmpty() && version !in adrenotoolsVersions) {
             withContext(Dispatchers.IO) {
-                val exts = try {
-                    GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
-                } catch (_: Throwable) { emptyList() }
+                val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
                 withContext(Dispatchers.Main) {
                     allExtensions = exts
                     if (version != cfg["version"]) blacklisted = emptySet()
