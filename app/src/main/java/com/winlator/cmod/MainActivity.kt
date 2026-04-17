@@ -54,6 +54,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.preference.PreferenceManager
+import com.winlator.cmod.BuildConfig
 import com.winlator.cmod.core.ImageUtils
 import com.winlator.cmod.core.PreloaderDialog
 import com.winlator.cmod.core.WineThemeManager
