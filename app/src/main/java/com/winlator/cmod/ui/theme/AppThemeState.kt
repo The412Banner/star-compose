@@ -5,12 +5,15 @@ import android.content.SharedPreferences
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.preference.PreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 
 object AppThemeState {
-    private lateinit var prefs: SharedPreferences
+    private lateinit var themePrefs: SharedPreferences
+    private lateinit var appPrefs: SharedPreferences
+    private var prefListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private val _presetIndex = MutableStateFlow(0)
     val presetIndex: StateFlow<Int> = _presetIndex
@@ -18,33 +21,42 @@ object AppThemeState {
     private val _customAccent = MutableStateFlow(Color(0xFF8B6BE0))
     val customAccent: StateFlow<Color> = _customAccent
 
-    // Derived: current ColorScheme combining preset + optional custom accent
+    private val _isDarkMode = MutableStateFlow(true)
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode
+
     val colorScheme: kotlinx.coroutines.flow.Flow<ColorScheme> =
-        combine(_presetIndex, _customAccent) { index, accent ->
+        combine(_presetIndex, _customAccent, _isDarkMode) { index, accent, dark ->
             val preset = themePresets.getOrElse(index) { themePresets.first() }
-            if (index == CUSTOM_PRESET_INDEX) {
-                preset.toColorScheme(accentOverride = accent)
-            } else {
-                preset.toColorScheme()
-            }
+            val override = if (index == CUSTOM_PRESET_INDEX) accent else null
+            if (dark) preset.toColorScheme(accentOverride = override)
+            else      preset.toLightColorScheme(accentOverride = override)
         }
 
     fun init(context: Context) {
-        prefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
-        _presetIndex.value = prefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
-        val savedAccent = prefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb())
+        themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
+        appPrefs = PreferenceManager.getDefaultSharedPreferences(context)
+
+        _presetIndex.value = themePrefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
+        val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb())
         _customAccent.value = Color(savedAccent)
+        _isDarkMode.value = appPrefs.getBoolean("dark_mode", true)
+
+        // React to dark_mode changes in SettingsFragment without restart
+        prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "dark_mode") _isDarkMode.value = appPrefs.getBoolean("dark_mode", true)
+        }
+        appPrefs.registerOnSharedPreferenceChangeListener(prefListener)
     }
 
     fun setPreset(index: Int) {
         _presetIndex.value = index.coerceIn(0, themePresets.size - 1)
-        prefs.edit().putInt("preset_index", _presetIndex.value).apply()
+        themePrefs.edit().putInt("preset_index", _presetIndex.value).apply()
     }
 
     fun setCustomAccent(color: Color) {
         _customAccent.value = color
         _presetIndex.value = CUSTOM_PRESET_INDEX
-        prefs.edit()
+        themePrefs.edit()
             .putInt("custom_accent", color.toArgb())
             .putInt("preset_index", CUSTOM_PRESET_INDEX)
             .apply()
@@ -53,10 +65,8 @@ object AppThemeState {
     fun currentColorSchemeSnapshot(): ColorScheme {
         val index = _presetIndex.value
         val preset = themePresets.getOrElse(index) { themePresets.first() }
-        return if (index == CUSTOM_PRESET_INDEX) {
-            preset.toColorScheme(accentOverride = _customAccent.value)
-        } else {
-            preset.toColorScheme()
-        }
+        val override = if (index == CUSTOM_PRESET_INDEX) _customAccent.value else null
+        return if (_isDarkMode.value) preset.toColorScheme(accentOverride = override)
+               else                   preset.toLightColorScheme(accentOverride = override)
     }
 }

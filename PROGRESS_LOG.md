@@ -191,7 +191,7 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Pre-plan: Appearance drawer fix | `beee77b` | `24568759383` | ✅ green | 2026-04-17 |
 | Job 1: Help and Support dialog | `93d0326` | `24569312463` | ✅ green | 2026-04-17 |
 | Job 2: About dialog rebuild | `d18cae6` | `24569669122` | ✅ green | 2026-04-17 |
-| Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | pending | 2026-04-17 |
+| Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | ✅ green (fix: `67844d2`) | 2026-04-17 |
 
 ---
 
@@ -199,7 +199,7 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 
 **→ Job 4: Settings Theme Mismatch (Dark Mode Toggle Broken)**
 
-Jobs 1–3 done. Waiting on CI `24570142005` for Job 3.
+Jobs 1–3 done. CI `24570844930` ✅ green (commit `67844d2` — BuildConfig fix + buildConfig feature flag).
 
-Last known commit: `2e5f4a1`  
-Next action: Confirm CI green → implement Job 4 → commit → push → CI → update this log
+Last known commit: `67844d2`  
+Next action: Implement Job 4 → commit → push → CI → update this log

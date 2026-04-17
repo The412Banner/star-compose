@@ -1,6 +1,7 @@
 package com.winlator.cmod.ui.theme
 
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 data class ThemePreset(
@@ -26,6 +27,18 @@ data class ThemePreset(
         surfaceVariant   = surfaceVariant,
         onSurfaceVariant = onSurfaceVariant,
         error            = error,
+    )
+
+    fun toLightColorScheme(accentOverride: Color? = null) = lightColorScheme(
+        primary          = accentOverride ?: primary,
+        onPrimary        = Color(0xFFFFFFFF),
+        background       = Color(0xFFF5F5F5),
+        onBackground     = Color(0xFF1A1A1A),
+        surface          = Color(0xFFFFFFFF),
+        onSurface        = Color(0xFF1A1A1A),
+        surfaceVariant   = Color(0xFFEAEAEA),
+        onSurfaceVariant = Color(0xFF555555),
+        error            = Color(0xFFB00020),
     )
 }
 

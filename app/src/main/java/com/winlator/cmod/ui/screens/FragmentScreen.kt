@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.screens
 
+import android.view.ContextThemeWrapper
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -9,6 +10,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
+import com.winlator.cmod.R
 
 /**
  * Hosts a legacy [Fragment] inside a Compose NavHost destination.
@@ -41,7 +43,9 @@ fun FragmentScreen(
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
-            FragmentContainerView(ctx).apply { id = containerId }
+            // Use dark AppTheme so XML fragments match the dark Compose host
+            val darkCtx = ContextThemeWrapper(ctx, R.style.AppTheme_Dark)
+            FragmentContainerView(darkCtx).apply { id = containerId }
         },
     )
 }
