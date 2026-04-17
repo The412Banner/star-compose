@@ -29,14 +29,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddToHomeScreen
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -78,6 +85,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -129,6 +137,7 @@ import java.lang.reflect.Field
 fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
     val sortOrder by vm.sortOrder.collectAsState()
+    val isGridView by vm.isGridView.collectAsState()
     val context = LocalContext.current
     val activity = context as Activity
 
@@ -137,9 +146,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showImportContainerPicker by remember { mutableStateOf(false) }
+    var pendingImportContainerIndex by remember { mutableStateOf(-1) }
+
+    val importFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        if (pendingImportContainerIndex >= 0) {
+            vm.importShortcut(pendingImportContainerIndex, uri, context)
+            pendingImportContainerIndex = -1
+            Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Sort bar
+        // Sort/action bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -147,6 +167,19 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Import button
+            IconButton(onClick = { showImportContainerPicker = true }) {
+                Icon(Icons.Filled.FileDownload, contentDescription = "Import shortcut", tint = OnSurfaceVariant)
+            }
+            // Grid/list toggle
+            IconButton(onClick = { vm.setGridView(!isGridView) }) {
+                Icon(
+                    imageVector = if (isGridView) Icons.Filled.ViewList else Icons.Filled.GridView,
+                    contentDescription = if (isGridView) "List view" else "Grid view",
+                    tint = OnSurfaceVariant,
+                )
+            }
+            // Sort button
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
                     Icon(
@@ -187,23 +220,78 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     modifier = Modifier.align(Alignment.Center),
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(shortcuts, key = { it.file.path }) { shortcut ->
-                        ShortcutItem(
-                            shortcut = shortcut,
-                            onRun = { runShortcut(activity, shortcut) },
-                            onSettings = { settingsShortcut = shortcut },
-                            onRemove = { confirmRemove = shortcut },
-                            onClone = { cloneTarget = shortcut },
-                            onAddToHome = { addToHomeScreen(context, shortcut) },
-                            onExport = { exportShortcut(context, shortcut) },
-                            onProperties = { propertiesShortcut = shortcut },
-                        )
-                        Divider(color = DividerColor)
+                AnimatedContent(targetState = isGridView, label = "layout") { grid ->
+                    if (grid) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(shortcuts, key = { it.file.path }) { shortcut ->
+                                ShortcutGridItem(
+                                    shortcut = shortcut,
+                                    onRun = { runShortcut(activity, shortcut) },
+                                    onSettings = { settingsShortcut = shortcut },
+                                    onRemove = { confirmRemove = shortcut },
+                                    onClone = { cloneTarget = shortcut },
+                                    onAddToHome = { addToHomeScreen(context, shortcut) },
+                                    onExport = { exportShortcut(context, shortcut) },
+                                    onProperties = { propertiesShortcut = shortcut },
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(shortcuts, key = { it.file.path }) { shortcut ->
+                                ShortcutItem(
+                                    shortcut = shortcut,
+                                    onRun = { runShortcut(activity, shortcut) },
+                                    onSettings = { settingsShortcut = shortcut },
+                                    onRemove = { confirmRemove = shortcut },
+                                    onClone = { cloneTarget = shortcut },
+                                    onAddToHome = { addToHomeScreen(context, shortcut) },
+                                    onExport = { exportShortcut(context, shortcut) },
+                                    onProperties = { propertiesShortcut = shortcut },
+                                )
+                                Divider(color = DividerColor)
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    // Import container picker
+    if (showImportContainerPicker) {
+        val containers = vm.containers()
+        AlertDialog(
+            onDismissRequest = { showImportContainerPicker = false },
+            title = { Text("Select container") },
+            text = {
+                Column {
+                    if (containers.isEmpty()) {
+                        Text("No containers found.", color = OnSurfaceVariant)
+                    } else {
+                        containers.forEachIndexed { index, c ->
+                            Text(
+                                text = c.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showImportContainerPicker = false
+                                        pendingImportContainerIndex = index
+                                        importFileLauncher.launch("*/*")
+                                    }
+                                    .padding(vertical = 12.dp),
+                                color = OnSurface,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showImportContainerPicker = false }) { Text("Cancel") } },
+        )
     }
 
     // Remove confirmation
@@ -391,6 +479,78 @@ private fun ShortcutItem(
                     onClick = { menuExpanded = false; onProperties() },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ShortcutGridItem(
+    shortcut: Shortcut,
+    onRun: () -> Unit,
+    onSettings: () -> Unit,
+    onRemove: () -> Unit,
+    onClone: () -> Unit,
+    onAddToHome: () -> Unit,
+    onExport: () -> Unit,
+    onProperties: () -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceColor)
+            .clickable(onClick = onRun)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            if (shortcut.icon != null) {
+                Image(
+                    bitmap = shortcut.icon.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp),
+                )
+            }
+            Box {
+                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
+                    DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
+                    DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
+                    DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
+                    DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+                    DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = shortcut.name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OnSurface,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
+        if (!shortcut.container?.name.isNullOrEmpty()) {
+            Text(
+                text = shortcut.container?.name ?: "",
+                style = MaterialTheme.typography.labelSmall,
+                color = OnSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
     }
 }
