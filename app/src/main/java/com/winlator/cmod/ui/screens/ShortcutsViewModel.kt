@@ -9,18 +9,44 @@ import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.container.Shortcut
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import java.io.File
 import java.util.Collections
 
+enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
+
 class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
 
+    private val prefs = app.getSharedPreferences("shortcuts_prefs", Context.MODE_PRIVATE)
+
     private val _shortcuts = MutableStateFlow<List<Shortcut>>(emptyList())
-    val shortcuts: StateFlow<List<Shortcut>> = _shortcuts
+
+    private val _sortOrder = MutableStateFlow(
+        ShortcutSortOrder.entries[
+            prefs.getInt("sort_order", ShortcutSortOrder.NAME_ASC.ordinal)
+                .coerceIn(0, ShortcutSortOrder.entries.size - 1)
+        ]
+    )
+    val sortOrder: StateFlow<ShortcutSortOrder> = _sortOrder
+
+    val shortcuts: kotlinx.coroutines.flow.Flow<List<Shortcut>> =
+        combine(_shortcuts, _sortOrder) { list, order ->
+            when (order) {
+                ShortcutSortOrder.NAME_ASC   -> list.sortedBy { it.name.lowercase() }
+                ShortcutSortOrder.NAME_DESC  -> list.sortedByDescending { it.name.lowercase() }
+                ShortcutSortOrder.CONTAINER  -> list.sortedBy { (it.container?.name ?: "").lowercase() }
+            }
+        }
 
     private val manager = ContainerManager(app)
 
     init {
         refresh()
+    }
+
+    fun setSortOrder(order: ShortcutSortOrder) {
+        _sortOrder.value = order
+        prefs.edit().putInt("sort_order", order.ordinal).apply()
     }
 
     fun refresh() {

@@ -36,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddToHomeScreen
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -127,7 +128,8 @@ import java.lang.reflect.Field
 
 @Composable
 fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
-    val shortcuts by vm.shortcuts.collectAsState()
+    val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
+    val sortOrder by vm.sortOrder.collectAsState()
     val context = LocalContext.current
     val activity = context as Activity
 
@@ -135,28 +137,71 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var cloneTarget by remember { mutableStateOf<Shortcut?>(null) }
     var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    var showSortMenu by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (shortcuts.isEmpty()) {
-            Text(
-                text = "No shortcuts yet.",
-                color = OnSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(shortcuts, key = { it.file.path }) { shortcut ->
-                    ShortcutItem(
-                        shortcut = shortcut,
-                        onRun = { runShortcut(activity, shortcut) },
-                        onSettings = { settingsShortcut = shortcut },
-                        onRemove = { confirmRemove = shortcut },
-                        onClone = { cloneTarget = shortcut },
-                        onAddToHome = { addToHomeScreen(context, shortcut) },
-                        onExport = { exportShortcut(context, shortcut) },
-                        onProperties = { propertiesShortcut = shortcut },
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Sort bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                IconButton(onClick = { showSortMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.SwapVert,
+                        contentDescription = "Sort",
+                        tint = OnSurfaceVariant,
                     )
-                    Divider(color = DividerColor)
+                }
+                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    val orders = listOf(
+                        ShortcutSortOrder.NAME_ASC  to "Name A→Z",
+                        ShortcutSortOrder.NAME_DESC to "Name Z→A",
+                        ShortcutSortOrder.CONTAINER to "Container",
+                    )
+                    orders.forEach { (order, label) ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    label,
+                                    color = if (sortOrder == order)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface,
+                                )
+                            },
+                            onClick = { vm.setSortOrder(order); showSortMenu = false },
+                        )
+                    }
+                }
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            if (shortcuts.isEmpty()) {
+                Text(
+                    text = "No shortcuts yet.",
+                    color = OnSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(shortcuts, key = { it.file.path }) { shortcut ->
+                        ShortcutItem(
+                            shortcut = shortcut,
+                            onRun = { runShortcut(activity, shortcut) },
+                            onSettings = { settingsShortcut = shortcut },
+                            onRemove = { confirmRemove = shortcut },
+                            onClone = { cloneTarget = shortcut },
+                            onAddToHome = { addToHomeScreen(context, shortcut) },
+                            onExport = { exportShortcut(context, shortcut) },
+                            onProperties = { propertiesShortcut = shortcut },
+                        )
+                        Divider(color = DividerColor)
+                    }
                 }
             }
         }

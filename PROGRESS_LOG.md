@@ -94,7 +94,7 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 4 — Settings Theme Mismatch (Dark Mode Toggle Broken)
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `44a4bdb`, CI run `24571445525`  
 **Files:**
 - `app/src/main/java/com/winlator/cmod/ui/theme/AppThemeState.kt`
 - `app/src/main/java/com/winlator/cmod/ui/theme/ThemePreset.kt`
@@ -192,14 +192,15 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job 1: Help and Support dialog | `93d0326` | `24569312463` | ✅ green | 2026-04-17 |
 | Job 2: About dialog rebuild | `d18cae6` | `24569669122` | ✅ green | 2026-04-17 |
 | Job 3: Container creation loading overlay | `2e5f4a1` | `24570142005` | ✅ green (fix: `67844d2`) | 2026-04-17 |
+| Job 4: Dark mode pref + Settings theme fix | `44a4bdb` | `24571445525` | ✅ green | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 4: Settings Theme Mismatch (Dark Mode Toggle Broken)**
+**→ Job 5: Sort Shortcut List**
 
-Jobs 1–3 done. CI `24570844930` ✅ green (commit `67844d2` — BuildConfig fix + buildConfig feature flag).
+Jobs 1–4 done. CI `24571445525` ✅ green.
 
-Last known commit: `67844d2`  
-Next action: Implement Job 4 → commit → push → CI → update this log
+Last known commit: `44a4bdb`  
+Next action: Implement Job 5 → commit → push → CI → update this log
