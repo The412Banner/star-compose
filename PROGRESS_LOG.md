@@ -49,7 +49,7 @@ Source: Developer feedback comparing v1.1 (old Java/XML) vs Compose version.
 ---
 
 ### Job 1 — Help and Support (BROKEN)
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `93d0326`, CI run `24569312463`  
 **File:** `app/src/main/java/com/winlator/cmod/ui/AppDrawer.kt`  
 **Problem:** `onClick = { /* TODO: open help URL or dialog */ }` — tapping does nothing  
 **Fix:** Replace the TODO with a Compose `AlertDialog` containing:
@@ -189,14 +189,15 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job | Commit | CI Run | Result | Date |
 |---|---|---|---|---|
 | Pre-plan: Appearance drawer fix | `beee77b` | `24568759383` | ✅ green | 2026-04-17 |
+| Job 1: Help and Support dialog | `93d0326` | `24569312463` | pending | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 1: Help and Support dialog**
+**→ Job 2: About Dialog (missing content)**
 
-CI for `beee77b` must be confirmed green first, then start Job 1.
+Job 1 done. Waiting on CI `24569312463` to confirm green.
 
-Last known commit: `beee77b`  
-Next action: Confirm CI green → implement Job 1 → commit → push → CI → update this log
+Last known commit: `93d0326`  
+Next action: Confirm CI green → implement Job 2 → commit → push → CI → update this log
