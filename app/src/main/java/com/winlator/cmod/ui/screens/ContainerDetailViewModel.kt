@@ -431,9 +431,14 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         resolvedColorAsString: String,
         onDone: () -> Unit
     ) {
+        isSaving = true
+        PreloaderState.show(context.getString(R.string.creating_container))
+        val cleanup = {
+            PreloaderState.hide()
+            isSaving = false
+            onDone()
+        }
         viewModelScope.launch(Dispatchers.Main) {
-            isSaving = true
-            PreloaderState.show(context.getString(R.string.creating_container))
             doConfirm(
                 resolvedGraphicsDriverConfig,
                 resolvedDXWrapperConfig,
@@ -441,11 +446,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 resolvedEnvVars,
                 resolvedCPUList,
                 resolvedCPUListWoW64,
-                resolvedColorAsString
+                resolvedColorAsString,
+                onComplete = cleanup
             )
-            PreloaderState.hide()
-            isSaving = false
-            onDone()
         }
     }
 
@@ -456,7 +459,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         envVarsIn: String,
         cpuListIn: String,
         cpuListWoW64In: String,
-        colorAsString: String
+        colorAsString: String,
+        onComplete: () -> Unit
     ) {
         // Finalize graphics driver config (ensure version is set)
         var finalGDConfig = gdConfig
@@ -519,6 +523,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setControllerMapping(controllerMapping)
             c.saveData()
             saveMouseWarp(c)
+            onComplete()
         } else {
             // Create mode
             val data = JSONObject().apply {
@@ -552,11 +557,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 put("primaryController", selectedPrimaryController)
                 put("controllerMapping", controllerMapping)
             }
-            // createContainerAsync runs on its own background thread
+            // createContainerAsync posts callback to main thread when done
             manager.createContainerAsync(data, contentsManager) { created ->
                 container = created
-                // Mouse warp can only be written after registry files exist
                 if (created != null) saveMouseWarp(created)
+                onComplete()
             }
         }
     }

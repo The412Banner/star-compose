@@ -85,7 +85,7 @@ fun ContainerDetailScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    viewModel.confirm(
+                    if (!viewModel.isSaving) viewModel.confirm(
                         resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
                         resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
                         resolvedFPSCounterConfig     = viewModel.fpsCounterConfig,
@@ -96,7 +96,10 @@ fun ContainerDetailScreen(
                         onDone = onNavigateBack
                     )
                 },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = if (viewModel.isSaving)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Confirm")
             }
