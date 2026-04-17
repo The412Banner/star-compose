@@ -9,6 +9,46 @@
 
 ---
 
+## Table of Contents
+
+**Part A — Developer Guide (How To Do This Yourself)**
+- [A1. Gradle Setup](#a1-gradle-setup)
+- [A2. Order of Operations](#a2-order-of-operations)
+- [A3. Fragment → Screen Pattern](#a3-fragment--screen-pattern)
+- [A4. ContentDialog → AlertDialog Pattern](#a4-contentdialog--alertdialog-pattern)
+- [A5. Full-Width / Full-Height Dialog](#a5-full-width--full-height-dialog)
+- [A6. Async Data Loading](#a6-async-data-loading-spinners--dropdowns)
+- [A7. Bridging Java Views](#a7-bridging-java-views-that-have-no-compose-equivalent)
+- [A8. Icon / File Picker](#a8-icon--file-picker-replaces-startactivityforresult)
+- [A9. Sharing Composables Between Screens](#a9-sharing-composables-between-screens)
+- [A10. Keeping a Java Fragment Inside a Compose NavGraph](#a10-keeping-a-java-fragment-inside-a-compose-navgraph)
+- [A11. Gotchas and Fixes](#a11-gotchas-and-fixes) *(18 gotchas total)*
+- [A12. Theme / Color Setup](#a12-theme--color-setup)
+- [A13. Screen Sealed Class + NavGraph Wiring](#a13-screen-sealed-class--navgraph-wiring)
+- [A14. Launching XServerDisplayActivity](#a14-launching-xserverdisplayactivity-running-a-shortcutcontainer)
+- [A15. The Engine Boundary](#a15-the-engine-boundary--what-to-never-touch)
+- [A16. Post-Migration Testing Checklist](#a16-post-migration-testing-checklist)
+- [A17. AppThemeState — Dynamic Theme System](#a17-appthemestate--dynamic-theme-system)
+- [A18. PreloaderState — Global Loading Overlay](#a18-preloaderstate--global-loading-overlay)
+
+**Part B — What Was Replaced and With What**
+- [B1. Navigation Screens Replaced](#b1-navigation-screens-replaced)
+- [B2. Dialogs Replaced](#b2-dialogs-replaced)
+- [B3. Helper / Utility Classes Deleted](#b3-helper--utility-classes-deleted)
+- [B4. What Remains (Intentionally)](#b4-what-remains-intentionally)
+- [B5. Reusable Internal Composables](#b5-reusable-internal-composables)
+- [B6. Key Compose Patterns Used](#b6-key-compose-patterns-used)
+- [B7. Summary Stats](#b7-summary-stats)
+
+**Part C — Post-Report Bug Fixes**
+
+**Part D — Post-Migration Feedback Fixes (2026-04-17)**
+- [D1. Fix Summary Table](#d1-fix-summary-table)
+- [D2–D9. Per-Job Detail](#d2-job-detail-help--support)
+- [D10. New Gotchas (13–18)](#d10-new-gotchas-discovered-during-feedback-fixes)
+
+---
+
 ## Overview
 
 Full replacement of the XML/Java UI layer with Jetpack Compose + Material 3. The Wine engine, JNI, Box64/FEX, and container logic were left completely untouched. Every navigation screen and every dialog triggered from a Compose screen is now native Compose.
@@ -23,34 +63,88 @@ This document serves two purposes:
 
 ### A1. Gradle Setup
 
-Add Compose to your existing `build.gradle` (app module) without breaking NDK/JNI:
+These are the **exact versions used in this project** — not placeholders.
 
+**Versions:**
+| Component | Version |
+|---|---|
+| Android Gradle Plugin | 8.8.0 |
+| Kotlin | 2.0.21 |
+| Compose BOM | 2024.02.00 |
+| compileSdk | 34 |
+| minSdk | 26 |
+| targetSdk | 28 |
+| NDK | 29.0.14206865 |
+| Java source/target | 17 |
+| activity-compose | 1.8.2 |
+| lifecycle-viewmodel-compose | 2.7.0 |
+| navigation-compose | 2.7.6 |
+
+**Note on Compose compiler (AGP 8.x + Kotlin 2.x):** Older guides tell you to set `kotlinCompilerExtensionVersion` inside `composeOptions {}`. This is the AGP 7.x approach. With Kotlin 2.0+ and AGP 8.x, use the `org.jetbrains.kotlin.plugin.compose` Gradle plugin instead — it automatically manages the compiler version and `composeOptions {}` is no longer needed.
+
+**Top-level `build.gradle` — add the plugins:**
 ```groovy
+buildscript {
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.8.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
+        classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.0.21'
+    }
+}
+```
+
+**App `build.gradle`:**
+```groovy
+plugins {
+    id 'com.android.application'
+}
+apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'  // replaces composeOptions block
+
 android {
+    compileSdk 34
+    defaultConfig {
+        minSdkVersion 26
+        targetSdkVersion 28
+    }
+
     buildFeatures {
         compose true
-        viewBinding true   // keep this — some Java code still uses it
+        buildConfig true   // required — AGP 8.x disables this by default
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
+
+    kotlinOptions {
+        jvmTarget = '17'
+        freeCompilerArgs += ['-Xskip-metadata-version-check']
+    }
+
+    // Keep all NDK / externalNativeBuild config exactly as-is — Compose doesn't touch it
 }
 
 dependencies {
     // Compose BOM — pins all Compose library versions together
-    def composeBom = platform('androidx.compose:compose-bom:2024.06.00')
-    implementation composeBom
+    implementation platform('androidx.compose:compose-bom:2024.02.00')
     implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.activity:activity-compose:1.9.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0'
-    implementation 'androidx.navigation:navigation-compose:2.7.7'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+    implementation 'androidx.navigation:navigation-compose:2.7.6'
     debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+
+    // Keep all existing dependencies — appcompat, preference, material, etc.
 }
 ```
 
-**Important:** Do not remove `minifyEnabled`, `ndk`, or any JNI config — Compose sits entirely in the UI layer and doesn't touch those.
+**Important:** Do not remove `minifyEnabled`, `ndk`, `externalNativeBuild`, or any JNI config — Compose sits entirely in the UI layer and doesn't touch those.
 
 ---
 
@@ -286,7 +380,9 @@ fun FragmentScreen(fragmentClass: Class<out Fragment>) {
     val fragmentManager = (LocalContext.current as FragmentActivity).supportFragmentManager
     AndroidView(
         factory = { ctx ->
-            FragmentContainerView(ctx).apply {
+            // Wrap in dark theme context so the fragment matches the Compose host visually
+            val themedCtx = ContextThemeWrapper(ctx, R.style.AppTheme_Dark)
+            FragmentContainerView(themedCtx).apply {
                 id = View.generateViewId()
             }
         },
@@ -305,9 +401,14 @@ fun FragmentScreen(fragmentClass: Class<out Fragment>) {
 composable(Screen.InputControls.route) {
     FragmentScreen(InputControlsFragment::class.java)
 }
+composable(Screen.Settings.route) {
+    FragmentScreen(SettingsFragment::class.java)
+}
 ```
 
-**Gotcha:** `getSupportActionBar()` returns null inside fragments hosted this way. Replace any `requireActivity().supportActionBar?.title = "..."` calls with your own Compose top bar.
+**Why `ContextThemeWrapper`:** The base XML `AppTheme` is a Light theme. Without wrapping, `SettingsFragment` and `InputControlsFragment` render with a white background inside an otherwise dark Compose host — a jarring mismatch. `ContextThemeWrapper(ctx, R.style.AppTheme_Dark)` forces the fragment to use the dark theme, matching the Compose surface color.
+
+**Gotcha:** `getSupportActionBar()` returns null inside fragments hosted this way. Remove any `requireActivity().supportActionBar?.title = "..."` calls from fragments that will be Compose-hosted. Manage the title in your Compose `TopAppBar` instead.
 
 ---
 
@@ -480,59 +581,119 @@ private fun renameShortcut(shortcut: Shortcut, newName: String) {
 
 ### A12. Theme / Color Setup
 
-Compose needs its own theme defined before any screen is rendered. Create two files: `Color.kt` and `Theme.kt`.
+This project uses a **dynamic multi-preset theme system**, not a single hardcoded color scheme. Understanding this is important — the simple approach (one static `darkColorScheme()`) works for a basic migration, but you'll want the full system for theme switching and dark mode support.
 
-**Color.kt** — define your palette as top-level constants:
+---
+
+#### Step 1 — Color.kt (static palette constants)
+
+These are used **only by `Theme.kt` and `ThemePreset.kt`** to build `ColorScheme` objects. Never import them directly in composables — use `MaterialTheme.colorScheme.primary` instead (see Gotcha 14).
+
 ```kotlin
 package com.winlator.cmod.ui.theme
-
 import androidx.compose.ui.graphics.Color
 
-val Primary       = Color(0xFF6650A4)
-val OnPrimary     = Color(0xFFFFFFFF)
-val Surface       = Color(0xFF1E1E2E)
-val OnSurface     = Color(0xFFE6E6E6)
-val Background    = Color(0xFF121212)
-val OnBackground  = Color(0xFFE6E6E6)
-val DividerColor  = Color(0xFF2E2E3E)
-val OnSurfaceVariant = Color(0xFF9E9EA8)
+// Used as fallback defaults — not for direct use in composables
+val Surface          = Color(0xFF2A2A2A)
+val OnSurface        = Color(0xFFE0E0E0)
+val OnSurfaceVariant = Color(0xFFAAAAAA)
+val Divider          = Color(0xFF404040)
 ```
 
-**Theme.kt** — wrap everything in a `MaterialTheme` with a forced dark color scheme:
+---
+
+#### Step 2 — ThemePreset.kt (per-preset color definitions)
+
+Each preset defines its background/surface/primary colors and provides both dark and light `ColorScheme` variants:
+
 ```kotlin
-package com.winlator.cmod.ui.theme
+data class ThemePreset(
+    val name: String,
+    val background: Color,
+    val surface: Color,
+    val surfaceVariant: Color,
+    val primary: Color,
+    val onSurface: Color = Color(0xFFE0E0E0),
+    val onSurfaceVariant: Color = Color(0xFFAAAAAA),
+) {
+    fun toColorScheme(accentOverride: Color? = null) = darkColorScheme(
+        primary          = accentOverride ?: primary,
+        background       = background,
+        surface          = surface,
+        onSurface        = onSurface,
+        surfaceVariant   = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+        error            = Color(0xFFCF6679),
+    )
 
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+    fun toLightColorScheme(accentOverride: Color? = null) = lightColorScheme(
+        primary          = accentOverride ?: primary,
+        onPrimary        = Color(0xFFFFFFFF),
+        background       = Color(0xFFF5F5F5),
+        onBackground     = Color(0xFF1A1A1A),
+        surface          = Color(0xFFFFFFFF),
+        onSurface        = Color(0xFF1A1A1A),
+        surfaceVariant   = Color(0xFFEAEAEA),
+        onSurfaceVariant = Color(0xFF555555),
+        error            = Color(0xFFB00020),
+    )
+}
 
-private val AppColorScheme = darkColorScheme(
-    primary         = Primary,
-    onPrimary       = OnPrimary,
-    surface         = Surface,
-    onSurface       = OnSurface,
-    background      = Background,
-    onBackground    = OnBackground,
+// Built-in presets — last entry is always "Custom" (user-defined HSV accent)
+val themePresets = listOf(
+    ThemePreset("Classic Dark", Color(0xFF1A1A1A), Color(0xFF2A2A2A), Color(0xFF333333), Color(0xFF8B6BE0)),
+    ThemePreset("AMOLED",       Color(0xFF000000), Color(0xFF0D0D0D), Color(0xFF181818), Color(0xFFBB86FC)),
+    ThemePreset("Ocean",        Color(0xFF0D1B2A), Color(0xFF162435), Color(0xFF1E3045), Color(0xFF0EA5E9)),
+    ThemePreset("Forest",       Color(0xFF0D1A12), Color(0xFF142010), Color(0xFF1C2E1A), Color(0xFF22C55E)),
+    ThemePreset("Sunset",       Color(0xFF1A0D0D), Color(0xFF251515), Color(0xFF301C1C), Color(0xFFF97316)),
+    ThemePreset("Rose",         Color(0xFF1A0D14), Color(0xFF25151E), Color(0xFF301C28), Color(0xFFEC4899)),
+    ThemePreset("Steel",        Color(0xFF131419), Color(0xFF1C1D25), Color(0xFF252630), Color(0xFF64748B)),
+    ThemePreset("Custom",       Color(0xFF121212), Color(0xFF1E1E1E), Color(0xFF2A2A2A), Color(0xFF8B6BE0)),
 )
+val CUSTOM_PRESET_INDEX = themePresets.size - 1
+```
 
+---
+
+#### Step 3 — AppThemeState.kt (global singleton)
+
+See **[A17. AppThemeState — Dynamic Theme System](#a17-appthemestate--dynamic-theme-system)** for the full implementation. In short: this singleton holds three `StateFlow`s (`_presetIndex`, `_customAccent`, `_isDarkMode`), combines them into a `colorScheme: Flow<ColorScheme>`, and reacts to SharedPreferences changes live.
+
+---
+
+#### Step 4 — Theme.kt (WinlatorTheme composable)
+
+```kotlin
 @Composable
 fun WinlatorTheme(content: @Composable () -> Unit) {
+    val colorScheme by AppThemeState.colorScheme.collectAsState(
+        initial = AppThemeState.currentColorSchemeSnapshot()
+    )
     MaterialTheme(
-        colorScheme = AppColorScheme,
-        content = content
+        colorScheme = colorScheme,
+        content = content,
     )
 }
 ```
 
-**Apply it in MainActivity:**
+**Why `currentColorSchemeSnapshot()` as `initial`:** The `colorScheme` flow emits its first value asynchronously. Without an `initial`, there's a single frame where `MaterialTheme` has no color scheme — this can cause a brief flash. The snapshot reads the current state synchronously and avoids it.
+
+---
+
+#### Step 5 — Apply in MainActivity
+
 ```kotlin
+// Call before setContent — reads saved prefs and registers SharedPreferences listener
+AppThemeState.init(this)
+
 setContent {
     WinlatorTheme {
-        AppNavGraph()
+        // your app content
     }
 }
 ```
 
-**Why this matters:** Without an explicit dark color scheme, Compose inherits the XML `AppTheme` which is Light. Every `Surface`, `AlertDialog`, and `Card` will render white. Defining `darkColorScheme()` here fixes all dialogs globally — no per-dialog workarounds needed.
+**Why this matters:** Without an explicit dark color scheme, Compose inherits the XML `AppTheme` which is Light. Every `Surface`, `AlertDialog`, and `Card` will render white. Defining any `darkColorScheme()` here fixes all dialogs globally. The multi-preset system is optional — even a single static `darkColorScheme()` in `WinlatorTheme` is enough to get started.
 
 ---
 
@@ -785,6 +946,177 @@ After building the APK, go through this list. These are the areas most likely to
 - [ ] Changing letter updates the drive entry
 - [ ] Browse button opens folder picker, selected path populates field
 - [ ] Remove button removes the drive row
+
+---
+
+### A17. AppThemeState — Dynamic Theme System
+
+`AppThemeState` is a Kotlin `object` singleton that drives the entire theme. It must be initialized once in `MainActivity.onCreate()` before `setContent {}` is called.
+
+**Why a singleton and not a ViewModel?** The theme must be accessible from both Compose screens and non-Compose code (e.g. `AppearanceScreen` calling `setPreset()`). A ViewModel is scoped to a NavBackStackEntry — a singleton is accessible anywhere.
+
+**Full implementation:**
+
+```kotlin
+object AppThemeState {
+    private lateinit var themePrefs: SharedPreferences
+    private lateinit var appPrefs: SharedPreferences
+    // Hold strong reference — SharedPreferences uses WeakReference for listeners
+    private var prefListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
+
+    private val _presetIndex  = MutableStateFlow(0)
+    private val _customAccent = MutableStateFlow(Color(0xFF8B6BE0))
+    private val _isDarkMode   = MutableStateFlow(true)
+
+    val presetIndex:  StateFlow<Int>     = _presetIndex
+    val customAccent: StateFlow<Color>   = _customAccent
+    val isDarkMode:   StateFlow<Boolean> = _isDarkMode
+
+    val colorScheme: Flow<ColorScheme> =
+        combine(_presetIndex, _customAccent, _isDarkMode) { index, accent, dark ->
+            val preset   = themePresets.getOrElse(index) { themePresets.first() }
+            val override = if (index == CUSTOM_PRESET_INDEX) accent else null
+            if (dark) preset.toColorScheme(accentOverride = override)
+            else      preset.toLightColorScheme(accentOverride = override)
+        }
+
+    fun init(context: Context) {
+        themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
+        appPrefs   = PreferenceManager.getDefaultSharedPreferences(context)
+
+        _presetIndex.value  = themePrefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
+        _customAccent.value = Color(themePrefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb()))
+        _isDarkMode.value   = appPrefs.getBoolean("dark_mode", true)
+
+        // React to SettingsFragment dark_mode toggle in real time — no restart needed
+        prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "dark_mode") _isDarkMode.value = appPrefs.getBoolean("dark_mode", true)
+        }
+        appPrefs.registerOnSharedPreferenceChangeListener(prefListener)
+    }
+
+    fun setPreset(index: Int) {
+        _presetIndex.value = index.coerceIn(0, themePresets.size - 1)
+        themePrefs.edit().putInt("preset_index", _presetIndex.value).apply()
+    }
+
+    fun setCustomAccent(color: Color) {
+        _customAccent.value = color
+        _presetIndex.value  = CUSTOM_PRESET_INDEX
+        themePrefs.edit()
+            .putInt("custom_accent", color.toArgb())
+            .putInt("preset_index", CUSTOM_PRESET_INDEX)
+            .apply()
+    }
+
+    // Synchronous snapshot — used as `initial` in collectAsState() to avoid first-frame flash
+    fun currentColorSchemeSnapshot(): ColorScheme {
+        val index    = _presetIndex.value
+        val preset   = themePresets.getOrElse(index) { themePresets.first() }
+        val override = if (index == CUSTOM_PRESET_INDEX) _customAccent.value else null
+        return if (_isDarkMode.value) preset.toColorScheme(accentOverride = override)
+               else                   preset.toLightColorScheme(accentOverride = override)
+    }
+}
+```
+
+**In WinlatorTheme:**
+```kotlin
+@Composable
+fun WinlatorTheme(content: @Composable () -> Unit) {
+    val colorScheme by AppThemeState.colorScheme.collectAsState(
+        initial = AppThemeState.currentColorSchemeSnapshot()
+    )
+    MaterialTheme(colorScheme = colorScheme, content = content)
+}
+```
+
+**In AppearanceScreen (user changes preset):**
+```kotlin
+AppThemeState.setPreset(selectedIndex)
+AppThemeState.setCustomAccent(pickedColor)
+```
+
+Changes are immediately reflected across the entire app with no recomposition triggers needed beyond what `collectAsState()` already handles.
+
+---
+
+### A18. PreloaderState — Global Loading Overlay
+
+When long-running operations need to block the UI (container creation, saves, installs), use `PreloaderState` — a global `object` that drives a Compose overlay rendered at the root of the screen tree.
+
+**Why not a ViewModel?** The overlay must be triggerable from both Compose code (ViewModels) and legacy Java code (`PreloaderDialog.java` still calls `show()`/`hide()` in some paths). A `@JvmStatic` singleton bridges both worlds.
+
+**PreloaderState.kt:**
+```kotlin
+object PreloaderState {
+    private val _text = MutableStateFlow<String?>(null)
+    val text: StateFlow<String?> = _text
+
+    @JvmStatic fun show(t: String? = null) { _text.value = t ?: "" }
+    @JvmStatic fun hide()                  { _text.value = null }
+    @JvmStatic fun isVisible(): Boolean    = _text.value != null
+}
+```
+
+**PreloaderOverlay composable (rendered in MainActivity's Box root):**
+```kotlin
+@Composable
+fun PreloaderOverlay() {
+    val text by PreloaderState.text.collectAsState()
+    if (text != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                if (text!!.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(text!!, color = Color.White)
+                }
+            }
+        }
+    }
+}
+```
+
+**In MainActivity — render at the root Box so it overlays everything:**
+```kotlin
+setContent {
+    WinlatorTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AppShell(…)
+            PreloaderOverlay()   // always on top
+        }
+    }
+}
+```
+
+**Triggering from a Kotlin ViewModel:**
+```kotlin
+fun confirm(onComplete: () -> Unit) {
+    if (isSaving) return
+    isSaving = true
+    PreloaderState.show()
+    viewModelScope.launch {
+        // do work…
+        PreloaderState.hide()
+        isSaving = false
+        onComplete()
+    }
+}
+```
+
+**Triggering from legacy Java:**
+```java
+// PreloaderDialog.java — delegates to PreloaderState
+PreloaderState.show("Loading…");
+// … work …
+PreloaderState.hide();
+```
 
 ---
 
