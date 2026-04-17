@@ -227,7 +227,8 @@
             <!-- Theme Settings -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:visibility="gone">
                 <LinearLayout style="@style/FieldSet">
                     <CheckBox
                         android:id="@+id/CBDarkMode"

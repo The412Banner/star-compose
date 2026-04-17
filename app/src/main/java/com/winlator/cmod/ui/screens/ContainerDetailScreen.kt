@@ -3,6 +3,7 @@ package com.winlator.cmod.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.view.ContextThemeWrapper
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.view.View
@@ -690,7 +691,7 @@ private fun AdvancedTab(
             )
             AndroidView(
                 factory = { ctx ->
-                    CPUListView(ctx).also { cpv ->
+                    CPUListView(ContextThemeWrapper(ctx, R.style.AppTheme_Dark)).also { cpv ->
                         cpv.setCheckedCPUList(viewModel.cpuList)
                         cpuListViewRef.value = cpv
                     }
@@ -707,7 +708,7 @@ private fun AdvancedTab(
                 )
                 AndroidView(
                     factory = { ctx ->
-                        CPUListView(ctx).also { cpv ->
+                        CPUListView(ContextThemeWrapper(ctx, R.style.AppTheme_Dark)).also { cpv ->
                             cpv.setCheckedCPUList(viewModel.cpuListWoW64)
                             cpuListWoW64Ref.value = cpv
                         }
@@ -992,7 +993,9 @@ internal fun GraphicsDriverConfigDialog(
     LaunchedEffect(version) {
         if (version.isNotEmpty()) {
             withContext(Dispatchers.IO) {
-                val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
+                val exts = try {
+                    GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
+                } catch (_: Throwable) { emptyList() }
                 withContext(Dispatchers.Main) {
                     allExtensions = exts
                     if (version != cfg["version"]) blacklisted = emptySet()

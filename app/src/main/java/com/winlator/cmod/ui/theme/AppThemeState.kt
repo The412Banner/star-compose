@@ -5,15 +5,12 @@ import android.content.SharedPreferences
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.preference.PreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 
 object AppThemeState {
     private lateinit var themePrefs: SharedPreferences
-    private lateinit var appPrefs: SharedPreferences
-    private var prefListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private val _presetIndex = MutableStateFlow(0)
     val presetIndex: StateFlow<Int> = _presetIndex
@@ -34,18 +31,11 @@ object AppThemeState {
 
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
-        appPrefs = PreferenceManager.getDefaultSharedPreferences(context)
 
         _presetIndex.value = themePrefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb())
         _customAccent.value = Color(savedAccent)
-        _isDarkMode.value = appPrefs.getBoolean("dark_mode", true)
-
-        // React to dark_mode changes in SettingsFragment without restart
-        prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "dark_mode") _isDarkMode.value = appPrefs.getBoolean("dark_mode", true)
-        }
-        appPrefs.registerOnSharedPreferenceChangeListener(prefListener)
+        _isDarkMode.value = true
     }
 
     fun setPreset(index: Int) {
