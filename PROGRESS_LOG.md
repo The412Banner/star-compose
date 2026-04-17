@@ -63,7 +63,7 @@ Or alternatively open a URL via `Intent(Intent.ACTION_VIEW, Uri.parse(url))`.
 ---
 
 ### Job 2 — About Dialog (MISSING CONTENT)
-**Status:** NOT STARTED  
+**Status:** ✅ COMPLETE — commit `d18cae6`, CI run `24569669122`  
 **File:** `app/src/main/java/com/winlator/cmod/MainActivity.kt` — `AboutDialog()` at bottom of file  
 **Problem:** Current dialog is 4 lines of plain text. Missing: app icon/logo, version name, Wine/Box64/FEX versions, credits list.  
 **Fix:** Rebuild `AboutDialog()` as a proper Compose `Dialog` (not AlertDialog — needs more space) with:
@@ -189,15 +189,16 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job | Commit | CI Run | Result | Date |
 |---|---|---|---|---|
 | Pre-plan: Appearance drawer fix | `beee77b` | `24568759383` | ✅ green | 2026-04-17 |
-| Job 1: Help and Support dialog | `93d0326` | `24569312463` | pending | 2026-04-17 |
+| Job 1: Help and Support dialog | `93d0326` | `24569312463` | ✅ green | 2026-04-17 |
+| Job 2: About dialog rebuild | `d18cae6` | `24569669122` | pending | 2026-04-17 |
 
 ---
 
 ## Current Job
 
-**→ Job 2: About Dialog (missing content)**
+**→ Job 3: Container Creation Loading Indicator**
 
-Job 1 done. Waiting on CI `24569312463` to confirm green.
+Jobs 1 + 2 done. Waiting on CI `24569669122` for Job 2.
 
-Last known commit: `93d0326`  
-Next action: Confirm CI green → implement Job 2 → commit → push → CI → update this log
+Last known commit: `d18cae6`  
+Next action: Confirm CI green → implement Job 3 → commit → push → CI → update this log
