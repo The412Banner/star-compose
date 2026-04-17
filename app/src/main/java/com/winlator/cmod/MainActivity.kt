@@ -16,7 +16,21 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
@@ -25,6 +39,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -361,16 +380,96 @@ private fun AllFilesAccessDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 
 @Composable
 private fun AboutDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("About Winlator") },
-        text = {
-            Text(
-                "Winlator — Run Windows applications on Android.\n\n" +
-                "Powered by Wine, Box64, FEX-Emu.\n\n" +
-                "winlator.org"
-            )
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-    )
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+            modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Logo + name
+                Image(
+                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = androidx.compose.ui.Modifier.size(72.dp)
+                )
+                Text(
+                    text = "Bionic Star",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    fontSize = 13.sp,
+                    color = com.winlator.cmod.ui.theme.OnSurfaceVariant
+                )
+
+                Spacer(androidx.compose.ui.Modifier.height(4.dp))
+                Divider(color = com.winlator.cmod.ui.theme.Divider)
+                Spacer(androidx.compose.ui.Modifier.height(4.dp))
+
+                // Powered by
+                AboutSection(title = "Powered By") {
+                    AboutRow("Wine",    "Windows compatibility layer")
+                    AboutRow("Box64",   "x86_64 emulation on ARM")
+                    AboutRow("FEX-Emu", "Fast x86 emulator")
+                    AboutRow("Turnip",  "Open-source Vulkan driver")
+                }
+
+                Spacer(androidx.compose.ui.Modifier.height(4.dp))
+                Divider(color = com.winlator.cmod.ui.theme.Divider)
+                Spacer(androidx.compose.ui.Modifier.height(4.dp))
+
+                // Credits
+                AboutSection(title = "Credits") {
+                    AboutRow("brunodev85",      "Winlator — original project")
+                    AboutRow("MishaMixXx",      "Winlator Bionic")
+                    AboutRow("The412Banner",    "Star-Compose / Star Bionic")
+                    AboutRow("ptitSeb",         "Box64")
+                    AboutRow("WineHQ",          "Wine project")
+                    AboutRow("Mesa / Freedreno","Turnip Vulkan driver")
+                }
+
+                Spacer(androidx.compose.ui.Modifier.height(8.dp))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+                ) { Text("Close") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutSection(title: String, content: @Composable () -> Unit) {
+    Column(modifier = androidx.compose.ui.Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            modifier = androidx.compose.ui.Modifier.padding(bottom = 2.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun AboutRow(name: String, description: String) {
+    Row(
+        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = name, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+        Spacer(androidx.compose.ui.Modifier.width(8.dp))
+        Text(text = description, fontSize = 12.sp, color = com.winlator.cmod.ui.theme.OnSurfaceVariant)
+    }
 }
