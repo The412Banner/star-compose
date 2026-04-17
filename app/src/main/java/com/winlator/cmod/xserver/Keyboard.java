@@ -99,6 +99,9 @@ public class Keyboard {
         int action = event.getAction();
         int keyCode = event.getKeyCode();
 
+        // Ignore unmapped key codes (e.g. Asus Game Genie sends keycodes 851/861)
+        if (keyCode < 0 || keyCode >= keycodeMap.length) return false;
+
         if (keyCode == KeyEvent.KEYCODE_TAB || keyCode == KeyEvent.KEYCODE_ESCAPE) {
             if (action == KeyEvent.ACTION_DOWN) {
                 xServer.injectKeyPress(keycodeMap[keyCode]);
