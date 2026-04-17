@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +22,9 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
@@ -31,6 +36,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,6 +75,18 @@ fun AppDrawerContent(
     onLaunchStore: (Screen) -> Unit,
     onAbout: () -> Unit,
 ) {
+    var showHelp by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    if (showHelp) {
+        HelpSupportDialog(
+            onDismiss = { showHelp = false },
+            onOpenUrl = { url ->
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -132,7 +153,7 @@ fun AppDrawerContent(
         DrawerIconItem(
             label = "Help and Support",
             icon = Icons.Filled.HelpOutline,
-            onClick = { /* TODO: open help URL or dialog */ },
+            onClick = { showHelp = true },
         )
 
         Spacer(Modifier.height(16.dp))
@@ -219,6 +240,61 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             color = OnSurface,
+        )
+    }
+}
+
+@Composable
+private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Help & Support") },
+        text = {
+            androidx.compose.foundation.layout.Column(
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "For bug reports, feature requests, and support, visit the GitHub repository.",
+                    color = OnSurface
+                )
+                SupportLink(
+                    label = "GitHub Repository",
+                    url = "https://github.com/The412Banner/star-compose",
+                    onOpenUrl = onOpenUrl
+                )
+                SupportLink(
+                    label = "Report an Issue",
+                    url = "https://github.com/The412Banner/star-compose/issues",
+                    onOpenUrl = onOpenUrl
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
+@Composable
+private fun SupportLink(label: String, url: String, onOpenUrl: (String) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenUrl(url) }
+            .padding(vertical = 4.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.OpenInNew,
+            contentDescription = null,
+            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
         )
     }
 }
