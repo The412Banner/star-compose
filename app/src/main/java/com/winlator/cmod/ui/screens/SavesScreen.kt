@@ -72,7 +72,6 @@ import java.io.File
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 
 @Composable
@@ -135,11 +134,11 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                 containerColor = Surface,
                 modifier = Modifier.size(48.dp),
             ) {
-                Icon(imageVector = Icons.Filled.FolderOpen, contentDescription = "Import save", tint = Primary)
+                Icon(imageVector = Icons.Filled.FolderOpen, contentDescription = "Import save", tint = MaterialTheme.colorScheme.primary)
             }
             FloatingActionButton(
                 onClick = { showNewSaveDialog = true },
-                containerColor = Primary,
+                containerColor = MaterialTheme.colorScheme.primary,
             ) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = "Add save", tint = Color.White)
             }
@@ -152,7 +151,7 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                     .background(Color.Black.copy(alpha = 0.4f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = Primary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -233,7 +232,7 @@ private fun SaveItem(
         Icon(
             painter = painterResource(R.drawable.icon_save),
             contentDescription = null,
-            tint = Primary,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(36.dp),
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -363,7 +362,7 @@ private fun NewSaveDialog(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Select Save Path", color = Primary)
+                    Text("Select Save Path", color = MaterialTheme.colorScheme.primary)
                 }
                 if (selectedPath.isNotEmpty()) {
                     Text(text = selectedPath, fontSize = 11.sp, color = OnSurfaceVariant)
@@ -407,7 +406,7 @@ private fun EditSaveDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text("Original Path", fontSize = 12.sp, color = OnSurfaceVariant)
-                Text(save.path, fontSize = 12.sp, color = Primary)
+                Text(save.path, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
         },
         confirmButton = {

@@ -67,7 +67,6 @@ import com.winlator.cmod.contents.ContentsManager
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 import com.winlator.cmod.ui.theme.SurfaceVariant
 import java.util.concurrent.Executors
@@ -154,7 +153,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                     onClick = { vm.setFilter(type) },
                     label = { Text(type.toString()) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Primary,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = Color.White,
                     ),
                 )
@@ -166,7 +165,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         // ── Install button ────────────────────────────────────────────────────
         Button(
             onClick = { confirmInstallPrompt = true },
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -238,11 +237,11 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         type = "*/*"
                     }
                     filePicker.launch(intent)
-                }) { Text(context.getString(android.R.string.ok), color = Primary) }
+                }) { Text(context.getString(android.R.string.ok), color = MaterialTheme.colorScheme.primary) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmInstallPrompt = false }) {
-                    Text(context.getString(android.R.string.cancel), color = Primary)
+                    Text(context.getString(android.R.string.cancel), color = MaterialTheme.colorScheme.primary)
                 }
             },
         )
@@ -300,7 +299,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             text = { Text(d.message, color = Color(0xFFCCCCCC)) },
             confirmButton = {
                 TextButton(onClick = { installDialog = null; d.onDismiss() }) {
-                    Text(context.getString(android.R.string.ok), color = Primary)
+                    Text(context.getString(android.R.string.ok), color = MaterialTheme.colorScheme.primary)
                 }
             },
         )
@@ -334,11 +333,11 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                         }
                     }
                     vm.removeContent(profile)
-                }) { Text(context.getString(android.R.string.ok), color = Primary) }
+                }) { Text(context.getString(android.R.string.ok), color = MaterialTheme.colorScheme.primary) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemove = null }) {
-                    Text(context.getString(android.R.string.cancel), color = Primary)
+                    Text(context.getString(android.R.string.cancel), color = MaterialTheme.colorScheme.primary)
                 }
             },
         )
@@ -402,10 +401,10 @@ private fun ContentInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmLabel, color = Primary) }
+            TextButton(onClick = onConfirm) { Text(confirmLabel, color = MaterialTheme.colorScheme.primary) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Primary) }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
         },
     )
 }
@@ -445,10 +444,10 @@ private fun UntrustedDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Continue", color = Primary) }
+            TextButton(onClick = onConfirm) { Text("Continue", color = MaterialTheme.colorScheme.primary) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Primary) }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
         },
     )
 }
@@ -510,7 +509,7 @@ private fun ContentItem(
         Icon(
             imageVector = Icons.Filled.Settings,
             contentDescription = null,
-            tint = Primary,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(36.dp),
         )
 
@@ -523,10 +522,10 @@ private fun ContentItem(
 
         if (!isLocal) {
             if (isDownloading) {
-                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Primary, strokeWidth = 3.dp)
+                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 3.dp)
             } else {
                 IconButton(onClick = onDownload) {
-                    Icon(Icons.Filled.Download, contentDescription = "Download", tint = Primary)
+                    Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }

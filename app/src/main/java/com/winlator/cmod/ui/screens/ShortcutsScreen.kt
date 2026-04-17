@@ -109,7 +109,6 @@ import com.winlator.cmod.midi.MidiManager
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface as SurfaceColor
 import com.winlator.cmod.widget.CPUListView
 import com.winlator.cmod.widget.EnvVarsView
@@ -180,7 +179,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
                 Text(
                     text = "No shortcuts yet.",
@@ -335,14 +334,26 @@ private fun ShortcutItem(
             Icon(
                 imageVector = Icons.Filled.OpenInNew,
                 contentDescription = null,
-                tint = Primary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(40.dp),
             )
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = shortcut.name, style = MaterialTheme.typography.bodyLarge, color = OnSurface)
-            Text(text = shortcut.container.name, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+            Text(
+                text = shortcut.name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = OnSurface,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            Text(
+                text = shortcut.container?.name ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
         Box {
             IconButton(onClick = { menuExpanded = true }) {

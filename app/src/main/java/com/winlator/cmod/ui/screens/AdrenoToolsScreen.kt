@@ -43,7 +43,6 @@ import com.winlator.cmod.contents.AdrenotoolsManager
 import com.winlator.cmod.ui.theme.Divider as DividerColor
 import com.winlator.cmod.ui.theme.OnSurface
 import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Primary
 import com.winlator.cmod.ui.theme.Surface
 
 @Composable
@@ -77,7 +76,7 @@ fun AdrenoToolsScreen() {
         // Install button
         Button(
             onClick = { confirmInstallPrompt = true },
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -168,7 +167,7 @@ private fun DriverItem(
         Icon(
             imageVector = Icons.Filled.Memory,
             contentDescription = null,
-            tint = Primary,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(36.dp),
         )
         Spacer(modifier = Modifier.width(14.dp))
