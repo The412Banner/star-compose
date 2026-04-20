@@ -89,8 +89,14 @@ import androidx.compose.runtime.setValue
 import com.winlator.cmod.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -218,7 +224,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 AnimatedContent(targetState = isGridView, label = "layout") { grid ->
                     if (grid) {
                         LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 160.dp),
+                            columns = GridCells.Adaptive(minSize = 120.dp),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -495,58 +501,73 @@ private fun ShortcutGridItem(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Box(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(SurfaceColor)
-            .combinedClickable(onClick = onRun, onLongClick = { menuExpanded = true })
-            .padding(8.dp),
+            .combinedClickable(onClick = onRun, onLongClick = { menuExpanded = true }),
     ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            if (shortcut.icon != null) {
-                Image(
-                    bitmap = shortcut.icon.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
+        // Cover image fills the entire tile
+        if (shortcut.icon != null) {
+            Image(
+                bitmap = shortcut.icon.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Filled.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+            )
+        }
+
+        // Gradient scrim + name/container at the bottom
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                    )
                 )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.OpenInNew,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(64.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        ) {
+            Column {
+                Text(
+                    text = shortcut.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
-                DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
-                DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
-                DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
-                DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
-                DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
+                if (!shortcut.container?.name.isNullOrEmpty()) {
+                    Text(
+                        text = shortcut.container?.name ?: "",
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = shortcut.name,
-            style = MaterialTheme.typography.bodyMedium,
-            color = OnSurface,
-            maxLines = 2,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
-        if (!shortcut.container?.name.isNullOrEmpty()) {
-            Text(
-                text = shortcut.container?.name ?: "",
-                style = MaterialTheme.typography.labelSmall,
-                color = OnSurfaceVariant,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
+
+        // Long-press context menu
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
+            DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
+            DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
+            DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
+            DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+            DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }
     }
 }
