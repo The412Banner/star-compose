@@ -179,12 +179,29 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | Job 5: Sort shortcuts list | `00dc6a5` | `24571836336` | ✅ green | 2026-04-17 |
 | Job 6: Import/Export container | `8477b65` | `24572308670` | ✅ green | 2026-04-17 |
 | Job 7+8: Import shortcut + grid/list toggle | `546d25e` | `24577265773` | ✅ green | 2026-04-17 |
+| fix: skip enumerateExtensions for AdrenoTools (wrong approach) | `fc2b422` | — | superseded | 2026-04-19 |
+| fix: guard atVersionsLoaded race (wrong approach) | `113b483` | — | superseded | 2026-04-19 |
+| fix: restore enumerateExtensions on main thread | `8035420` | `24661167232` | ✅ green (partial — isDriverSupported still on IO) | 2026-04-20 |
+| fix: move isDriverSupported() to main thread — full fix | `e22815c` | `24662739330` | ✅ green ✅ confirmed working | 2026-04-20 |
 
 ---
 
 ## Current Job
 
-**→ ALL 8 JOBS COMPLETE** ✅
+**→ ALL 8 JOBS COMPLETE + AdrenoTools/Turnip driver SIGSEGV fixed** ✅
 
-Last commit: `546d25e`  
-Last CI: `24577265773` ✅ green
+Last commit: `e22815c`  
+Last CI: `24662739330` ✅ green
+
+---
+
+## AdrenoTools/Turnip Driver Fix (2026-04-20)
+
+**Root cause:** The Compose migration moved `GPUInformation` JNI calls onto background coroutine threads (`Dispatchers.IO`). The AdrenoTools `hook_android_dlopen_ext` is not reentrant across threads — concurrent invocations from main + IO thread cause SIGSEGV.
+
+**All `GPUInformation` native methods must run on the main thread:**
+- `enumerateExtensions()` — moved to main thread via `LaunchedEffect(version)` (no `withContext`)
+- `isDriverSupported()` / `getRenderer()` — moved to main thread in `LaunchedEffect(Unit)`, outside `withContext(Dispatchers.IO)`
+- Pure file I/O (`enumarateInstalledDrivers()`, `gpu_cards.json`) stays on `Dispatchers.IO`
+
+**File:** `ContainerDetailScreen.kt` → `GraphicsDriverConfigDialog` composable
