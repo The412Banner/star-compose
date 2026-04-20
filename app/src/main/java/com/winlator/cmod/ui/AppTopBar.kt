@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -20,6 +21,7 @@ fun AppTopBar(
     title: String,
     showBack: Boolean = false,
     onNavClick: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(text = title, color = Color.White) },
@@ -40,6 +42,7 @@ fun AppTopBar(
                 }
             }
         },
+        actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Surface,
             titleContentColor = Color.White,

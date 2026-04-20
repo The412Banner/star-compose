@@ -15,7 +15,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -71,8 +73,10 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,6 +84,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.winlator.cmod.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -158,35 +163,22 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Sort/action bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Import button
+    val topBarActions = LocalTopBarActions.current
+    SideEffect {
+        topBarActions.value = {
             IconButton(onClick = { showImportContainerPicker = true }) {
-                Icon(Icons.Filled.FileDownload, contentDescription = "Import shortcut", tint = OnSurfaceVariant)
+                Icon(Icons.Filled.FileDownload, contentDescription = "Import shortcut", tint = androidx.compose.ui.graphics.Color.White)
             }
-            // Grid/list toggle
             IconButton(onClick = { vm.setGridView(!isGridView) }) {
                 Icon(
                     imageVector = if (isGridView) Icons.Filled.ViewList else Icons.Filled.GridView,
                     contentDescription = if (isGridView) "List view" else "Grid view",
-                    tint = OnSurfaceVariant,
+                    tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
-            // Sort button
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.SwapVert,
-                        contentDescription = "Sort",
-                        tint = OnSurfaceVariant,
-                    )
+                    Icon(Icons.Filled.SwapVert, contentDescription = "Sort", tint = androidx.compose.ui.graphics.Color.White)
                 }
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                     val orders = listOf(
@@ -211,7 +203,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             }
         }
+    }
+    DisposableEffect(Unit) { onDispose { topBarActions.value = {} } }
 
+    Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
                 Text(
@@ -223,7 +218,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 AnimatedContent(targetState = isGridView, label = "layout") { grid ->
                     if (grid) {
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
+                            columns = GridCells.Adaptive(minSize = 160.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(shortcuts, key = { it.file.path }) { shortcut ->
@@ -498,11 +493,12 @@ private fun ShortcutGridItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .fillMaxWidth()
+            .aspectRatio(1f)
             .background(SurfaceColor)
-            .clickable(onClick = onRun)
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .combinedClickable(onClick = onRun, onLongClick = { menuExpanded = true })
+            .padding(8.dp),
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
             if (shortcut.icon != null) {
@@ -519,18 +515,13 @@ private fun ShortcutGridItem(
                     modifier = Modifier.size(64.dp),
                 )
             }
-            Box {
-                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
-                }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
-                    DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
-                    DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
-                    DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
-                    DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
-                    DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
-                }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
+                DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
+                DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
+                DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
+                DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+                DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
             }
         }
         Spacer(modifier = Modifier.height(6.dp))

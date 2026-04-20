@@ -44,9 +44,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.winlator.cmod.ui.LocalTopBarActions
+import com.winlator.cmod.ui.topBarActionsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -287,6 +291,7 @@ private fun AppShell(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val topBarActionsState = remember { topBarActionsState() }
 
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
@@ -299,6 +304,7 @@ private fun AppShell(
         else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
     }
 
+    CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = !editInputControls && !currentRoute.startsWith("container_detail"),
@@ -339,6 +345,7 @@ private fun AppShell(
                             }
                         }
                     },
+                    actions = topBarActionsState.value,
                 )
             },
         ) { innerPadding ->
@@ -350,6 +357,7 @@ private fun AppShell(
             )
         }
     }
+    } // end CompositionLocalProvider
 
     if (showAllFilesDialog) {
         AllFilesAccessDialog(
