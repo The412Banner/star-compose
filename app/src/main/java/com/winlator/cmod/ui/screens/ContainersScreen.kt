@@ -108,8 +108,6 @@ fun ContainersScreen(
             }
         }
     }
-    DisposableEffect(Unit) { onDispose { topBarActions.value = {} } }
-
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         if (containers.isEmpty() && !isLoading) {

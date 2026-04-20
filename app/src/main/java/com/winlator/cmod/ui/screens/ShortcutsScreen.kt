@@ -17,6 +17,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -74,7 +76,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
@@ -205,8 +206,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }
         }
     }
-    DisposableEffect(Unit) { onDispose { topBarActions.value = {} } }
-
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
@@ -221,6 +220,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 160.dp),
                             modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(shortcuts, key = { it.file.path }) { shortcut ->
                                 ShortcutGridItem(
@@ -498,6 +500,7 @@ private fun ShortcutGridItem(
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
             .background(SurfaceColor)
             .combinedClickable(onClick = onRun, onLongClick = { menuExpanded = true })
             .padding(8.dp),

@@ -296,6 +296,12 @@ private fun AppShell(
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
 
+    // Clear top bar actions on navigation so stale actions from a previous screen don't persist.
+    // Screens that need actions re-set them via SideEffect on each recomposition.
+    androidx.compose.runtime.LaunchedEffect(currentRoute) {
+        topBarActionsState.value = {}
+    }
+
     val screenTitle = when {
         currentRoute.startsWith("container_detail") -> {
             val id = backstackEntry?.arguments?.getInt("id") ?: -1
