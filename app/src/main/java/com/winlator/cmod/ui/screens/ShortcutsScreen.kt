@@ -1436,10 +1436,12 @@ private fun addToHomeScreen(context: Context, shortcut: Shortcut) {
                 putExtra("container_id", shortcut.container.id)
                 putExtra("shortcut_path", shortcut.file.path)
             }
+            val bmp: Bitmap = shortcut.icon
+                ?: BitmapFactory.decodeResource(context.resources, com.winlator.cmod.R.drawable.icon_wine)
             val info = ShortcutInfo.Builder(context, shortcut.getExtra("uuid"))
                 .setShortLabel(shortcut.name)
                 .setLongLabel(shortcut.name)
-                .setIcon(Icon.createWithBitmap(shortcut.icon))
+                .setIcon(Icon.createWithBitmap(bmp))
                 .setIntent(intent)
                 .build()
             sm.requestPinShortcut(info, null)
