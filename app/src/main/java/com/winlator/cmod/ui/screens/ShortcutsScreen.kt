@@ -437,15 +437,33 @@ private fun ShortcutItem(
                 style = MaterialTheme.typography.bodyLarge,
                 color = OnSurface,
                 maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = shortcut.container?.name ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = OnSurfaceVariant,
                 maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis,
             )
+        }
+        // Info column — resolution + driver/wrapper
+        val resolution = shortcut.getExtra("screenSize", shortcut.container?.getScreenSize() ?: "")
+        val driverCfg = shortcut.getExtra("graphicsDriverConfig", shortcut.container?.getGraphicsDriverConfig() ?: "")
+        val driverLabel = if (driverCfg.isNotEmpty()) GraphicsDriverConfigDialog.getVersion(driverCfg) else ""
+        val dxwrapper = shortcut.getExtra("dxwrapper", shortcut.container?.getDXWrapper() ?: "")
+            .substringAfterLast(".").uppercase()
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier.padding(end = 4.dp),
+        ) {
+            if (resolution.isNotEmpty()) {
+                Text(resolution, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
+            }
+            val techLine = listOf(driverLabel, dxwrapper).filter { it.isNotEmpty() }.joinToString(" · ")
+            if (techLine.isNotEmpty()) {
+                Text(techLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
+            }
         }
         Box {
             IconButton(onClick = { menuExpanded = true }) {
