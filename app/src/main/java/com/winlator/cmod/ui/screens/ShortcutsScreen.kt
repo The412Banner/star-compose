@@ -451,8 +451,8 @@ private fun ShortcutItem(
         val resolution = shortcut.getExtra("screenSize", shortcut.container?.getScreenSize() ?: "")
         val driverCfg = shortcut.getExtra("graphicsDriverConfig", shortcut.container?.getGraphicsDriverConfig() ?: "")
         val driverLabel = if (driverCfg.isNotEmpty()) GraphicsDriverConfigDialog.getVersion(driverCfg) else ""
-        val dxwrapper = shortcut.getExtra("dxwrapper", shortcut.container?.getDXWrapper() ?: "")
-            .substringAfterLast(".").uppercase()
+        val dxwrapperCfg = shortcut.getExtra("dxwrapperConfig", shortcut.container?.getDXWrapperConfig() ?: "")
+        val dxwrapperVersion = if (dxwrapperCfg.isNotEmpty()) GraphicsDriverConfigDialog.getVersion(dxwrapperCfg) else ""
         Column(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.padding(end = 4.dp),
@@ -460,7 +460,7 @@ private fun ShortcutItem(
             if (resolution.isNotEmpty()) {
                 Text(resolution, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
             }
-            val techLine = listOf(driverLabel, dxwrapper).filter { it.isNotEmpty() }.joinToString(" · ")
+            val techLine = listOf(driverLabel, dxwrapperVersion).filter { it.isNotEmpty() }.joinToString(" · ")
             if (techLine.isNotEmpty()) {
                 Text(techLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
             }
