@@ -181,19 +181,10 @@ public class FakeInputWriter {
         Log.i(TAG, "Reset fake input to neutral state: " + eventFile.getAbsolutePath());
     }
 
-    /**
-     * Soft release - reset state without deleting the file.
-     * Use this for disconnect events so games can reconnect.
-     */
-    public synchronized void softRelease() {
-        reset();
-        close();
-        Log.i(TAG, "Soft released fake input: " + eventFile.getAbsolutePath());
-    }
+
 
     /**
      * Full destroy - reset, close, and delete the file.
-     * Only use this when the container is shutting down.
      */
     public synchronized void destroy() {
         destroyed = true;
