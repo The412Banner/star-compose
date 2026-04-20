@@ -452,17 +452,26 @@ private fun ShortcutItem(
         val driverCfg = shortcut.getExtra("graphicsDriverConfig", shortcut.container?.getGraphicsDriverConfig() ?: "")
         val driverLabel = if (driverCfg.isNotEmpty()) GraphicsDriverConfigDialog.getVersion(driverCfg) else ""
         val dxwrapperCfg = shortcut.getExtra("dxwrapperConfig", shortcut.container?.getDXWrapperConfig() ?: "")
-        val dxwrapperVersion = if (dxwrapperCfg.isNotEmpty()) GraphicsDriverConfigDialog.getVersion(dxwrapperCfg) else ""
+        val cfgMap = dxwrapperCfg.split(",").mapNotNull {
+            val parts = it.split("=", limit = 2)
+            if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+        }.toMap()
+        val dxvkVersion = cfgMap["version"] ?: ""
+        val vkd3dVersion = cfgMap["vkd3dVersion"] ?: ""
         Column(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.padding(end = 4.dp),
         ) {
-            if (resolution.isNotEmpty()) {
-                Text(resolution, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
+            val topLine = listOf(resolution, driverLabel).filter { it.isNotEmpty() }.joinToString(" · ")
+            if (topLine.isNotEmpty()) {
+                Text(topLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
             }
-            val techLine = listOf(driverLabel, dxwrapperVersion).filter { it.isNotEmpty() }.joinToString(" · ")
-            if (techLine.isNotEmpty()) {
-                Text(techLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
+            val bottomLine = listOfNotNull(
+                if (dxvkVersion.isNotEmpty()) "DXVK $dxvkVersion" else null,
+                if (vkd3dVersion.isNotEmpty()) "VKD3D $vkd3dVersion" else null,
+            ).joinToString(" · ")
+            if (bottomLine.isNotEmpty()) {
+                Text(bottomLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1)
             }
         }
         Box {
