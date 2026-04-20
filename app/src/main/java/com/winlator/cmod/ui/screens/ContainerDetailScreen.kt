@@ -964,28 +964,30 @@ internal fun GraphicsDriverConfigDialog(
     var showExtPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            val wrapperVersions = context.resources
-                .getStringArray(R.array.wrapper_graphics_driver_version_entries)
-                .filter { GPUInformation.isDriverSupported(it, context) }
-            val atVersions = AdrenotoolsManager(context).enumarateInstalledDrivers()
-
-            val gpuList = mutableListOf("Device")
+        val atVersions = withContext(Dispatchers.IO) {
+            AdrenotoolsManager(context).enumarateInstalledDrivers()
+        }
+        val gpuList = withContext(Dispatchers.IO) {
+            val list = mutableListOf("Device")
             try {
                 val json = FileUtils.readString(context, "gpu_cards.json")
                 val arr = JSONArray(json)
-                for (i in 0 until arr.length()) gpuList.add(arr.getJSONObject(i).getString("name"))
+                for (i in 0 until arr.length()) list.add(arr.getJSONObject(i).getString("name"))
             } catch (_: Exception) {}
+            list
+        }
+        // isDriverSupported() is a native JNI call — must run on main thread to avoid
+        // concurrent AdrenoTools hook invocations that cause SIGSEGV.
+        val wrapperVersions = context.resources
+            .getStringArray(R.array.wrapper_graphics_driver_version_entries)
+            .filter { GPUInformation.isDriverSupported(it, context) }
 
-            withContext(Dispatchers.Main) {
-                driverVersions = wrapperVersions + atVersions
-                gpuNames = gpuList
-                if (version.isEmpty() || (wrapperVersions + atVersions).none { it.equals(version, ignoreCase = true) }) {
-                    version = wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER_ADRENO, ignoreCase = true) }
-                        ?: wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER, ignoreCase = true) }
-                        ?: wrapperVersions.firstOrNull() ?: version
-                }
-            }
+        driverVersions = wrapperVersions + atVersions
+        gpuNames = gpuList
+        if (version.isEmpty() || (wrapperVersions + atVersions).none { it.equals(version, ignoreCase = true) }) {
+            version = wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER_ADRENO, ignoreCase = true) }
+                ?: wrapperVersions.firstOrNull { it.equals(DefaultVersion.WRAPPER, ignoreCase = true) }
+                ?: wrapperVersions.firstOrNull() ?: version
         }
     }
 
