@@ -219,8 +219,10 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 - Switch controller disconnect from softRelease to destroy (WinHandler)
 - Fix busy-loop + dead-file detection in native read() hook (fakeinput.cpp)
 
-**Last commit:** `f8e7f2d`  
-**Last CI:** `24788390969` ✅ green (2026-04-22)
+| `e8acb58` | fix: wire drawer and top bar to MaterialTheme colors | `24790554006` | 🔄 in progress |
+
+**Last commit:** `e8acb58`  
+**Last CI:** `24790554006` 🔄 in progress (2026-04-22)
 
 ---
 
