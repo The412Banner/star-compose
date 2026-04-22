@@ -93,14 +93,14 @@ fun XServerDrawer() {
         DrawerMenuItem(
             iconRes = R.drawable.icon_keyboard,
             label = "Keyboard",
-            onClick = { state.onKeyboard?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onKeyboard?.run(); state.onClose?.run() },
         )
 
         // ── Input Controls ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Input Controls",
-            onClick = { state.onInputControls?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onInputControls?.run(); state.onClose?.run() },
         )
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -143,17 +143,17 @@ fun XServerDrawer() {
                 DrawerCheckItem(
                     label = "Move Cursor to Touchpoint",
                     checked = moveCursorToTouch,
-                    onClick = { state.onMoveCursorToTouchpoint?.invoke(); state.onClose?.invoke() },
+                    onClick = { state.onMoveCursorToTouchpoint?.run(); state.onClose?.run() },
                 )
                 DrawerCheckItem(
                     label = "Relative Mouse Movement",
                     checked = isRelativeMouse,
-                    onClick = { state.onRelativeMouseMovement?.invoke(); state.onClose?.invoke() },
+                    onClick = { state.onRelativeMouseMovement?.run(); state.onClose?.run() },
                 )
                 DrawerCheckItem(
                     label = "Disable Mouse",
                     checked = isMouseDisabled,
-                    onClick = { state.onDisableMouse?.invoke(); state.onClose?.invoke() },
+                    onClick = { state.onDisableMouse?.run(); state.onClose?.run() },
                 )
             }
         }
@@ -164,21 +164,21 @@ fun XServerDrawer() {
         DrawerMenuItem(
             iconRes = R.drawable.icon_screen_effect,
             label = "Screen Effects",
-            onClick = { state.onScreenEffects?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onScreenEffects?.run(); state.onClose?.run() },
         )
 
         // ── Graphic Engine ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_settings,
             label = "Graphic Engine",
-            onClick = { state.onGraphicEngine?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onGraphicEngine?.run(); state.onClose?.run() },
         )
 
         // ── Vibration ─────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Vibration",
-            onClick = { state.onVibration?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onVibration?.run(); state.onClose?.run() },
         )
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -187,21 +187,21 @@ fun XServerDrawer() {
         DrawerMenuItem(
             iconRes = R.drawable.icon_fullscreen,
             label = "Toggle Fullscreen",
-            onClick = { state.onToggleFullscreen?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onToggleFullscreen?.run(); state.onClose?.run() },
         )
 
         // ── Pause / Resume ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = if (isPaused) R.drawable.icon_play else R.drawable.icon_pause,
             label = if (isPaused) "Resume" else "Pause",
-            onClick = { state.onPauseResume?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onPauseResume?.run(); state.onClose?.run() },
         )
 
         // ── Picture in Picture ────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.ic_picture_in_picture_alt,
             label = "Picture in Picture",
-            onClick = { state.onPipMode?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onPipMode?.run(); state.onClose?.run() },
         )
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -210,14 +210,14 @@ fun XServerDrawer() {
         DrawerMenuItem(
             iconRes = R.drawable.icon_active_windows,
             label = "Active Windows",
-            onClick = { state.onActiveWindows?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onActiveWindows?.run(); state.onClose?.run() },
         )
 
         // ── Task Manager ──────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_task_manager,
             label = "Task Manager",
-            onClick = { state.onTaskManager?.invoke(); state.onClose?.invoke() },
+            onClick = { state.onTaskManager?.run(); state.onClose?.run() },
         )
 
         // ── Magnifier (conditional) ───────────────────────────────────────────
@@ -225,7 +225,7 @@ fun XServerDrawer() {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_magnifier,
                 label = "Magnifier",
-                onClick = { state.onMagnifier?.invoke(); state.onClose?.invoke() },
+                onClick = { state.onMagnifier?.run(); state.onClose?.run() },
             )
         }
 
@@ -234,7 +234,7 @@ fun XServerDrawer() {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_debug,
                 label = "Logs",
-                onClick = { state.onLogs?.invoke(); state.onClose?.invoke() },
+                onClick = { state.onLogs?.run(); state.onClose?.run() },
             )
         }
 
@@ -244,7 +244,7 @@ fun XServerDrawer() {
         DrawerMenuItem(
             iconRes = R.drawable.icon_exit,
             label = "Exit",
-            onClick = { state.onExit?.invoke() },
+            onClick = { state.onExit?.run() },
         )
 
         Spacer(Modifier.height(16.dp))

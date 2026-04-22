@@ -26,28 +26,29 @@ object XServerDrawerState {
     private val _cursorExpanded          = MutableStateFlow(false)
     val cursorExpanded: StateFlow<Boolean> = _cursorExpanded
 
-    // Callbacks wired by XServerDisplayActivity
-    var onClose:                   (() -> Unit)? = null
-    var onKeyboard:                (() -> Unit)? = null
-    var onInputControls:           (() -> Unit)? = null
-    var onScreenEffects:           (() -> Unit)? = null
-    var onGraphicEngine:           (() -> Unit)? = null
-    var onVibration:               (() -> Unit)? = null
-    var onToggleFullscreen:        (() -> Unit)? = null
-    var onPauseResume:             (() -> Unit)? = null
-    var onPipMode:                 (() -> Unit)? = null
-    var onActiveWindows:           (() -> Unit)? = null
-    var onTaskManager:             (() -> Unit)? = null
-    var onMagnifier:               (() -> Unit)? = null
-    var onLogs:                    (() -> Unit)? = null
-    var onExit:                    (() -> Unit)? = null
-    var onMoveCursorToTouchpoint:  (() -> Unit)? = null
-    var onRelativeMouseMovement:   (() -> Unit)? = null
-    var onDisableMouse:            (() -> Unit)? = null
-    var onCursorExpandedChanged:   ((Boolean) -> Unit)? = null
+    // Callbacks wired by XServerDisplayActivity.
+    // @JvmField exposes these as public fields so Java can assign them directly.
+    // Runnable avoids the kotlin.Unit return-type mismatch for Java void lambdas.
+    @JvmField var onClose:                  Runnable? = null
+    @JvmField var onKeyboard:               Runnable? = null
+    @JvmField var onInputControls:          Runnable? = null
+    @JvmField var onScreenEffects:          Runnable? = null
+    @JvmField var onGraphicEngine:          Runnable? = null
+    @JvmField var onVibration:              Runnable? = null
+    @JvmField var onToggleFullscreen:       Runnable? = null
+    @JvmField var onPauseResume:            Runnable? = null
+    @JvmField var onPipMode:               Runnable? = null
+    @JvmField var onActiveWindows:          Runnable? = null
+    @JvmField var onTaskManager:            Runnable? = null
+    @JvmField var onMagnifier:              Runnable? = null
+    @JvmField var onLogs:                   Runnable? = null
+    @JvmField var onExit:                   Runnable? = null
+    @JvmField var onMoveCursorToTouchpoint: Runnable? = null
+    @JvmField var onRelativeMouseMovement:  Runnable? = null
+    @JvmField var onDisableMouse:           Runnable? = null
+    var onCursorExpandedChanged: ((Boolean) -> Unit)? = null
 
-    // Setters called from Java (Activity keeps Java fields as source of truth,
-    // updates state here so Compose re-renders correctly)
+    // Setters called from Java
     fun setIsPaused(v: Boolean)                { _isPaused.value = v }
     fun setIsRelativeMouseMovement(v: Boolean) { _isRelativeMouseMovement.value = v }
     fun setIsMouseDisabled(v: Boolean)         { _isMouseDisabled.value = v }
