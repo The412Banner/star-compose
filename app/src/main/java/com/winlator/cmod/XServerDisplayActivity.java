@@ -2,13 +2,7 @@ package com.winlator.cmod;
 
 import static com.winlator.cmod.core.AppUtils.showToast;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -19,7 +13,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.drawable.Drawable;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
@@ -28,15 +21,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.AnimationUtils;
-import android.view.animation.LayoutAnimationController;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
@@ -55,9 +42,10 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.preference.PreferenceManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.navigation.NavigationView;
+import androidx.compose.ui.platform.ComposeView;
+import com.winlator.cmod.ui.XServerDrawerKt;
+import com.winlator.cmod.ui.XServerDrawerState;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
@@ -142,7 +130,6 @@ import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Map;
@@ -154,7 +141,7 @@ import java.util.regex.Pattern;
 
 import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 
-public class XServerDisplayActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+public class XServerDisplayActivity extends AppCompatActivity {
     public static String NOTIFICATION_CHANNEL_ID = "Winlator";
     public static int NOTIFICATION_ID = -1;
     private XServerView xServerView;
@@ -195,7 +182,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private boolean cursorLock; // Flag to track if pointer capture was requested
     private final float[] xform = XForm.getInstance();
     private ContentsManager contentsManager;
-    private boolean navigationFocused = false;
     private MidiHandler midiHandler;
     private String midiSoundFont = "";
     private String lc_all = "";
@@ -331,7 +317,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         contentsManager.syncContents();
 
         drawerLayout = findViewById(R.id.DrawerLayout);
-        navigationView = findViewById(R.id.NavigationView);
 
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override public void onDrawerOpened(@NonNull View drawerView) {
@@ -348,36 +333,87 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
-        navigationView = findViewById(R.id.NavigationView);
-
-        if (isDarkMode) {
-             navigationView.setItemTextColor(ContextCompat.getColorStateList(this, R.color.white));
-             navigationView.setBackgroundResource(R.color.content_dialog_background_dark);
-        }
-
+        // Wire Compose in-game drawer
         boolean enableLogs = preferences.getBoolean("enable_wine_debug", false) || preferences.getBoolean("enable_box64_logs", false);
-        Menu menu = navigationView.getMenu();
-        menu.findItem(R.id.main_menu_logs).setVisible(enableLogs);
-        if (XrActivity.isEnabled(this)) menu.findItem(R.id.main_menu_magnifier).setVisible(false);
-        navigationView.setNavigationItemSelectedListener(this);
-        navigationView.setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_ARROW));
-        navigationView.setOnFocusChangeListener((v, hasFocus) -> navigationFocused = hasFocus);
+        boolean allowMagnifier = !XrActivity.isEnabled(this);
+        XServerDrawerState state = XServerDrawerState.INSTANCE;
+        state.reset();
+        state.setShowLogs(enableLogs);
+        state.setShowMagnifier(allowMagnifier);
+        state.setIsPaused(isPaused);
+        state.setIsRelativeMouseMovement(isRelativeMouseMovement);
+        state.setIsMouseDisabled(isMouseDisabled);
 
-        // restore persisted states (default collapsed = false)
-        expCursor   = preferences.getBoolean(PREF_EXP_CURSOR,   false);
+        state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
+        state.onKeyboard               = () -> AppUtils.showKeyboard(this);
+        state.onInputControls          = () -> showInputControlsDialog();
+        state.onScreenEffects          = () -> {
+            ScreenEffectDialog d = new ScreenEffectDialog(this);
+            d.setOnConfirmCallback(() -> {
+                GLRenderer r = xServerView.getRenderer();
+                d.applyEffects(
+                    (ColorEffect)      r.getEffectComposer().getEffect(ColorEffect.class),
+                    r,
+                    (FXAAEffect)       r.getEffectComposer().getEffect(FXAAEffect.class),
+                    (CRTEffect)        r.getEffectComposer().getEffect(CRTEffect.class),
+                    (ToonEffect)       r.getEffectComposer().getEffect(ToonEffect.class),
+                    (NTSCCombinedEffect) r.getEffectComposer().getEffect(NTSCCombinedEffect.class)
+                );
+            });
+            d.show();
+        };
+        state.onGraphicEngine          = () -> new com.winlator.cmod.contentdialog.FSRControlFloatingDialog(this).show();
+        state.onVibration              = () -> showVibrationDialog();
+        state.onToggleFullscreen       = () -> {
+            xServerView.getRenderer().toggleFullscreen();
+            touchpadView.toggleFullscreen();
+        };
+        state.onPauseResume            = () -> {
+            if (isPaused) {
+                ProcessHelper.resumeAllWineProcesses();
+                isPaused = false;
+            } else {
+                ProcessHelper.pauseAllWineProcesses();
+                isPaused = true;
+            }
+            state.setIsPaused(isPaused);
+        };
+        state.onPipMode                = () -> enterPictureInPictureMode();
+        state.onActiveWindows          = () -> showActiveWindowsDialog();
+        state.onTaskManager            = () -> new TaskManagerDialog(this).show();
+        state.onMagnifier              = () -> {
+            if (magnifierView == null) {
+                FrameLayout container = findViewById(R.id.FLXServerDisplay);
+                magnifierView = new MagnifierView(this);
+                GLRenderer r = xServerView.getRenderer();
+                magnifierView.setZoomButtonCallback(value -> {
+                    r.setMagnifierZoom(Mathf.clamp(r.getMagnifierZoom() + value, 1.0f, 3.0f));
+                    magnifierView.setZoomValue(r.getMagnifierZoom());
+                });
+                magnifierView.setZoomValue(r.getMagnifierZoom());
+                magnifierView.setHideButtonCallback(() -> {
+                    container.removeView(magnifierView);
+                    magnifierView = null;
+                });
+                container.addView(magnifierView);
+            }
+        };
+        state.onLogs                   = () -> { if (debugDialog != null) debugDialog.show(); };
+        state.onExit                   = () -> exit();
+        state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
+        state.onRelativeMouseMovement  = () -> {
+            isRelativeMouseMovement = !isRelativeMouseMovement;
+            state.setIsRelativeMouseMovement(isRelativeMouseMovement);
+            xServer.setRelativeMouseMovement(isRelativeMouseMovement);
+        };
+        state.onDisableMouse           = () -> {
+            isMouseDisabled = !isMouseDisabled;
+            state.setIsMouseDisabled(isMouseDisabled);
+            touchpadView.setMouseEnabled(!isMouseDisabled);
+        };
 
-        applyGroup(menu, R.id.group_cursor,   R.id.header_cursor,   expCursor);
-
-        // tune RV
-        RecyclerView rv = navRecycler();
-        if (rv != null) {
-            rv.setItemAnimator(null);               // no default blink
-            rv.setHasFixedSize(true);
-            rv.setOverScrollMode(View.OVER_SCROLL_NEVER);
-            navigationView = findViewById(R.id.NavigationView);
-            Drawable bg = navigationView.getBackground();
-            if (bg != null) rv.setBackground(bg);
-        }
+        ComposeView drawerComposeView = findViewById(R.id.XServerDrawerComposeView);
+        XServerDrawerKt.setupComposeView(drawerComposeView);
 
         imageFs = ImageFs.find(this);
 
@@ -923,372 +959,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
 
-    // Fields
-    private static final String PREF_EXP_CURSOR   = "drawer_exp_cursor";
-
-    private boolean expCursor   = false;
-
-    private NavigationView navigationView;
-
-    private LayoutAnimationController navLayoutAnim;
-
-    private boolean enableLogs = false;
-    private boolean allowMagnifier = true;
-
-    private static final int ANIM_DURATION = 300; // ms
-    private static final float SLIDE_DP = 0f;     // small vertical shift
-
-    private static final float COLLAPSE_TRANSLATION_DP = 6f;
-
-    private float dp(float v) {
-        return v * getResources().getDisplayMetrics().density;
-    }
-
-    @Nullable
-    private RecyclerView navRecycler() {
-        return findNavRecycler(navigationView);
-    }
-
-    private Set<CharSequence> titlesForIds(Menu menu, int[] itemIds) {
-        HashSet<CharSequence> set = new HashSet<>();
-        for (int id : itemIds) {
-            MenuItem mi = menu.findItem(id);
-            if (mi != null && mi.getTitle() != null) set.add(mi.getTitle());
-        }
-        return set;
-    }
-
-    @Nullable
-    private TextView rowTitle(View row) {
-        // Try Material id, then fallback to first TextView
-        int textId = getResources().getIdentifier("design_menu_item_text", "id", getPackageName());
-        View v = textId != 0 ? row.findViewById(textId) : null;
-        if (v instanceof TextView) return (TextView) v;
-
-        if (row instanceof ViewGroup) {
-            ViewGroup vg = (ViewGroup) row;
-            for (int i = 0; i < vg.getChildCount(); i++) {
-                View c = vg.getChildAt(i);
-                if (c instanceof TextView) return (TextView) c;
-            }
-        }
-        return null;
-    }
-
-    private List<View> findVisibleRowsForTitles(Set<CharSequence> wantedTitles) {
-        ArrayList<View> rows = new ArrayList<>();
-        RecyclerView rv = navRecycler();
-        if (rv == null) return rows;
-
-        for (int i = 0; i < rv.getChildCount(); i++) {
-            View row = rv.getChildAt(i);
-            TextView tv = rowTitle(row);
-            if (tv != null && tv.getText() != null && wantedTitles.contains(tv.getText())) {
-                rows.add(row);
-            }
-        }
-        return rows;
-    }
-
-    private void animateInGroupItems(int[] itemIds) {
-        RecyclerView rv = navRecycler();
-        if (rv == null) return;
-
-        // Wait one frame so the rows are laid out after setGroupVisible(true)
-        rv.post(() -> {
-            Menu menu = navigationView.getMenu();
-            Set<CharSequence> titles = titlesForIds(menu, itemIds);
-            List<View> rows = findVisibleRowsForTitles(titles);
-
-            float startTrans = dp(SLIDE_DP);
-            for (View row : rows) {
-                row.setAlpha(0f);
-                row.setTranslationY(startTrans);
-                row.animate()
-                        .alpha(1f)
-                        .translationY(0f)
-                        .setDuration(ANIM_DURATION)
-                        .withLayer()
-                        .start();
-            }
-        });
-    }
-
-    private void animateOutGroupItems(int[] itemIds, Runnable after) {
-        RecyclerView rv = navRecycler();
-        if (rv == null) { after.run(); return; }
-
-        Menu menu = navigationView.getMenu();
-        Set<CharSequence> titles = titlesForIds(menu, itemIds);
-        List<View> rows = findVisibleRowsForTitles(titles);
-
-        if (rows.isEmpty()) { after.run(); return; }
-
-        final int[] remaining = { rows.size() };
-        float endTrans = dp(SLIDE_DP);
-
-        for (View row : rows) {
-            row.animate()
-                    .alpha(0f)
-                    .translationY(endTrans)
-                    .setDuration(ANIM_DURATION)
-                    .withLayer()
-                    .withEndAction(() -> {
-                        if (--remaining[0] == 0) {
-                            after.run();
-                        }
-                    })
-                    .start();
-        }
-    }
-
-    private static final int[] CURSOR_IDS = {
-            R.id.main_menu_move_cursor_to_touchpoint,
-            R.id.main_menu_relative_mouse_movement,
-            R.id.main_menu_disable_mouse
-    };
-
-
-    @Nullable
-    private RecyclerView findNavRecycler(View root) {
-        if (root instanceof RecyclerView) return (RecyclerView) root;
-        if (root instanceof ViewGroup) {
-            ViewGroup vg = (ViewGroup) root;
-            for (int i = 0; i < vg.getChildCount(); i++) {
-                RecyclerView rv = findNavRecycler(vg.getChildAt(i));
-                if (rv != null) return rv;
-            }
-        }
-        return null;
-    }
-
-    private void applyGroup(Menu menu, int groupId, int headerId, boolean expanded) {
-        menu.setGroupVisible(groupId, expanded);
-
-        MenuItem header = menu.findItem(headerId);
-        if (header != null) {
-            header.setCheckable(true);
-            header.setChecked(expanded);   // visual cue
-        }
-
-        RecyclerView rv = findNavRecycler(navigationView);
-        if (rv != null) {
-            RecyclerView.Adapter<?> ad = rv.getAdapter();
-            if (ad != null) ad.notifyDataSetChanged();
-            rv.requestLayout();
-            rv.invalidateItemDecorations();
-            rv.postInvalidateOnAnimation();
-        } else {
-            navigationView.invalidate();
-            navigationView.postInvalidateOnAnimation();
-        }
-    }
-
-    private void persistSection(String key, boolean value) {
-        preferences.edit().putBoolean(key, value).apply();
-    }
-
-    private void expandGroup(Menu menu, int groupId, int headerId, int[] itemIds) {
-        // Show items first, then animate them in.
-        applyGroup(menu, groupId, headerId, true);
-        animateInGroupItems(itemIds);
-    }
-
-    private void collapseGroup(Menu menu, int groupId, int headerId, int[] itemIds) {
-        RecyclerView rv = navRecycler();
-        if (rv == null) { applyGroup(menu, groupId, headerId, false); return; }
-
-        // Find the currently visible rows for this group
-        Set<CharSequence> titles = titlesForIds(menu, itemIds);
-        List<View> rows = findVisibleRowsForTitles(titles);
-        if (rows.isEmpty()) { applyGroup(menu, groupId, headerId, false); return; }
-
-        rv.suppressLayout(true);
-
-        final int[] remaining = { rows.size() };
-        float endTrans = dp(COLLAPSE_TRANSLATION_DP);
-
-        for (View row : rows) {
-            final View r = row;
-            final int startH = r.getHeight();
-            if (startH <= 0) { if (--remaining[0] == 0) finishCollapse(menu, groupId, headerId, rv); continue; }
-
-            // Height animator
-            ValueAnimator hAnim = ValueAnimator.ofInt(startH, 0);
-            hAnim.addUpdateListener(a -> {
-                int h = (int) a.getAnimatedValue();
-                RecyclerView.LayoutParams lp = (RecyclerView.LayoutParams) r.getLayoutParams();
-                lp.height = h;
-                r.setLayoutParams(lp);
-            });
-
-            // Alpha + slight slide
-            ObjectAnimator aAnim = ObjectAnimator.ofFloat(r, View.ALPHA, 1f, 0f);
-            ObjectAnimator tAnim = ObjectAnimator.ofFloat(r, View.TRANSLATION_Y, 0f, endTrans);
-
-            AnimatorSet set = new AnimatorSet();
-            set.setDuration(ANIM_DURATION);
-            set.setInterpolator(new AccelerateDecelerateInterpolator());
-            set.playTogether(hAnim, aAnim, tAnim);
-            set.addListener(new AnimatorListenerAdapter() {
-                @Override public void onAnimationEnd(Animator animation) {
-                    // Restore params so RV can recycle properly next time
-                    RecyclerView.LayoutParams lp = (RecyclerView.LayoutParams) r.getLayoutParams();
-                    lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-                    r.setLayoutParams(lp);
-                    r.setAlpha(1f);
-                    r.setTranslationY(0f);
-
-                    if (--remaining[0] == 0) {
-                        finishCollapse(menu, groupId, headerId, rv);
-                    }
-                }
-            });
-            set.start();
-        }
-    }
-
-    private void finishCollapse(Menu menu, int groupId, int headerId, RecyclerView rv) {
-        applyGroup(menu, groupId, headerId, false); // hides group + notifies adapter
-        rv.suppressLayout(false);
-    }
-
-    @SuppressLint("SourceLockedOrientationActivity")
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        final GLRenderer renderer = xServerView.getRenderer();
-        final int id = item.getItemId();
-        final Menu menu = navigationView.getMenu();
-
-        switch (id) {
-            // ---- Section headers (toggle, do NOT close drawer) ----
-            case R.id.header_cursor: {
-                boolean wasExpanded = expCursor;
-                expCursor = !expCursor;
-                persistSection(PREF_EXP_CURSOR, expCursor);
-                if (wasExpanded) {
-                    collapseGroup(menu, R.id.group_cursor, R.id.header_cursor, CURSOR_IDS);
-                } else {
-                    expandGroup(menu, R.id.group_cursor, R.id.header_cursor, CURSOR_IDS);
-                }
-                return true;
-            }
-                
-            case R.id.main_menu_keyboard:
-                AppUtils.showKeyboard(this);
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_input_controls:
-                showInputControlsDialog();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_toggle_fullscreen:
-                renderer.toggleFullscreen();
-                drawerLayout.closeDrawers();
-                touchpadView.toggleFullscreen();
-                return true;
-            case R.id.main_menu_pause:
-                if (isPaused) {
-                    ProcessHelper.resumeAllWineProcesses();
-                    item.setIcon(R.drawable.icon_pause);
-                }
-                else {
-                    ProcessHelper.pauseAllWineProcesses();
-                    item.setIcon(R.drawable.icon_play);
-                }
-                isPaused = !isPaused;
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_pip_mode:
-                enterPictureInPictureMode();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_active_windows:
-                showActiveWindowsDialog();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_task_manager:
-                new TaskManagerDialog(this).show();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_magnifier:
-                if (magnifierView == null) {
-                    FrameLayout container = findViewById(R.id.FLXServerDisplay);
-                    magnifierView = new MagnifierView(this);
-                    magnifierView.setZoomButtonCallback(value -> {
-                        renderer.setMagnifierZoom(Mathf.clamp(renderer.getMagnifierZoom() + value, 1.0f, 3.0f));
-                        magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                    });
-                    magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                    magnifierView.setHideButtonCallback(() -> {
-                        container.removeView(magnifierView);
-                        magnifierView = null;
-                    });
-                    container.addView(magnifierView);
-                }
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_fsr_control:
-                new com.winlator.cmod.contentdialog.FSRControlFloatingDialog(this).show();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_screen_effects:
-                Log.d("ScreenEffectDialog", "Initializing ScreenEffectDialog");
-                ScreenEffectDialog screenEffectDialog = new ScreenEffectDialog(this);
-                screenEffectDialog.setOnConfirmCallback(() -> {
-                    Log.d("ScreenEffectDialog", "Confirm callback triggered. About to apply effects.");
-                    GLRenderer currentRenderer = xServerView.getRenderer();
-                    ColorEffect colorEffect = (ColorEffect) currentRenderer.getEffectComposer().getEffect(ColorEffect.class);
-                    FXAAEffect fxaaEffect = (FXAAEffect) currentRenderer.getEffectComposer().getEffect(FXAAEffect.class);
-                    CRTEffect crtEffect = (CRTEffect) currentRenderer.getEffectComposer().getEffect(CRTEffect.class);
-                    ToonEffect toonEffect = (ToonEffect) currentRenderer.getEffectComposer().getEffect(ToonEffect.class);
-                    NTSCCombinedEffect ntscEffect = (NTSCCombinedEffect) currentRenderer.getEffectComposer().getEffect(NTSCCombinedEffect.class);
-
-                    // Check if effects are null before applying
-                    Log.d("ScreenEffectDialog", "ColorEffect: " + (colorEffect != null));
-                    Log.d("ScreenEffectDialog", "FXAAEffect: " + (fxaaEffect != null));
-                    Log.d("ScreenEffectDialog", "CRTEffect: " + (crtEffect != null));
-                    Log.d("ScreenEffectDialog", "ToonEffect: " + (toonEffect != null));
-                    Log.d("ScreenEffectDialog", "NTSCCombinedEffect: " + (ntscEffect != null));
-
-                    Log.d("ScreenEffectDialog", "Calling applyEffects()");
-                    screenEffectDialog.applyEffects(colorEffect, currentRenderer, fxaaEffect, crtEffect, toonEffect, ntscEffect);
-                    Log.d("ScreenEffectDialog", "applyEffects() called.");
-                });
-                Log.d("ScreenEffectDialog", "Showing ScreenEffectDialog");
-                screenEffectDialog.show();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_vibration:
-                showVibrationDialog();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_logs:
-                debugDialog.show();
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_exit:
-                drawerLayout.closeDrawers();
-                exit();
-                return true;
-
-            case R.id.main_menu_relative_mouse_movement:
-                isRelativeMouseMovement = !isRelativeMouseMovement;
-                drawerLayout.closeDrawers();
-                xServer.setRelativeMouseMovement(isRelativeMouseMovement);
-                return true;
-            case R.id.main_menu_disable_mouse:
-                isMouseDisabled = !isMouseDisabled;
-                touchpadView.setMouseEnabled(!isMouseDisabled);
-                drawerLayout.closeDrawers();
-                return true;
-            case R.id.main_menu_move_cursor_to_touchpoint: //
-                MoveCursorToTouchpoint();
-                drawerLayout.closeDrawers();
-                return true;
-        }
-        return true;
-    }
     
     private void showVibrationDialog() {
         if (winHandler == null) return;
