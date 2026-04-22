@@ -79,7 +79,7 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                .fillMaxWidth(0.5f)
                 .padding(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {

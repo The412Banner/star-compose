@@ -1,15 +1,14 @@
 package com.winlator.cmod.ui.overlays
 
+import android.view.Gravity
+import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
@@ -25,6 +24,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -35,8 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import com.winlator.cmod.ui.XServerDialogState
 import kotlin.math.roundToInt
 
@@ -63,114 +66,137 @@ fun FSROverlay(state: XServerDialogState) {
         state.onFsrUpdate?.invoke(fsrEnabled, fsrMode, fsrLevel, hdrEnabled)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            window?.apply {
+                addFlags(
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                )
+                setGravity(Gravity.TOP or Gravity.START)
+                val attrs = attributes
+                attrs.x = offsetX.roundToInt()
+                attrs.y = offsetY.roundToInt()
+                attributes = attrs
+            }
+        }
+
+        Column(
             modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .wrapContentSize()
+                .width(260.dp)
                 .background(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp)
         ) {
-            Column(modifier = Modifier.width(260.dp)) {
-                // Drag handle / title
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectDragGestures { _, dragAmount ->
-                                offsetX += dragAmount.x
-                                offsetY += dragAmount.y
-                            }
-                        }
-                        .padding(bottom = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Graphics Engine", style = MaterialTheme.typography.titleSmall)
-                }
-
-                // FSR toggle
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("FSR", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = fsrEnabled,
-                        onCheckedChange = { fsrEnabled = it; pushUpdate() }
-                    )
-                }
-
-                // Mode dropdown
-                ExposedDropdownMenuBox(
-                    expanded = modeDropdownExpanded,
-                    onExpandedChange = { if (fsrEnabled) modeDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = modeNames.getOrElse(fsrMode) { modeNames[0] },
-                        onValueChange = {},
-                        readOnly = true,
-                        enabled = fsrEnabled,
-                        label = { Text("Mode") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = modeDropdownExpanded,
-                        onDismissRequest = { modeDropdownExpanded = false }
-                    ) {
-                        modeNames.forEachIndexed { i, name ->
-                            DropdownMenuItem(
-                                text = { Text(name) },
-                                onClick = { fsrMode = i; modeDropdownExpanded = false; pushUpdate() }
-                            )
+            // Drag handle / title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectDragGestures { _, dragAmount ->
+                            offsetX += dragAmount.x
+                            offsetY += dragAmount.y
                         }
                     }
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                // Level slider
+                    .padding(bottom = 8.dp)
+            ) {
                 Text(
-                    "Strength: ${"%.0f".format(fsrLevel)}",
-                    style = MaterialTheme.typography.bodySmall
+                    "Graphics Engine",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
                 )
-                Slider(
-                    value = fsrLevel,
-                    onValueChange = { fsrLevel = it },
-                    onValueChangeFinished = { pushUpdate() },
-                    valueRange = 1f..5f,
-                    steps = 3,
+            }
+
+            // FSR toggle
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("FSR", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = fsrEnabled,
+                    onCheckedChange = { fsrEnabled = it; pushUpdate() }
+                )
+            }
+
+            // Mode dropdown
+            ExposedDropdownMenuBox(
+                expanded = modeDropdownExpanded,
+                onExpandedChange = { if (fsrEnabled) modeDropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = modeNames.getOrElse(fsrMode) { modeNames[0] },
+                    onValueChange = {},
+                    readOnly = true,
                     enabled = fsrEnabled,
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Mode") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
                 )
-
-                Spacer(Modifier.height(4.dp))
-
-                // HDR toggle
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                ExposedDropdownMenu(
+                    expanded = modeDropdownExpanded,
+                    onDismissRequest = { modeDropdownExpanded = false }
                 ) {
-                    Text("HDR", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = hdrEnabled,
-                        onCheckedChange = { hdrEnabled = it; pushUpdate() }
-                    )
+                    modeNames.forEachIndexed { i, name ->
+                        DropdownMenuItem(
+                            text = { Text(name) },
+                            onClick = { fsrMode = i; modeDropdownExpanded = false; pushUpdate() }
+                        )
+                    }
                 }
+            }
 
-                Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
-                Button(
-                    onClick = { state.setFsrVisible(false) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Close")
-                }
+            // Level slider
+            Text(
+                "Strength: ${"%.0f".format(fsrLevel)}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Slider(
+                value = fsrLevel,
+                onValueChange = { fsrLevel = it },
+                onValueChangeFinished = { pushUpdate() },
+                valueRange = 1f..5f,
+                steps = 3,
+                enabled = fsrEnabled,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // HDR toggle
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("HDR", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = hdrEnabled,
+                    onCheckedChange = { hdrEnabled = it; pushUpdate() }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = { state.setFsrVisible(false) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Close")
             }
         }
     }
