@@ -21,9 +21,15 @@ object AppThemeState {
     private val _isDarkMode = MutableStateFlow(true)
     val isDarkMode: StateFlow<Boolean> = _isDarkMode
 
+    // The preset whose background/surface colors back the custom accent
+    private val _customBaseIndex = MutableStateFlow(0)
+
     val colorScheme: kotlinx.coroutines.flow.Flow<ColorScheme> =
         combine(_presetIndex, _customAccent, _isDarkMode) { index, accent, dark ->
-            val preset = themePresets.getOrElse(index) { themePresets.first() }
+            val preset = if (index == CUSTOM_PRESET_INDEX)
+                themePresets.getOrElse(_customBaseIndex.value) { themePresets.first() }
+            else
+                themePresets.getOrElse(index) { themePresets.first() }
             val override = if (index == CUSTOM_PRESET_INDEX) accent else null
             if (dark) preset.toColorScheme(accentOverride = override)
             else      preset.toLightColorScheme(accentOverride = override)
@@ -35,6 +41,7 @@ object AppThemeState {
         _presetIndex.value = themePrefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb())
         _customAccent.value = Color(savedAccent)
+        _customBaseIndex.value = themePrefs.getInt("custom_base_index", 0).coerceIn(0, CUSTOM_PRESET_INDEX)
         _isDarkMode.value = true
     }
 
@@ -44,6 +51,11 @@ object AppThemeState {
     }
 
     fun setCustomAccent(color: Color) {
+        // Snapshot the current base only when leaving a real preset for custom mode
+        if (_presetIndex.value != CUSTOM_PRESET_INDEX) {
+            _customBaseIndex.value = _presetIndex.value
+            themePrefs.edit().putInt("custom_base_index", _customBaseIndex.value).apply()
+        }
         _customAccent.value = color
         _presetIndex.value = CUSTOM_PRESET_INDEX
         themePrefs.edit()
@@ -54,7 +66,10 @@ object AppThemeState {
 
     fun currentColorSchemeSnapshot(): ColorScheme {
         val index = _presetIndex.value
-        val preset = themePresets.getOrElse(index) { themePresets.first() }
+        val preset = if (index == CUSTOM_PRESET_INDEX)
+            themePresets.getOrElse(_customBaseIndex.value) { themePresets.first() }
+        else
+            themePresets.getOrElse(index) { themePresets.first() }
         val override = if (index == CUSTOM_PRESET_INDEX) _customAccent.value else null
         return if (_isDarkMode.value) preset.toColorScheme(accentOverride = override)
                else                   preset.toLightColorScheme(accentOverride = override)
