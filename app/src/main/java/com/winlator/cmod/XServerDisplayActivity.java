@@ -1103,6 +1103,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 } else {
                     wineDebugWriter.println("Shortcut: null (launching Wine File Manager)");
                 }
+                // DX wrapper diagnostic
+                wineDebugWriter.println("--- DX Wrapper State ---");
+                wineDebugWriter.println("dxwrapper type: " + this.dxwrapper);
+                wineDebugWriter.println("dxwrapperConfig (raw): " + (container != null ? container.getDXWrapperConfig() : "null"));
+                wineDebugWriter.println("vkd3dVersion (parsed): " + dxwrapperConfig.get("vkd3dVersion"));
+                wineDebugWriter.println("dxvk version (parsed): " + dxwrapperConfig.get("version"));
+                wineDebugWriter.println("ddrawrapper (parsed): " + dxwrapperConfig.get("ddrawrapper"));
+                String cachedDxwrapper = (container != null ? container.getExtra("dxwrapper") : "none");
+                wineDebugWriter.println("cached dxwrapper extra: " + cachedDxwrapper);
+                if (this.dxwrapper.contains("dxvk")) {
+                    String expectedDxvkWrapper = "dxvk-" + dxwrapperConfig.get("version");
+                    String expectedVkd3dWrapper = "vkd3d-" + dxwrapperConfig.get("vkd3dVersion");
+                    String expectedDdra = dxwrapperConfig.get("ddrawrapper");
+                    String expectedFull = expectedDxvkWrapper + ";" + expectedVkd3dWrapper + ";" + expectedDdra;
+                    wineDebugWriter.println("expected full string: " + expectedFull);
+                    wineDebugWriter.println("extraction will run: " + (!expectedFull.equals(cachedDxwrapper)));
+                }
+                wineDebugWriter.println("--- End DX Wrapper State ---");
                 wineDebugWriter.println("=== Wine output below ===");
                 wineDebugLogCallback = line -> {
                     if (wineDebugWriter != null) {
