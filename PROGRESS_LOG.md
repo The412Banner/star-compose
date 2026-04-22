@@ -190,8 +190,37 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 
 **→ ALL 8 JOBS COMPLETE + AdrenoTools/Turnip driver SIGSEGV fixed** ✅
 
-Last commit: `e22815c`  
-Last CI: `24662739330` ✅ green
+---
+
+## Recent Work (2026-04-22)
+
+| Commit | Description | CI Run | Result |
+|---|---|---|---|
+| `dfd9ba6` | Fix null icon crash when pinning shortcut | — | pre-existing |
+| `d1be7af` | Fancy splash screen + fix custom accent theme colors | `24788064210` | ❌ failed (missing clipRect import) |
+| `3ee9fee` | Merge 5 upstream commits from kalteatz24/winlator-test | — | — |
+| `65712d6` | fix: add missing clipRect import in SplashScreen | `24788390969` | 🔄 in progress |
+
+### Splash Screen enhancements (`SplashScreen.kt`)
+- White 4-point sparkles floating around logo
+- Logo pulse animation (scale 1.0→1.07)
+- Glowing progress bar with shimmer sweep
+- Cycling status text with animated dots
+- Smooth animated percentage counter
+- Proceed button fades/scales in on completion
+
+### Theme fix (`AppThemeState.kt`)
+- Custom accent now inherits background/surface from the active preset instead of resetting to gray
+
+### Upstream merge (5 commits from kalteatz24)
+- Remove numControllers event file pre-creation (XServerDisplayActivity)
+- Add PlugPlay to changeServicesStatus exclusion list (WineUtils)
+- Remove softRelease() method (FakeInputWriter)
+- Switch controller disconnect from softRelease to destroy (WinHandler)
+- Fix busy-loop + dead-file detection in native read() hook (fakeinput.cpp)
+
+**Last commit:** `65712d6`  
+**Last CI:** `24788390969` 🔄 in progress (2026-04-22)
 
 ---
 
