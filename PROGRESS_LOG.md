@@ -199,7 +199,7 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 | `dfd9ba6` | Fix null icon crash when pinning shortcut | — | pre-existing |
 | `d1be7af` | Fancy splash screen + fix custom accent theme colors | `24788064210` | ❌ failed (missing clipRect import) |
 | `3ee9fee` | Merge 5 upstream commits from kalteatz24/winlator-test | — | — |
-| `65712d6` | fix: add missing clipRect import in SplashScreen | `24788390969` | 🔄 in progress |
+| `65712d6` | fix: add missing clipRect import in SplashScreen | `24788390969` | ✅ green |
 
 ### Splash Screen enhancements (`SplashScreen.kt`)
 - White 4-point sparkles floating around logo
@@ -219,8 +219,8 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 - Switch controller disconnect from softRelease to destroy (WinHandler)
 - Fix busy-loop + dead-file detection in native read() hook (fakeinput.cpp)
 
-**Last commit:** `65712d6`  
-**Last CI:** `24788390969` 🔄 in progress (2026-04-22)
+**Last commit:** `f8e7f2d`  
+**Last CI:** `24788390969` ✅ green (2026-04-22)
 
 ---
 
