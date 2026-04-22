@@ -453,18 +453,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
-        
-        // Pre-create event files based on numControllers setting
-        int numControllers = 1;
-        if (shortcut != null) {
-            try { numControllers = Integer.parseInt(shortcut.getExtra("numControllers", "1")); }
-            catch (NumberFormatException e) { numControllers = 1; }
-        }
-        numControllers = Math.max(1, Math.min(numControllers, 4));
-        for (int i = 0; i < numControllers; i++) {
-            try { new File(devInputDir, "event" + i).createNewFile(); } catch (Exception e) {}
-        }
-        Log.d("XServerDisplayActivity", "Pre-created " + numControllers + " controller event file(s)");
 
         taskAffinityMask = (short) ProcessHelper.getAffinityMask(container.getCPUList(true));
         taskAffinityMaskWoW64 = (short) ProcessHelper.getAffinityMask(container.getCPUListWoW64(true));
