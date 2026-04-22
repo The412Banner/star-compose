@@ -48,11 +48,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.cmod.R
-import com.winlator.cmod.ui.theme.Background
 import com.winlator.cmod.ui.theme.Divider as DividerColor
-import com.winlator.cmod.ui.theme.OnSurface
-import com.winlator.cmod.ui.theme.OnSurfaceVariant
-import com.winlator.cmod.ui.theme.Surface
 
 private fun iconFor(screen: Screen): ImageVector = when (screen) {
     Screen.Containers    -> Icons.Filled.FolderOpen
@@ -90,7 +86,7 @@ fun AppDrawerContent(
         modifier = Modifier
             .fillMaxHeight()
             .width(280.dp)
-            .background(Surface)
+            .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState()),
     ) {
         // ── Logo header ───────────────────────────────────────────────────────
@@ -98,7 +94,7 @@ fun AppDrawerContent(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1A1A1A))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 20.dp, vertical = 20.dp),
         ) {
             Image(
@@ -164,7 +160,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelSmall,
-        color = OnSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
     )
 }
@@ -183,14 +179,14 @@ private fun DrawerItem(screen: Screen, currentRoute: String, onNavigate: (Screen
         Icon(
             imageVector = iconFor(screen),
             contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.primary else OnSurfaceVariant,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = screen.label,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (selected) MaterialTheme.colorScheme.primary else OnSurface,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -207,14 +203,14 @@ private fun DrawerStoreItem(screen: Screen, onLaunchStore: (Screen) -> Unit) {
         Icon(
             imageVector = Icons.Filled.Storefront,
             contentDescription = null,
-            tint = OnSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = screen.label,
             style = MaterialTheme.typography.bodyLarge,
-            color = OnSurface,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -231,14 +227,14 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = OnSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = OnSurface,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -254,7 +250,7 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit
             ) {
                 Text(
                     "For bug reports, feature requests, and support, visit the GitHub repository.",
-                    color = OnSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 SupportLink(
                     label = "GitHub Repository",
