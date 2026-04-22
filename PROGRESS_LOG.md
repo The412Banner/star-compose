@@ -232,7 +232,8 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 ## Current Job (2026-04-22)
 
 **Branch:** `compose-ingame-dialogs`  
-**Status:** 🔄 CI pending — all 10 Kotlin files written + Activity swap done
+**Commit:** `e68dea0`  
+**CI Run:** `24796267205` 🔄 in progress (2026-04-22)
 
 ### In-game dialog migration (`compose-ingame-dialogs` branch)
 
