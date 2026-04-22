@@ -219,10 +219,47 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 - Switch controller disconnect from softRelease to destroy (WinHandler)
 - Fix busy-loop + dead-file detection in native read() hook (fakeinput.cpp)
 
-| `e8acb58` | fix: wire drawer and top bar to MaterialTheme colors | `24790554006` | 🔄 in progress |
+| `e8acb58` | fix: wire drawer and top bar to MaterialTheme colors | `24790554006` | ✅ green |
+| `f79f1ef` | feat: migrate in-game side drawer to Jetpack Compose | `24792494907` | ❌ failed (@JvmField fix needed) |
+| `9289d57` | fix: @JvmField + Runnable for Java callbacks | `24793070513` | ✅ green |
+| `3659f74` | Merge compose-ingame-drawer → main | `24793931421` | 🔄 in progress |
 
-**Last commit:** `e8acb58`  
-**Last CI:** `24790554006` 🔄 in progress (2026-04-22)
+**Last commit:** `3659f74` (main)  
+**Last CI:** `24793931421` ✅ green (2026-04-22)
+
+---
+
+## Current Job (2026-04-22)
+
+**Branch:** `compose-ingame-dialogs`  
+**Status:** 🔄 CI pending — all 10 Kotlin files written + Activity swap done
+
+### In-game dialog migration (`compose-ingame-dialogs` branch)
+
+**New files:**
+- `ui/XServerDialogState.kt` — master bridge singleton (StateFlows + fun interface callbacks for all 8 dialogs + 2 overlays)
+- `ui/XServerDialogHost.kt` — root composable + `setupDialogHost()` called from Activity; hosts all dialogs + overlays
+- `ui/dialogs/VibrationDialog.kt` — multi-checkbox AlertDialog for controller vibration slots
+- `ui/dialogs/DebugDialogContent.kt` — scrollable log viewer with Clear/Pause/Resume; LazyColumn auto-scrolls to bottom
+- `ui/dialogs/InputControlsDialog.kt` — profile picker dropdown + 3 checkboxes + Profile Settings button
+- `ui/dialogs/ScreenEffectsDialog.kt` — brightness/contrast/gamma sliders + shader checkboxes + profile add/remove
+- `ui/dialogs/ActiveWindowsDialog.kt` — 2-column grid of windows with screenshot thumbnails (captured async with 100ms stagger)
+- `ui/dialogs/TaskManagerDialog.kt` — process list with 1s refresh loop via LaunchedEffect; CPU + memory stats
+- `ui/overlays/MagnifierOverlay.kt` — draggable floating panel with zoom +/- and hide button
+- `ui/overlays/FSROverlay.kt` — draggable floating FSR/HDR control panel; live updates on every control change
+
+**Activity changes (`XServerDisplayActivity.java`):**
+- Removed: `DebugDialog`, `MagnifierView`, `TaskManagerDialog`, `ActiveWindowsDialog`, `ScreenEffectDialog`, `FSRControlFloatingDialog` direct instantiation
+- Added: `XServerDialogHostKt.setupDialogHost()` call with full-size ComposeView in `FLXServerDisplay`
+- All 8 drawer callbacks now populate `XServerDialogState` and call `show(ActiveDialog.XXX)`
+- Debug log: `ProcessHelper.addDebugCallback(line -> dialogState.appendLog(line))` (no more DebugDialog instance)
+- New private methods: `showScreenEffectsDialog()`, `showFsrOverlay()`, `showMagnifierOverlay()`, `showTaskManagerDialog()`, `findAppWindowsForCompose()`, `applyScreenEffects()`, `saveScreenEffectProfile()`, `updateTmCpuMemory()`
+
+### In-game drawer migration (`compose-ingame-drawer` branch)
+- `XServerDrawerState.kt` — singleton bridge (StateFlows + nullable callbacks) for Java↔Compose
+- `XServerDrawer.kt` — full Compose drawer UI: all 15 menu items, collapsible Mouse & Cursor section with AnimatedVisibility, stateful pause/play icon, conditional Magnifier + Logs items
+- `xserver_display_activity.xml` — `NavigationView` replaced with `ComposeView` (300dp, gravity=start)
+- `XServerDisplayActivity.java` — removed `NavigationView`, all RecyclerView animation helpers (~400 lines), `onNavigationItemSelected`; added ComposeView + XServerDrawerState wiring
 
 ---
 

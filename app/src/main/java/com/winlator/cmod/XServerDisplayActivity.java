@@ -46,15 +46,14 @@ import androidx.preference.PreferenceManager;
 import androidx.compose.ui.platform.ComposeView;
 import com.winlator.cmod.ui.XServerDrawerKt;
 import com.winlator.cmod.ui.XServerDrawerState;
+import com.winlator.cmod.ui.XServerDialogHostKt;
+import com.winlator.cmod.ui.XServerDialogState;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
-import com.winlator.cmod.contentdialog.ActiveWindowsDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
-import com.winlator.cmod.contentdialog.DebugDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
-import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
@@ -90,15 +89,19 @@ import com.winlator.cmod.renderer.effects.ColorEffect;
 import com.winlator.cmod.renderer.effects.FXAAEffect;
 import com.winlator.cmod.renderer.effects.NTSCCombinedEffect;
 import com.winlator.cmod.renderer.effects.ToonEffect;
+import com.winlator.cmod.renderer.effects.FSREffect;
+import com.winlator.cmod.renderer.effects.HDREffect;
 import com.winlator.cmod.widget.FrameRating;
 import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.widget.LogView;
-import com.winlator.cmod.widget.MagnifierView;
 import com.winlator.cmod.widget.TouchpadView;
 import com.winlator.cmod.widget.XServerView;
 import com.winlator.cmod.winhandler.MouseEventFlags;
-import com.winlator.cmod.winhandler.TaskManagerDialog;
+import com.winlator.cmod.winhandler.OnGetProcessInfoListener;
+import com.winlator.cmod.winhandler.ProcessInfo;
 import com.winlator.cmod.winhandler.WinHandler;
+import com.winlator.cmod.core.CPUStatus;
+import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
 import com.winlator.cmod.xenvironment.ImageFs;
 import com.winlator.cmod.xenvironment.XEnvironment;
@@ -174,8 +177,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private WinHandler winHandler;
     private WineRequestHandler wineRequestHandler;
     private float globalCursorSpeed = 1.0f;
-    private MagnifierView magnifierView;
-    private DebugDialog debugDialog;
     private short taskAffinityMask = 0;
     private short taskAffinityMaskWoW64 = 0;
     private int frameRatingWindowId = -1;
@@ -347,22 +348,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
         state.onKeyboard               = () -> AppUtils.showKeyboard(this);
         state.onInputControls          = () -> showInputControlsDialog();
-        state.onScreenEffects          = () -> {
-            ScreenEffectDialog d = new ScreenEffectDialog(this);
-            d.setOnConfirmCallback(() -> {
-                GLRenderer r = xServerView.getRenderer();
-                d.applyEffects(
-                    (ColorEffect)      r.getEffectComposer().getEffect(ColorEffect.class),
-                    r,
-                    (FXAAEffect)       r.getEffectComposer().getEffect(FXAAEffect.class),
-                    (CRTEffect)        r.getEffectComposer().getEffect(CRTEffect.class),
-                    (ToonEffect)       r.getEffectComposer().getEffect(ToonEffect.class),
-                    (NTSCCombinedEffect) r.getEffectComposer().getEffect(NTSCCombinedEffect.class)
-                );
-            });
-            d.show();
-        };
-        state.onGraphicEngine          = () -> new com.winlator.cmod.contentdialog.FSRControlFloatingDialog(this).show();
+        state.onScreenEffects          = () -> showScreenEffectsDialog();
+        state.onGraphicEngine          = () -> showFsrOverlay();
         state.onVibration              = () -> showVibrationDialog();
         state.onToggleFullscreen       = () -> {
             xServerView.getRenderer().toggleFullscreen();
@@ -380,25 +367,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         };
         state.onPipMode                = () -> enterPictureInPictureMode();
         state.onActiveWindows          = () -> showActiveWindowsDialog();
-        state.onTaskManager            = () -> new TaskManagerDialog(this).show();
-        state.onMagnifier              = () -> {
-            if (magnifierView == null) {
-                FrameLayout container = findViewById(R.id.FLXServerDisplay);
-                magnifierView = new MagnifierView(this);
-                GLRenderer r = xServerView.getRenderer();
-                magnifierView.setZoomButtonCallback(value -> {
-                    r.setMagnifierZoom(Mathf.clamp(r.getMagnifierZoom() + value, 1.0f, 3.0f));
-                    magnifierView.setZoomValue(r.getMagnifierZoom());
-                });
-                magnifierView.setZoomValue(r.getMagnifierZoom());
-                magnifierView.setHideButtonCallback(() -> {
-                    container.removeView(magnifierView);
-                    magnifierView = null;
-                });
-                container.addView(magnifierView);
-            }
-        };
-        state.onLogs                   = () -> { if (debugDialog != null) debugDialog.show(); };
+        state.onTaskManager            = () -> showTaskManagerDialog();
+        state.onMagnifier              = () -> showMagnifierOverlay();
+        state.onLogs                   = () -> XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.DEBUG);
         state.onExit                   = () -> exit();
         state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
         state.onRelativeMouseMovement  = () -> {
@@ -414,6 +385,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         ComposeView drawerComposeView = findViewById(R.id.XServerDrawerComposeView);
         XServerDrawerKt.setupComposeView(drawerComposeView);
+
+        // Dialog host: a full-size ComposeView on top of the game surface for
+        // in-game dialogs and floating overlays (magnifier, FSR panel).
+        FrameLayout xServerDisplay = findViewById(R.id.FLXServerDisplay);
+        ComposeView dialogHostView = new ComposeView(this);
+        dialogHostView.setLayoutParams(new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        xServerDisplay.addView(dialogHostView);
+        XServerDialogHostKt.setupDialogHost(dialogHostView);
 
         imageFs = ImageFs.find(this);
 
@@ -510,9 +490,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         imageFs.setWinePath(wineInfo.path);
 
         ProcessHelper.removeAllDebugCallbacks();
+        XServerDialogState.INSTANCE.clearLog();
         if (enableLogs) {
             LogView.setFilename(getExecutable());
-            ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
+            ProcessHelper.addDebugCallback(line -> XServerDialogState.INSTANCE.appendLog(line));
         }
 
         graphicsDriver = container.getGraphicsDriver();
@@ -962,24 +943,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
     
     private void showVibrationDialog() {
         if (winHandler == null) return;
-
-        Context context = this;
-        int maxControllers = winHandler.getMaxControllers();
-        boolean[] checkedItems = new boolean[maxControllers];
-        String[] items = new String[maxControllers];
-
-        for (int i = 0; i < maxControllers; i++) {
-            items[i] = getString(R.string.vibration_slot, i + 1);
-            checkedItems[i] = winHandler.isVibrationEnabledForSlot(i);
+        int max = winHandler.getMaxControllers();
+        java.util.List<android.util.Pair<String, Boolean>> slots = new java.util.ArrayList<>();
+        for (int i = 0; i < max; i++) {
+            slots.add(new android.util.Pair<>(
+                getString(R.string.vibration_slot, i + 1),
+                winHandler.isVibrationEnabledForSlot(i)));
         }
-
-        new androidx.appcompat.app.AlertDialog.Builder(context)
-                .setTitle(R.string.vibration)
-                .setMultiChoiceItems(items, checkedItems, (dialog, which, isChecked) -> {
-                    winHandler.setVibrationEnabledForSlot(which, isChecked);
-                })
-                .setPositiveButton(R.string.ok, null)
-                .show();
+        // Convert android.util.Pair to kotlin.Pair for XServerDialogState
+        java.util.List<kotlin.Pair<String, Boolean>> kSlots = new java.util.ArrayList<>();
+        for (android.util.Pair<String, Boolean> p : slots) {
+            kSlots.add(new kotlin.Pair<>(p.first, p.second));
+        }
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        ds.setVibrationSlots(kSlots);
+        ds.onVibrationSlotChanged = (slot, enabled) -> winHandler.setVibrationEnabledForSlot(slot, enabled);
+        ds.show(XServerDialogState.ActiveDialog.VIBRATION);
     }
 
     @Override
@@ -1386,94 +1365,49 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void showInputControlsDialog() {
-        final ContentDialog dialog = new ContentDialog(this, R.layout.input_controls_dialog);
-        dialog.setTitle(R.string.input_controls);
-        dialog.setIcon(R.drawable.icon_input_controls);
+        ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
+        ArrayList<String> profileNames = new ArrayList<>();
+        int selectedPosition = 0;
+        for (int i = 0; i < profiles.size(); i++) {
+            ControlsProfile profile = profiles.get(i);
+            if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
+                selectedPosition = i + 1;
+            profileNames.add(profile.getName());
+        }
 
-        final Spinner sProfile = dialog.findViewById(R.id.SProfile);
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        ds.setInputProfiles(profileNames);
+        ds.setSelectedProfileIdx(selectedPosition);
+        ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
+        ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
+        ds.setHapticsEnabled(preferences.getBoolean("touchscreen_haptics_enabled", false));
 
-        dialog.getWindow().setBackgroundDrawableResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-        sProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-        // Set text color for all TextViews in the dialog to white or black based on dark mode
-        int textColor = ContextCompat.getColor(this, isDarkMode ? R.color.white : R.color.black);
-        ViewGroup dialogViewGroup = (ViewGroup) dialog.getWindow().getDecorView().findViewById(android.R.id.content);
-        setTextColorForDialog(dialogViewGroup, textColor);
-
-        Runnable loadProfileSpinner = () -> {
-            ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
-            ArrayList<String> profileItems = new ArrayList<>();
-            int selectedPosition = 0;
-            profileItems.add("-- "+getString(R.string.disabled)+" --");
-            for (int i = 0; i < profiles.size(); i++) {
-                ControlsProfile profile = profiles.get(i);
-                if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
-                    selectedPosition = i + 1;
-                profileItems.add(profile.getName());
-            }
-
-            sProfile.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, profileItems));
-            sProfile.setSelection(selectedPosition);
-        };
-        loadProfileSpinner.run();
-
-        final CheckBox cbShowTouchscreenControls = dialog.findViewById(R.id.CBShowTouchscreenControls);
-        cbShowTouchscreenControls.setChecked(inputControlsView.isShowTouchscreenControls());
-
-        final CheckBox cbEnableTimeout = dialog.findViewById(R.id.CBEnableTimeout);
-        cbEnableTimeout.setChecked(preferences.getBoolean("touchscreen_timeout_enabled", false));
-
-        final CheckBox cbEnableHaptics = dialog.findViewById(R.id.CBEnableHaptics);
-        cbEnableHaptics.setChecked(preferences.getBoolean("touchscreen_haptics_enabled", false));
-
-        final Runnable updateProfile = () -> {
-            int position = sProfile.getSelectedItemPosition();
-            if (position > 0) {
-                showInputControls(inputControlsManager.getProfiles().get(position - 1));
-            }
+        ds.onInputControlsConfirm = (profileIndex, showTouchscreen, timeout, haptics) -> {
+            inputControlsView.setShowTouchscreenControls(showTouchscreen);
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("touchscreen_timeout_enabled", timeout);
+            editor.putBoolean("touchscreen_haptics_enabled", haptics);
+            editor.apply();
+            if (timeout) startTouchscreenTimeout();
+            else touchpadView.setOnTouchListener(null);
+            if (profileIndex > 0) showInputControls(inputControlsManager.getProfiles().get(profileIndex - 1));
             else hideInputControls();
         };
 
-        dialog.findViewById(R.id.BTSettings).setOnClickListener((v) -> {
-            int position = sProfile.getSelectedItemPosition();
+        ds.onInputControlsSettings = () -> {
+            int currentIdx = ds.getSelectedProfileIdx().getValue();
             Intent intent = new Intent(this, MainActivity.class);
             intent.putExtra("edit_input_controls", true);
-            intent.putExtra("selected_profile_id", position > 0 ? inputControlsManager.getProfiles().get(position - 1).id : 0);
+            intent.putExtra("selected_profile_id",
+                currentIdx > 0 ? inputControlsManager.getProfiles().get(currentIdx - 1).id : 0);
             editInputControlsCallback = () -> {
                 hideInputControls();
                 inputControlsManager.loadProfiles(true);
-                loadProfileSpinner.run();
-                updateProfile.run();
             };
             controlsEditorActivityResultLauncher.launch(intent);
-        });
+        };
 
-        dialog.setOnConfirmCallback(() -> {
-            inputControlsView.setShowTouchscreenControls(cbShowTouchscreenControls.isChecked());
-            boolean isTimeoutEnabled = cbEnableTimeout.isChecked();
-            boolean isHapticsEnabled = cbEnableHaptics.isChecked();
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean("touchscreen_timeout_enabled", isTimeoutEnabled);
-            editor.putBoolean("touchscreen_haptics_enabled", isHapticsEnabled);
-            editor.apply();
-
-            if (isTimeoutEnabled) {
-                startTouchscreenTimeout(); // Start the timeout functionality if enabled
-            } else {
-                touchpadView.setOnTouchListener(null); // Disable the listener if timeout is disabled
-            }
-            int position = sProfile.getSelectedItemPosition();
-            if (position > 0) {
-                showInputControls(inputControlsManager.getProfiles().get(position - 1));
-            }
-            else hideInputControls();
-            updateProfile.run();
-        });
-
-        dialog.setOnCancelCallback(updateProfile::run);
-
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
+        ds.show(XServerDialogState.ActiveDialog.INPUT_CONTROLS);
     }
 
     private void simulateConfirmInputControlsDialog() {
@@ -2119,18 +2053,333 @@ Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
     } // Closes MoveCursorToTouchpoint
 
     private void showActiveWindowsDialog() {
-        runOnUiThread(() -> {
-            try {
-                ActiveWindowsDialog dialog = new ActiveWindowsDialog(this);
-                dialog.show();
-            } catch (Exception e) {
-                Log.e("XServerDisplayActivity", "Failed to show ActiveWindowsDialog", e);
-                // Make sure to import com.winlator.cmod.core.AppUtils at the top if missing
-                AppUtils.showToast(this, "Dialog failed to load: " + e.getMessage());
+        ArrayList<com.winlator.cmod.xserver.Window> activeWindows = new ArrayList<>();
+        ArrayList<android.graphics.Bitmap> activeIcons = new ArrayList<>();
+        try {
+            try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+                findAppWindowsForCompose(xServer.windowManager.rootWindow, activeWindows);
+                for (com.winlator.cmod.xserver.Window w : activeWindows) {
+                    activeIcons.add(xServer.pixmapManager.getWindowIcon(w));
+                }
             }
-        });
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "Error reading windows", e);
+        }
+
+        ArrayList<XServerDialogState.ActiveWindow> windowInfoList = new ArrayList<>();
+        for (int i = 0; i < activeWindows.size(); i++) {
+            com.winlator.cmod.xserver.Window w = activeWindows.get(i);
+            String title = w.getName();
+            String cls   = w.getClassName() != null ? w.getClassName() : "";
+            if (title == null || title.isEmpty()) title = cls;
+            if (title.isEmpty()) title = "Unnamed Window";
+            windowInfoList.add(new XServerDialogState.ActiveWindow(
+                title, cls, activeIcons.get(i), null, w.getHandle()));
+        }
+
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        ds.setAwWindows(windowInfoList);
+        ds.onWindowClick = (cls, handle) -> {
+            WinHandler wh = getWinHandler();
+            if (wh != null) wh.bringToFront(cls, handle);
+        };
+        ds.show(XServerDialogState.ActiveDialog.ACTIVE_WINDOWS);
+
+        GLRenderer renderer = xServerView != null ? xServerView.getRenderer() : null;
+        if (renderer != null) {
+            float density = getResources().getDisplayMetrics().density;
+            int previewW = (int)(240 * density);
+            int previewH = (int)(160 * density);
+            for (int i = 0; i < activeWindows.size(); i++) {
+                final int idx = i;
+                final com.winlator.cmod.xserver.Window win = activeWindows.get(i);
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() ->
+                    renderer.captureScreenshot(win, previewW, previewH, bitmap -> {
+                        if (bitmap != null) runOnUiThread(() -> ds.updateAwScreenshot(idx, bitmap));
+                    }), idx * 100L);
+            }
+        }
     }
 
+    private void findAppWindowsForCompose(com.winlator.cmod.xserver.Window parent,
+                                          ArrayList<com.winlator.cmod.xserver.Window> result) {
+        if (parent == null) return;
+        for (com.winlator.cmod.xserver.Window child : parent.getChildren()) {
+            if (child.attributes.isMapped()) {
+                String className = child.getClassName();
+                boolean isSystem = false;
+                if (className != null) {
+                    String cls = className.toLowerCase();
+                    if (cls.contains("progman") || cls.contains("shell_traywnd") || cls.equals("explorer.exe"))
+                        isSystem = true;
+                }
+                String title  = child.getName();
+                boolean hasTitle = title != null && !title.isEmpty();
+                boolean hasClass = className != null && !className.isEmpty();
+                if (!isSystem && (hasTitle || hasClass)) {
+                    if (child.getWidth() < xServer.screenInfo.width || child.getHeight() < xServer.screenInfo.height
+                            || child.getParent() != xServer.windowManager.rootWindow
+                            || (title != null && !title.isEmpty()
+                                && !title.equalsIgnoreCase("Default - Wine desktop"))) {
+                        result.add(child);
+                        continue;
+                    }
+                }
+            }
+            findAppWindowsForCompose(child, result);
+        }
+    }
+
+    private void showScreenEffectsDialog() {
+        GLRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+
+        ColorEffect ce   = r != null ? (ColorEffect)        r.getEffectComposer().getEffect(ColorEffect.class)        : null;
+        FXAAEffect  fxaa = r != null ? (FXAAEffect)         r.getEffectComposer().getEffect(FXAAEffect.class)         : null;
+        CRTEffect   crt  = r != null ? (CRTEffect)          r.getEffectComposer().getEffect(CRTEffect.class)          : null;
+        ToonEffect  toon = r != null ? (ToonEffect)         r.getEffectComposer().getEffect(ToonEffect.class)         : null;
+        NTSCCombinedEffect ntsc = r != null ? (NTSCCombinedEffect) r.getEffectComposer().getEffect(NTSCCombinedEffect.class) : null;
+
+        ds.setSeBrightness(ce   != null ? ce.getBrightness() * 100f : 0f);
+        ds.setSeContrast  (ce   != null ? ce.getContrast()   * 100f : 0f);
+        ds.setSeGamma     (ce   != null ? ce.getGamma()             : 1.0f);
+        ds.setSeFxaa      (fxaa != null);
+        ds.setSeCrt       (crt  != null);
+        ds.setSeToon      (toon != null);
+        ds.setSeNtsc      (ntsc != null);
+
+        java.util.Set<String> rawSet = new java.util.LinkedHashSet<>(
+            preferences.getStringSet("screen_effect_profiles", new java.util.LinkedHashSet<>()));
+        final ArrayList<String> profileNames = new ArrayList<>();
+        for (String p : rawSet) profileNames.add(p.split(":")[0]);
+        ds.setSeProfiles(profileNames);
+
+        String currentProfile = getScreenEffectProfile();
+        int selIdx = 0;
+        for (int i = 0; i < profileNames.size(); i++) {
+            if (profileNames.get(i).equals(currentProfile)) { selIdx = i + 1; break; }
+        }
+        ds.setSeSelectedProfile(selIdx);
+
+        ds.onScreenEffectsApply = (brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn, profileIndex) -> {
+            if (r == null) return;
+            applyScreenEffects(r, brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn);
+            if (profileIndex > 0 && profileIndex - 1 < profileNames.size()) {
+                String name = profileNames.get(profileIndex - 1);
+                saveScreenEffectProfile(name, brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn);
+                setScreenEffectProfile(name);
+            }
+        };
+
+        ds.onSeAddProfile = name -> {
+            java.util.Set<String> profiles = new java.util.LinkedHashSet<>(
+                preferences.getStringSet("screen_effect_profiles", new java.util.LinkedHashSet<>()));
+            boolean exists = false;
+            for (String p : profiles) { if (p.split(":")[0].equals(name)) { exists = true; break; } }
+            if (!exists) {
+                profiles.add(name + ":");
+                preferences.edit().putStringSet("screen_effect_profiles", profiles).apply();
+                profileNames.add(name);
+                ds.setSeProfiles(new ArrayList<>(profileNames));
+            }
+        };
+
+        ds.onSeRemoveProfile = name -> {
+            java.util.Set<String> profiles = new java.util.LinkedHashSet<>(
+                preferences.getStringSet("screen_effect_profiles", new java.util.LinkedHashSet<>()));
+            profiles.removeIf(p -> p.split(":")[0].equals(name));
+            preferences.edit().putStringSet("screen_effect_profiles", profiles).apply();
+            profileNames.removeIf(n -> n.equals(name));
+            ds.setSeProfiles(new ArrayList<>(profileNames));
+            ds.setSeSelectedProfile(0);
+        };
+
+        ds.show(XServerDialogState.ActiveDialog.SCREEN_EFFECTS);
+    }
+
+    private void applyScreenEffects(GLRenderer r, float brightness, float contrast, float gamma,
+                                    boolean fxaaEn, boolean crtEn, boolean toonEn, boolean ntscEn) {
+        ColorEffect ce = (ColorEffect) r.getEffectComposer().getEffect(ColorEffect.class);
+        if (brightness == 0 && contrast == 0 && gamma == 1.0f) {
+            if (ce != null) r.getEffectComposer().removeEffect(ce);
+        } else {
+            if (ce == null) ce = new ColorEffect();
+            ce.setBrightness(brightness / 100f);
+            ce.setContrast(contrast / 100f);
+            ce.setGamma(gamma);
+            r.getEffectComposer().addEffect(ce);
+        }
+        FXAAEffect fxaa = (FXAAEffect) r.getEffectComposer().getEffect(FXAAEffect.class);
+        if (fxaaEn) { if (fxaa == null) r.getEffectComposer().addEffect(new FXAAEffect()); }
+        else if (fxaa != null) r.getEffectComposer().removeEffect(fxaa);
+
+        CRTEffect crt = (CRTEffect) r.getEffectComposer().getEffect(CRTEffect.class);
+        if (crtEn) { if (crt == null) r.getEffectComposer().addEffect(new CRTEffect()); }
+        else if (crt != null) r.getEffectComposer().removeEffect(crt);
+
+        ToonEffect toon = (ToonEffect) r.getEffectComposer().getEffect(ToonEffect.class);
+        if (toonEn) { if (toon == null) r.getEffectComposer().addEffect(new ToonEffect()); }
+        else if (toon != null) r.getEffectComposer().removeEffect(toon);
+
+        NTSCCombinedEffect ntsc = (NTSCCombinedEffect) r.getEffectComposer().getEffect(NTSCCombinedEffect.class);
+        if (ntscEn) { if (ntsc == null) r.getEffectComposer().addEffect(new NTSCCombinedEffect()); }
+        else if (ntsc != null) r.getEffectComposer().removeEffect(ntsc);
+    }
+
+    private void saveScreenEffectProfile(String name, float brightness, float contrast, float gamma,
+                                         boolean fxaa, boolean crt, boolean toon, boolean ntsc) {
+        com.winlator.cmod.core.KeyValueSet settings = new com.winlator.cmod.core.KeyValueSet();
+        settings.put("brightness",  brightness);
+        settings.put("contrast",    contrast);
+        settings.put("gamma",       gamma);
+        settings.put("fxaa",        fxaa);
+        settings.put("crt_shader",  crt);
+        settings.put("toon_shader", toon);
+        settings.put("ntsc_effect", ntsc);
+        java.util.Set<String> oldProfiles = new java.util.LinkedHashSet<>(
+            preferences.getStringSet("screen_effect_profiles", new java.util.LinkedHashSet<>()));
+        java.util.Set<String> newProfiles = new java.util.LinkedHashSet<>();
+        for (String p : oldProfiles) {
+            String n = p.split(":")[0];
+            newProfiles.add(n.equals(name) ? name + ":" + settings.toString() : p);
+        }
+        preferences.edit().putStringSet("screen_effect_profiles", newProfiles).apply();
+    }
+
+    private void showFsrOverlay() {
+        GLRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+
+        FSREffect fsr = r != null ? (FSREffect) r.getEffectComposer().getEffect(FSREffect.class) : null;
+        HDREffect hdr = r != null ? (HDREffect) r.getEffectComposer().getEffect(HDREffect.class) : null;
+
+        ds.setFsrEnabled(fsr != null);
+        ds.setFsrMode   (fsr != null ? fsr.getMode()  : 0);
+        ds.setFsrLevel  (fsr != null ? fsr.getLevel() : 1.0f);
+        ds.setHdrEnabled(hdr != null);
+
+        ds.onFsrUpdate = (enabled, mode, level, hdrEn) -> {
+            if (r == null) return;
+            FSREffect cur = (FSREffect) r.getEffectComposer().getEffect(FSREffect.class);
+            if (cur != null) r.getEffectComposer().removeEffect(cur);
+            if (enabled) {
+                FSREffect newFsr = new FSREffect();
+                newFsr.setLevel(level);
+                newFsr.setMode(mode);
+                r.getEffectComposer().addEffect(newFsr);
+            }
+            HDREffect curHdr = (HDREffect) r.getEffectComposer().getEffect(HDREffect.class);
+            if (curHdr != null) r.getEffectComposer().removeEffect(curHdr);
+            if (hdrEn) {
+                HDREffect newHdr = new HDREffect();
+                newHdr.setStrength(1.0f);
+                r.getEffectComposer().addEffect(newHdr);
+            }
+        };
+
+        ds.setFsrVisible(true);
+    }
+
+    private void showMagnifierOverlay() {
+        GLRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+
+        ds.setMagnifierZoom(r != null ? r.getMagnifierZoom() : 1.0f);
+        ds.onMagnifierZoom = delta -> {
+            if (r == null) return;
+            float z = Mathf.clamp(r.getMagnifierZoom() + delta, 1.0f, 3.0f);
+            r.setMagnifierZoom(z);
+            ds.setMagnifierZoom(z);
+        };
+        ds.onMagnifierHide = () -> ds.setMagnifierVisible(false);
+        ds.setMagnifierVisible(true);
+    }
+
+    private void showTaskManagerDialog() {
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+
+        ds.onTmRefresh = () -> {
+            if (winHandler != null) winHandler.listProcesses();
+            updateTmCpuMemory(ds);
+        };
+
+        ds.onTmDismissed = () -> {
+            if (winHandler != null) winHandler.setOnGetProcessInfoListener(null);
+            ds.setTmProcesses(new ArrayList<>());
+        };
+
+        ds.onTmNewTask = () -> ContentDialog.prompt(this, R.string.new_task, "taskmgr.exe",
+            command -> { if (winHandler != null) winHandler.exec(command); });
+
+        ds.onTmBringToFront = name -> {
+            if (winHandler != null) winHandler.bringToFront(name);
+        };
+
+        ds.onTmKillProcess = name -> ContentDialog.confirm(this, R.string.do_you_want_to_end_this_process,
+            () -> { if (winHandler != null) winHandler.killProcess(name); });
+
+        ds.onTmSetAffinity = (pid, mask) -> {
+            if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
+        };
+
+        if (winHandler != null) {
+            winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
+                private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
+
+                @Override
+                public void onGetProcessInfo(int index, int numProcesses, ProcessInfo info) {
+                    android.graphics.Bitmap icon = null;
+                    try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                        com.winlator.cmod.xserver.Window w = xServer.windowManager.findWindowWithProcessId(info.pid);
+                        if (w != null) icon = xServer.pixmapManager.getWindowIcon(w);
+                    } catch (Exception ignored) {}
+
+                    final android.graphics.Bitmap finalIcon = icon;
+                    runOnUiThread(() -> {
+                        if (index == 0) buffer.clear();
+                        buffer.add(new XServerDialogState.TmProcess(
+                            index, info.pid, info.name,
+                            info.getFormattedMemoryUsage(), info.wow64Process, finalIcon));
+                        if (numProcesses == 0 || index == numProcesses - 1) {
+                            ds.setTmProcesses(new ArrayList<>(buffer));
+                            ds.setTmCount(numProcesses);
+                        }
+                    });
+                }
+            });
+        }
+
+        updateTmCpuMemory(ds);
+        ds.show(XServerDialogState.ActiveDialog.TASK_MANAGER);
+    }
+
+    private void updateTmCpuMemory(XServerDialogState ds) {
+        try {
+            short[] clocks = CPUStatus.getCurrentClockSpeeds();
+            int total = 0; short maxClock = 0;
+            ArrayList<String> cores = new ArrayList<>();
+            for (int i = 0; i < clocks.length; i++) {
+                short max = CPUStatus.getMaxClockSpeed(i);
+                cores.add(clocks[i] + "/" + max + " MHz");
+                total += clocks[i];
+                if (max > maxClock) maxClock = max;
+            }
+            int avg = clocks.length > 0 ? total / clocks.length : 0;
+            int pct = maxClock > 0 ? (int)(((float) avg / maxClock) * 100) : 0;
+            ds.setTmCpuCores(cores);
+            ds.setTmCpuTitle("CPU (" + pct + "%)");
+
+            android.app.ActivityManager am =
+                (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            long used = mi.totalMem - mi.availMem;
+            int memPct = (int)(((double) used / mi.totalMem) * 100);
+            ds.setTmMemTitle("Memory (" + memPct + "%)");
+            ds.setTmMemInfo(StringUtils.formatBytes(used, false) + " / " +
+                StringUtils.formatBytes(mi.totalMem));
+        } catch (Exception ignored) {}
+    }
 
 
 } // Closes the XServerDisplayActivity class
