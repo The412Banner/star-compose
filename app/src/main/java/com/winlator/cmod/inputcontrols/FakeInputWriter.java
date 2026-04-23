@@ -183,6 +183,12 @@ public class FakeInputWriter {
 
 
 
+    public synchronized void softRelease() {
+        reset();
+        close();
+        Log.i(TAG, "Soft released fake input: " + eventFile.getAbsolutePath());
+    }
+
     /**
      * Full destroy - reset, close, and delete the file.
      */
