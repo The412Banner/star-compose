@@ -229,6 +229,34 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 
 ---
 
+## VKD3D / DX12 Debug Session (2026-04-22) — ROLLED BACK
+
+**Restore point tag:** `pre-vkd3d-fixes` → commit `8485ac0`  
+**Current main:** `8485ac0` (force-pushed back to restore point 2026-04-22)
+
+### What was tried
+A multi-session investigation into why D3D12 games fail with `E_NOINTERFACE` (0x80004002) in star-compose.
+
+**Root causes identified:**
+1. `ContentsManager.getProfileByEntryName` crashes on single-dash version strings like `"vkd3d-3.0b"` → `StringIndexOutOfBoundsException`, silently returns null
+2. `extractDXWrapperFiles()` was `void` — cache updated even on failed extraction, poisoning containers permanently
+3. Content server naming convention (`Vk3dk-arm64ec-3.0b`) doesn't match stored container configs (`3.0b`) — content-profile path never works for 3.0b
+4. Built-in assets (2.8, 2.14.1) work fine; only content-profile / 3.0b versions were broken
+
+**Fixes developed (all rolled back):**
+- `getProfileByEntryName` single-dash + non-numeric verCode fix
+- `extractDXWrapperFiles` → returns boolean; cache gated on success
+- `DX_EXTRACT_VERSION` stamp to force cache bust across installs
+- `VKD3DVersionItem` used in `loadVkd3dVersionList` for correct identifier format
+- `vkd3d-3.0b.tzst` (4.8MB) bundled as asset alongside 2.8 and 2.14.1
+- "3.0b" added to `vkd3d_version_entries` in arrays.xml
+
+**Why rolled back:** User decision — returning to clean restore point to re-approach differently.
+
+**Next session:** All the above fixes are documented and ready to re-apply. The bundled-asset approach (vkd3d-3.0b.tzst in assets/dxwrapper/) is the cleanest solution since content-server naming will never match container configs without a deeper refactor.
+
+---
+
 ## Current Job (2026-04-22)
 
 **Branch:** `compose-ingame-dialogs` → merged to main (`555eead`)  
