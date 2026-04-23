@@ -813,6 +813,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
 
+        // Log all connected input devices so we know what Android sees
+        android.hardware.input.InputManager im = (android.hardware.input.InputManager) getSystemService(android.content.Context.INPUT_SERVICE);
+        int[] devIds = im.getInputDeviceIds();
+        StringBuilder devLog = new StringBuilder("Input devices on resume: ");
+        for (int did : devIds) {
+            android.view.InputDevice dev = android.view.InputDevice.getDevice(did);
+            if (dev != null) devLog.append("[").append(dev.getName()).append(" id=").append(did).append(" src=0x").append(Integer.toHexString(dev.getSources())).append("] ");
+        }
+        Log.d("InputDebug", devLog.toString());
+
         if (environment != null) {
             xServerView.onResume();
             environment.onResume();
@@ -1684,10 +1694,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         boolean handledByWinHandler = false;
         boolean handledByTouchpadView = false;
 
-        if ((event.getSource() & android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK ||
-            (event.getSource() & android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD) {
-            Log.d("ControllerDebug", "Gamepad motion event received: device=" + event.getDeviceId() + " source=" + event.getSource());
-        }
+        Log.d("InputDebug", "dispatchGenericMotionEvent: action=" + event.getAction()
+            + " src=0x" + Integer.toHexString(event.getSource()) + " device=" + event.getDeviceId());
 
         // Let winHandler process the event if available
         if (winHandler != null) {
@@ -1721,9 +1729,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
 
-        if (ExternalController.isGameController(event.getDevice())) {
-            Log.d("ControllerDebug", "Gamepad key event: keyCode=" + event.getKeyCode() + " action=" + event.getAction() + " device=" + event.getDeviceId());
-        }
+        Log.d("InputDebug", "dispatchKeyEvent: keyCode=" + event.getKeyCode()
+            + " action=" + event.getAction() + " src=0x" + Integer.toHexString(event.getSource())
+            + " device=" + event.getDeviceId()
+            + " isGamepad=" + ExternalController.isGameController(event.getDevice()));
 
         // Handle the PlayStation or Xbox Home button to open the drawer
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
