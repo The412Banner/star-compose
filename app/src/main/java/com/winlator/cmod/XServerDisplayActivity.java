@@ -821,7 +821,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             android.view.InputDevice dev = android.view.InputDevice.getDevice(did);
             if (dev != null) devLog.append("[").append(dev.getName()).append(" id=").append(did).append(" src=0x").append(Integer.toHexString(dev.getSources())).append("] ");
         }
-        Log.d("InputDebug", devLog.toString());
+        Log.i("InputDebug", devLog.toString());
 
         if (environment != null) {
             xServerView.onResume();
@@ -1694,7 +1694,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         boolean handledByWinHandler = false;
         boolean handledByTouchpadView = false;
 
-        Log.d("InputDebug", "dispatchGenericMotionEvent: action=" + event.getAction()
+        Log.i("InputDebug", "dispatchGenericMotionEvent: action=" + event.getAction()
             + " src=0x" + Integer.toHexString(event.getSource()) + " device=" + event.getDeviceId());
 
         // Let winHandler process the event if available
@@ -1729,7 +1729,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
 
-        Log.d("InputDebug", "dispatchKeyEvent: keyCode=" + event.getKeyCode()
+        Log.i("InputDebug", "dispatchKeyEvent: keyCode=" + event.getKeyCode()
             + " action=" + event.getAction() + " src=0x" + Integer.toHexString(event.getSource())
             + " device=" + event.getDeviceId()
             + " isGamepad=" + ExternalController.isGameController(event.getDevice()));
