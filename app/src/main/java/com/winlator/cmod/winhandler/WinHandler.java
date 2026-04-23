@@ -605,12 +605,11 @@ public class WinHandler {
         if (slot != null) {
             if (fallbackSlot == slot) fallbackSlot = -1;
             if (writers[slot] != null) {
-                writers[slot].destroy();
-                writers[slot] = null;
+                writers[slot].softRelease();
             }
             usedSlots.remove(slot);
             controllers.remove(deviceId);
-            Log.d("WinHandler", "Device " + deviceId + " disconnected (or OSC disabled). Slot released: " + slot);
+            Log.d("WinHandler", "Device " + deviceId + " disconnected (or OSC disabled). Slot soft-released: " + slot);
         }
     }
 

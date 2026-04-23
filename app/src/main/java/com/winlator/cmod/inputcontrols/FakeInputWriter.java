@@ -184,6 +184,15 @@ public class FakeInputWriter {
 
 
     /**
+     * Soft release - reset state and close handle but keep the file on disk for reconnection.
+     */
+    public synchronized void softRelease() {
+        reset();
+        close();
+        Log.i(TAG, "Soft released fake input: " + eventFile.getAbsolutePath());
+    }
+
+    /**
      * Full destroy - reset, close, and delete the file.
      */
     public synchronized void destroy() {
