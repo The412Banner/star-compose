@@ -1684,6 +1684,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         boolean handledByWinHandler = false;
         boolean handledByTouchpadView = false;
 
+        if ((event.getSource() & android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK ||
+            (event.getSource() & android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD) {
+            Log.d("ControllerDebug", "Gamepad motion event received: device=" + event.getDeviceId() + " source=" + event.getSource());
+        }
+
         // Let winHandler process the event if available
         if (winHandler != null) {
             handledByWinHandler = winHandler.onGenericMotionEvent(event);
@@ -1715,6 +1720,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+
+        if (ExternalController.isGameController(event.getDevice())) {
+            Log.d("ControllerDebug", "Gamepad key event: keyCode=" + event.getKeyCode() + " action=" + event.getAction() + " device=" + event.getDeviceId());
+        }
 
         // Handle the PlayStation or Xbox Home button to open the drawer
         if (event.getAction() == KeyEvent.ACTION_DOWN) {

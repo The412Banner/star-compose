@@ -13,6 +13,7 @@ import com.winlator.cmod.inputcontrols.ControlsProfile;
 import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.FakeInputWriter;
 import com.winlator.cmod.inputcontrols.GamepadState;
+import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.xserver.XServer;
 
 import android.content.Context;
@@ -553,7 +554,8 @@ public class WinHandler {
         // Check if this controller has bindings in the current profile
         // If it does, we should NOT send the raw state here, because InputControlsView
         // will send the remapped state via the no-arg sendGamepadState().
-        ControlsProfile profile = activity.getInputControlsView().getProfile();
+        InputControlsView icv = activity.getInputControlsView();
+        ControlsProfile profile = icv != null ? icv.getProfile() : null;
         if (profile != null) {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
