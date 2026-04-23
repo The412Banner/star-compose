@@ -229,6 +229,28 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 
 ---
 
+## VKD3D / DX12 Fix (2026-04-22→23) — MERGED TO MAIN ✅
+
+**Branch:** `fix-vkd3d-content-profiles` → merged to main (`289609d`)
+**CI Run:** `24835832785` (Manual Release Build, main)
+**Verified:** D3D12 tests passing with content-profile VKD3D versions
+
+### Root cause
+The Compose migration broke VKD3D content-profile extraction in three ways:
+
+1. **`loadVkd3dVersionList` identifier mismatch** — original code used `VKD3DVersionItem.getIdentifier()` which always produces `verName+"-"+verCode` (e.g. `"3.0b-0"`). The Compose migration changed this to omit verCode when 0, producing bare `"3.0b"`. This single-dash entry name crashed `getProfileByEntryName` via `substring(6,5)`, silently returning null.
+
+2. **`getProfileByEntryName` crash on 2-part names** — fixed to handle both single-dash (verCode defaults to 0) and non-numeric verCode cases. Also gates match on install dir existing.
+
+3. **Cache poisoned on failed extraction** — `extractDXWrapperFiles` was void; cache updated regardless of success, permanently locking the container. Changed to boolean; cache only updated on `return true`.
+
+### Files changed
+- `DXVKConfigDialog.java` — use `VKD3DVersionItem.getIdentifier()` in `loadVkd3dVersionList`
+- `ContentsManager.java` — `getProfileByEntryName` single-dash + non-numeric verCode fix
+- `XServerDisplayActivity.java` — `extractDXWrapperFiles` returns boolean; cache gated on success
+
+---
+
 ## VKD3D / DX12 Debug Session (2026-04-22) — ROLLED BACK
 
 **Restore point tag:** `pre-vkd3d-fixes` → commit `8485ac0`  
