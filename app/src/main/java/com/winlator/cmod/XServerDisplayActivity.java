@@ -1011,9 +1011,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {
-            extractDXWrapperFiles(dxwrapper);
-            container.putExtra("dxwrapper", dxwrapper);
-            containerDataChanged = true;
+            if (extractDXWrapperFiles(dxwrapper)) {
+                container.putExtra("dxwrapper", dxwrapper);
+                containerDataChanged = true;
+            }
         }
 
         String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
@@ -1722,7 +1723,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private static final String TAG = "DXWrapperExtraction";
 
-    private void extractDXWrapperFiles(String dxwrapper) {
+    private boolean extractDXWrapperFiles(String dxwrapper) {
         final String[] dlls = {"d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "d3d8.dll", "d3d9.dll", "dxgi.dll", "ddraw.dll", "d3dimm.dll"};
 
         File rootDir = imageFs.getRootDir();
@@ -1749,20 +1750,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             }
 
+            boolean vkd3dOk;
             if (vkd3dWrapper.contains("None")) {
                 Log.d(TAG, "No VKD3D has been selected, restoring original d3d12");
                 restoreOriginalDllFiles(new String[]{"d3d12.dll", "d3d12core.dll"});
-            }
-            else {
+                vkd3dOk = true;
+            } else {
                 ContentProfile vkd3dProfile = contentsManager.getProfileByEntryName(vkd3dWrapper);
                 if (vkd3dProfile != null) {
                     Log.d(TAG, "Applying user-defined VKD3D content profile: " + vkd3dWrapper);
                     contentsManager.applyContent(vkd3dProfile);
+                    vkd3dOk = true;
                 } else {
                     Log.d(TAG, "Extracting fallback VKD3D .tzst archive: " + vkd3dWrapper);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + vkd3dWrapper + ".tzst", windowsDir, onExtractFileListener);
+                    vkd3dOk = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + vkd3dWrapper + ".tzst", windowsDir, onExtractFileListener);
+                    if (!vkd3dOk) Log.e(TAG, "VKD3D extraction failed: " + vkd3dWrapper);
                 }
             }
+            if (!vkd3dOk) return false;
 
             Log.d(TAG, "Extracting nglide wrapper");
 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
@@ -1789,10 +1794,12 @@ else {
 }
 
 Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
+return true;
 } else if (dxwrapper.contains("wined3d")) {
     Log.d(TAG, "Restoring original DLL files for wined3d.");
     restoreOriginalDllFiles(dlls);
         }
+        return true;
     }
 
     private static int compareVersion(String varA, String varB) {

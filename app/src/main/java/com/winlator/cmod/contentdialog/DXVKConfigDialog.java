@@ -9,6 +9,7 @@ import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.core.StringUtils;
+import com.winlator.cmod.core.VKD3DVersionItem;
 import com.winlator.cmod.xenvironment.ImageFs;
 
 import java.util.ArrayList;
@@ -67,7 +68,7 @@ public class DXVKConfigDialog {
         String[] original = context.getResources().getStringArray(R.array.vkd3d_version_entries);
         List<String> list = new ArrayList<>(Arrays.asList(original));
         for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VKD3D)) {
-            list.add(profile.verName + (profile.verCode != 0 ? "-" + profile.verCode : ""));
+            list.add(new VKD3DVersionItem(profile.verName, profile.verCode).getIdentifier());
         }
         return list;
     }

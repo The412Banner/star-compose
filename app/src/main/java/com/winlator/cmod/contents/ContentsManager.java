@@ -380,19 +380,30 @@ public class ContentsManager {
     public ContentProfile getProfileByEntryName(String entryName) {
         int firstDashIndex = entryName.indexOf('-');
         int lastDashIndex = entryName.lastIndexOf('-');
-
         try {
             String typeName = entryName.substring(0, firstDashIndex);
-            String versionName = entryName.substring(firstDashIndex + 1, lastDashIndex);
-            String versionCode = entryName.substring(lastDashIndex + 1);
-
+            String versionName;
+            int versionCode;
+            if (firstDashIndex == lastDashIndex) {
+                versionName = entryName.substring(firstDashIndex + 1);
+                versionCode = 0;
+            } else {
+                String verCodeStr = entryName.substring(lastDashIndex + 1);
+                try {
+                    versionName = entryName.substring(firstDashIndex + 1, lastDashIndex);
+                    versionCode = Integer.parseInt(verCodeStr);
+                } catch (NumberFormatException e) {
+                    versionName = entryName.substring(firstDashIndex + 1);
+                    versionCode = 0;
+                }
+            }
             for (ContentProfile profile : profilesMap.get(ContentProfile.ContentType.getTypeByName(typeName))) {
-                if (versionName.equals(profile.verName) && Integer.parseInt(versionCode) == profile.verCode)
+                if (versionName.equals(profile.verName) && versionCode == profile.verCode
+                        && getInstallDir(context, profile).exists())
                     return profile;
             }
         } catch (Exception e) {
         }
-
         return null;
     }
 
