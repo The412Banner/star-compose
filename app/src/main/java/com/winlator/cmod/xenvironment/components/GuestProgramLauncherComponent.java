@@ -330,14 +330,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         String nativeLibDir = environment.getContext().getApplicationInfo().nativeLibraryDir;
         File fakeinputSrc = new File(nativeLibDir, "libfakeinput.so");
 
-        Log.d("GuestLauncher", "nativeLibDir: " + nativeLibDir);
-        Log.d("GuestLauncher", "fakeinputSrc exists: " + fakeinputSrc.exists());
-        Log.d("GuestLauncher", "fakeinputDest: " + fakeinputDest.getAbsolutePath());
+        Log.i("GuestLauncher", "nativeLibDir: " + nativeLibDir);
+        Log.i("GuestLauncher", "fakeinputSrc exists: " + fakeinputSrc.exists());
+        Log.i("GuestLauncher", "fakeinputDest: " + fakeinputDest.getAbsolutePath());
 
         try {
             if (fakeinputSrc.exists()) {
                 FileUtils.copy(fakeinputSrc, fakeinputDest);
-                Log.d("GuestLauncher", "Copied libfakeinput.so to imagefs");
+                Log.i("GuestLauncher", "Copied libfakeinput.so to imagefs");
             } else {
                 Log.e("GuestLauncher", "libfakeinput.so NOT FOUND in APK: " + fakeinputSrc.getAbsolutePath());
             }
@@ -346,7 +346,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             e.printStackTrace();
         }
 
-        Log.d("GuestLauncher", "fakeinputDest exists after copy: " + fakeinputDest.exists());
+        Log.i("GuestLauncher", "fakeinputDest exists after copy: " + fakeinputDest.exists());
         if (fakeinputDest.exists()) {
             if (!ld_preload.isEmpty()) ld_preload += ":";
             ld_preload += fakeinputDest.getAbsolutePath();
@@ -361,8 +361,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         envVars.put("FAKE_EVDEV_VIBRATION", "1");
+        envVars.put("FAKE_EVDEV_LOG", "1");
 
-        Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
+        Log.i("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);
 
         if (this.envVars.has("MANGOHUD")) {

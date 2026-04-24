@@ -476,7 +476,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         for (int i = 0; i < 4; i++) {
             try { new File(devInputDir, "event" + i).createNewFile(); } catch (Exception e) {}
         }
-        Log.d("XServerDisplayActivity", "Pre-created 4 controller event file(s)");
+        Log.i("XServerDisplayActivity", "Pre-created 4 controller event file(s)");
 
         taskAffinityMask = (short) ProcessHelper.getAffinityMask(container.getCPUList(true));
         taskAffinityMaskWoW64 = (short) ProcessHelper.getAffinityMask(container.getCPUListWoW64(true));
