@@ -1,3 +1,5 @@
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/n8S4G2WZQ4)
+
 <img src="20260418_134945.png" width="1500" height="500" alt="star" />  
 </p>
 
@@ -98,3 +100,8 @@ Winlator and its forks are unofficial community projects. They are not affiliate
 ## License
 
 Inherits the license of the upstream Winlator project (GPL-3.0). See `LICENSE` for the full text.
+
+
+## Community
+
+Join our Discord: https://discord.gg/n8S4G2WZQ4
